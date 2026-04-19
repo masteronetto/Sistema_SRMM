@@ -35,6 +35,35 @@ npm run dev
 
 Servidor disponible en `http://localhost:3000`.
 
+## Usar PostgreSQL local desde Codespaces
+
+Si tu API corre en Codespaces y PostgreSQL corre en tu maquina local, `localhost` no apunta a tu PC, apunta al contenedor remoto.
+
+La forma mas simple es crear un tunel inverso desde tu PC al Codespace.
+
+1. En este repo ya quedo configurado `.env` para usar:
+
+- `DB_HOST=127.0.0.1`
+- `DB_PORT=15432`
+
+2. En tu maquina local (donde corre PostgreSQL), abre una terminal y ejecuta:
+
+```bash
+gh auth login
+gh codespace list
+gh codespace ssh -c <NOMBRE_CODESPACE> -- -N -R 15432:localhost:5432
+```
+
+3. Deja esa terminal abierta (el tunel debe quedar activo).
+
+4. En Codespaces, inicia la API:
+
+```bash
+npm run dev
+```
+
+Si necesitas usar otro puerto local de PostgreSQL, ajusta el valor final del tunel (`localhost:5432`) y `DB_PORT` en `.env`.
+
 ## Endpoints
 
 ### Health

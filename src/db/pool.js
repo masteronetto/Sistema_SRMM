@@ -3,4 +3,8 @@ const { db } = require('../config/env');
 
 const pool = new Pool(db);
 
+pool.on('error', (error) => {
+	console.error('Error inesperado en cliente idle de PostgreSQL:', error);
+});
+
 module.exports = pool;
