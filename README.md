@@ -35,35 +35,6 @@ npm run dev
 
 Servidor disponible en `http://localhost:3000`.
 
-## Usar PostgreSQL local desde Codespaces
-
-Si tu API corre en Codespaces y PostgreSQL corre en tu maquina local, `localhost` no apunta a tu PC, apunta al contenedor remoto.
-
-La forma mas simple es crear un tunel inverso desde tu PC al Codespace.
-
-1. En este repo ya quedo configurado `.env` para usar:
-
-- `DB_HOST=127.0.0.1`
-- `DB_PORT=15432`
-
-2. En tu maquina local (donde corre PostgreSQL), abre una terminal y ejecuta:
-
-```bash
-gh auth login
-gh codespace list
-gh codespace ssh -c <NOMBRE_CODESPACE> -- -N -R 15432:localhost:5432
-```
-
-3. Deja esa terminal abierta (el tunel debe quedar activo).
-
-4. En Codespaces, inicia la API:
-
-```bash
-npm run dev
-```
-
-Si necesitas usar otro puerto local de PostgreSQL, ajusta el valor final del tunel (`localhost:5432`) y `DB_PORT` en `.env`.
-
 ## Endpoints
 
 ### Health
@@ -96,6 +67,16 @@ Body ejemplo:
 - `POST /api/mantenedores`
 - `PUT /api/mantenedores/:id`
 - `DELETE /api/mantenedores/:id`
+
+Definicion actual en codigo:
+
+- `mantenedores` es una entidad de catalogo parametrizable que almacena valores de referencia del sistema.
+- Cada registro tiene estructura: `id_mantenedor`, `tipo`, `codigo`, `nombre`, `descripcion`, `activo`, `created_at`, `updated_at`.
+- En creacion y actualizacion, los campos obligatorios son: `tipo`, `codigo` y `nombre`.
+- `descripcion` es opcional y `activo` por defecto se guarda en `true`.
+- Existe una restriccion unica por `tipo + codigo`, por lo que no se puede repetir el mismo codigo dentro del mismo tipo.
+- El listado se entrega ordenado por `tipo` y luego por `codigo`.
+- Comportamiento de respuestas: `400` por datos incompletos, `404` si no existe el recurso, `409` por duplicidad de `tipo + codigo`.
 
 Body ejemplo:
 
