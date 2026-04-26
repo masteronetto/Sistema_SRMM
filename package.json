@@ -2,7 +2,7 @@
   "name": "sistema-srmm",
   "version": "0.1.0",
   "private": true,
-  "description": "API base SRMM para gestion de usuarios y mantenedores",
+  "description": "API base SRMM para gestion de usuarios",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

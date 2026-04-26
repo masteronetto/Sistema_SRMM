@@ -1,6 +1,6 @@
 # Sistema_SRMM
 
-API base para SRMM con gestion de usuarios y mantenedores (CRUD) usando Node.js, Express y PostgreSQL.
+API base para SRMM con CRUD de usuarios usando Node.js, Express y PostgreSQL.
 
 ## Requisitos
 
@@ -24,7 +24,7 @@ cp .env.example .env
 3. Crear tablas base ejecutando:
 
 ```bash
-psql -U <usuario> -d <base_datos> -f sql/001_base_crud_usuarios_mantenedores.sql
+psql -U <usuario> -d <base_datos> -f sql/001_base_crud_usuarios.sql
 ```
 
 ## Ejecucion
@@ -60,32 +60,154 @@ Body ejemplo:
 }
 ```
 
-### Mantenedores
+### Historial de uso (horometro)
 
-- `GET /api/mantenedores`
-- `GET /api/mantenedores/:id`
-- `POST /api/mantenedores`
-- `PUT /api/mantenedores/:id`
-- `DELETE /api/mantenedores/:id`
+- `POST /api/historial-uso`
+- `GET /api/historial-uso/maquina/:maquinaria_id_maquina`
 
-Definicion actual en codigo:
+Body ejemplo (POST):
 
-- `mantenedores` es una entidad de catalogo parametrizable que almacena valores de referencia del sistema.
-- Cada registro tiene estructura: `id_mantenedor`, `tipo`, `codigo`, `nombre`, `descripcion`, `activo`, `created_at`, `updated_at`.
-- En creacion y actualizacion, los campos obligatorios son: `tipo`, `codigo` y `nombre`.
-- `descripcion` es opcional y `activo` por defecto se guarda en `true`.
-- Existe una restriccion unica por `tipo + codigo`, por lo que no se puede repetir el mismo codigo dentro del mismo tipo.
-- El listado se entrega ordenado por `tipo` y luego por `codigo`.
-- Comportamiento de respuestas: `400` por datos incompletos, `404` si no existe el recurso, `409` por duplicidad de `tipo + codigo`.
+```json
+{
+	"maquinaria_id_maquina": 101,
+	"valor_horas": 1520.5,
+	"id_usuario": 1,
+	"arriendos_id_contrato": null,
+	"fecha_registro": "2026-04-26T10:30:00Z"
+}
+```
+
+Reglas implementadas:
+
+- Cada registro se guarda con fecha/hora y usuario.
+- El historial se consulta por maquina en orden cronologico.
+- No se permite registrar un horometro menor al ultimo valor guardado para la misma maquina.
+- Al registrar un nuevo horometro, el valor actual de la maquinaria queda sincronizado con el ultimo registro.
+
+### Maquinaria
+
+- `GET /api/maquinaria`
+- `GET /api/maquinaria/:id_maquina`
+- `POST /api/maquinaria`
+- `PUT /api/maquinaria/:id_maquina`
+- `DELETE /api/maquinaria/:id_maquina`
+
+Body ejemplo (POST):
+
+```json
+{
+	"modelo_equipo": "CAT 320D",
+	"horometro_actual": 1245.5,
+	"estado": "Disponible",
+	"especificaciones": "Excavadora de orugas",
+	"planes_mantencion_id_plan": null
+}
+```
+
+### Mantenimientos
+
+- `POST /api/mantenimientos`
+- `GET /api/mantenimientos/maquina/:maquinaria_id_maquina`
+
+Body ejemplo (POST):
+
+```json
+{
+	"tipo_servicio": "Preventivo",
+	"horometro_registro": 1240,
+	"detalle_tecnico": "Cambio de filtros y revision general",
+	"fecha_servicio": "2026-04-27",
+	"maquinaria_id_maquina": 1,
+	"usuarios_id_usuario": 1
+}
+```
+
+Reglas implementadas:
+
+- El mantenimiento queda vinculado a maquinaria y usuario responsable.
+- El registro es inmutable desde la API actual: solo existe alta y consulta.
+- No se permite registrar un mantenimiento con horometro mayor al horometro_actual de la maquinaria.
+
+## Pruebas en Postman
+
+Servidor local para pruebas:
+
+```bash
+http://localhost:3000
+```
+
+### Maquinaria
+
+- `POST /api/maquinaria`
+- `PUT /api/maquinaria/:id_maquina`
+- `DELETE /api/maquinaria/:id_maquina`
 
 Body ejemplo:
 
 ```json
 {
-	"tipo": "estado_maquinaria",
-	"codigo": "DISPONIBLE",
-	"nombre": "Disponible",
-	"descripcion": "Equipo disponible para arriendo",
-	"activo": true
+	"modelo_equipo": "CAT 320D",
+	"horometro_actual": 1200,
+	"estado": "Disponible",
+	"especificaciones": "Excavadora de orugas",
+	"planes_mantencion_id_plan": null
 }
+```
+
+Body ejemplo (PUT):
+
+```json
+{
+	"modelo_equipo": "CAT 320D Actualizada",
+	"horometro_actual": 1300,
+	"estado": "Mantencion",
+	"especificaciones": "Excavadora revisada",
+	"planes_mantencion_id_plan": null
+}
+```
+
+### Historial de uso (horometro)
+
+- `POST /api/historial-uso`
+- `GET /api/historial-uso/maquina/:maquinaria_id_maquina`
+
+Body ejemplo:
+
+```json
+{
+	"maquinaria_id_maquina": 1,
+	"valor_horas": 1245.5,
+	"id_usuario": 1,
+	"arriendos_id_contrato": null,
+	"fecha_registro": "2026-04-26"
+}
+```
+
+### Mantenimientos
+
+- `POST /api/mantenimientos`
+- `GET /api/mantenimientos/maquina/:maquinaria_id_maquina`
+
+Body ejemplo:
+
+```json
+{
+	"tipo_servicio": "Preventivo",
+	"horometro_registro": 1240,
+	"detalle_tecnico": "Cambio de filtros y revision general",
+	"fecha_servicio": "2026-04-27",
+	"maquinaria_id_maquina": 1,
+	"usuarios_id_usuario": 1
+}
+```
+
+## Actualizar el proyecto en Codespaces desde consola
+
+Flujo rapido para guardar y subir cambios a GitHub desde tu Codespace:
+
+```bash
+git status              # Ver que cambio
+git add .               # Agregar cambios
+git commit -m "mensaje" # Comprometer cambios
+git push origin main    # Subir a GitHub
 ```
