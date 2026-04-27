@@ -5,6 +5,40 @@ const baseSelect = `
   FROM maquinaria
 `;
 
+async function getHorasAcumuladasByMaquina(id_maquina) {
+  const query = `
+    SELECT
+      m.id_maquina,
+      m.modelo_equipo,
+      m.estado,
+      m.horometro_actual AS horas_acumuladas,
+      m.especificaciones,
+      m.created_at,
+      m.updated_at,
+      ultimo_historial.id_registro AS ultimo_registro_historial,
+      ultimo_historial.valor_horas AS ultimo_valor_registrado,
+      ultimo_historial.fecha_registro AS ultima_fecha_registro,
+      COALESCE(conteo_historial.total_registros, 0) AS total_registros_historial
+    FROM maquinaria m
+    LEFT JOIN LATERAL (
+      SELECT id_registro, valor_horas, fecha_registro
+      FROM historial_horometro hh
+      WHERE hh.maquinaria_id_maquina = m.id_maquina
+      ORDER BY fecha_registro DESC, id_registro DESC
+      LIMIT 1
+    ) ultimo_historial ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*)::BIGINT AS total_registros
+      FROM historial_horometro hh
+      WHERE hh.maquinaria_id_maquina = m.id_maquina
+    ) conteo_historial ON TRUE
+    WHERE m.id_maquina = $1
+  `;
+
+  const { rows } = await pool.query(query, [id_maquina]);
+  return rows[0] || null;
+}
+
 async function listMaquinaria() {
   const query = `${baseSelect} ORDER BY id_maquina ASC`;
   const { rows } = await pool.query(query);
@@ -84,6 +118,7 @@ async function deleteMaquinaria(id_maquina) {
 module.exports = {
   listMaquinaria,
   getMaquinariaById,
+  getHorasAcumuladasByMaquina,
   createMaquinaria,
   updateMaquinaria,
   updateHorometroActual,

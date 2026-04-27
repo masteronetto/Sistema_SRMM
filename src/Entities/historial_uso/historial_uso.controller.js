@@ -10,6 +10,29 @@ function toPositiveNumber(value) {
   return parsed;
 }
 
+function normalizeDateInput(value) {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmedValue = value.trim();
+  const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+  if (!isoDatePattern.test(trimmedValue)) {
+    return null;
+  }
+
+  const parsedDate = new Date(`${trimmedValue}T00:00:00Z`);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+
+  return trimmedValue;
+}
+
 function validateCreatePayload(payload) {
   const maquinaria_id_maquina = toPositiveNumber(payload.maquinaria_id_maquina);
   const valor_horas = toPositiveNumber(payload.valor_horas);
@@ -33,13 +56,21 @@ function validateCreatePayload(payload) {
     };
   }
 
+  const fecha_registro = normalizeDateInput(payload.fecha_registro);
+  if (payload.fecha_registro !== undefined && payload.fecha_registro !== null && payload.fecha_registro !== '' && fecha_registro === null) {
+    return {
+      error: 'fecha_registro debe tener formato YYYY-MM-DD si se envia',
+      parsed: null
+    };
+  }
+
   return {
     error: null,
     parsed: {
       maquinaria_id_maquina,
       valor_horas,
       id_usuario,
-      fecha_registro: payload.fecha_registro || null,
+      fecha_registro,
       arriendos_id_contrato
     }
   };
@@ -55,6 +86,18 @@ async function create(req, res, next) {
     const maquinaria = await maquinariaRepo.getMaquinariaById(parsed.maquinaria_id_maquina);
     if (!maquinaria) {
       return res.status(404).json({ message: 'Maquinaria no encontrada' });
+    }
+
+    const fechaRegistro = parsed.fecha_registro || new Date().toISOString().slice(0, 10);
+    const historialExistente = await historialUsoRepo.getHistorialByMaquinaAndFecha(
+      parsed.maquinaria_id_maquina,
+      fechaRegistro
+    );
+
+    if (historialExistente) {
+      return res.status(409).json({
+        message: 'Ya existe un registro de horometro para esta maquinaria en la fecha indicada'
+      });
     }
 
     if (Number(parsed.valor_horas) < Number(maquinaria.horometro_actual)) {
@@ -77,7 +120,7 @@ async function create(req, res, next) {
           parsed.maquinaria_id_maquina,
           parsed.valor_horas,
           parsed.id_usuario,
-          parsed.fecha_registro,
+          fechaRegistro,
           parsed.arriendos_id_contrato
         ]
       );

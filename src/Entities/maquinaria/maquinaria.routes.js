@@ -5,6 +5,7 @@ const router = Router();
 
 router.get('/', controller.list);
 router.get('/:id_maquina', controller.getById);
+router.get('/:id_maquina/horas-acumuladas', controller.getHorasAcumuladas);
 router.post('/', controller.create);
 router.put('/:id_maquina', controller.update);
 router.patch('/:id_maquina/mark-not-operative', controller.markAsNotOperative);

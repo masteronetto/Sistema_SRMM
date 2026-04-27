@@ -11,6 +11,12 @@ async function getUltimoHistorialByMaquina(maquinaria_id_maquina) {
   return rows[0] || null;
 }
 
+async function getHistorialByMaquinaAndFecha(maquinaria_id_maquina, fecha_registro) {
+  const query = `${baseSelect} WHERE maquinaria_id_maquina = $1 AND fecha_registro = $2 ORDER BY id_registro DESC LIMIT 1`;
+  const { rows } = await pool.query(query, [maquinaria_id_maquina, fecha_registro]);
+  return rows[0] || null;
+}
+
 async function createHistorialUso({ maquinaria_id_maquina, valor_horas, id_usuario, fecha_registro, arriendos_id_contrato }) {
   const query = `
     INSERT INTO historial_horometro (maquinaria_id_maquina, valor_horas, id_usuario, fecha_registro, arriendos_id_contrato)
@@ -31,6 +37,7 @@ async function listHistorialByMaquina(maquinaria_id_maquina) {
 
 module.exports = {
   getUltimoHistorialByMaquina,
+  getHistorialByMaquinaAndFecha,
   createHistorialUso,
   listHistorialByMaquina
 };

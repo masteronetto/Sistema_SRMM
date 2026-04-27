@@ -81,6 +81,24 @@ async function getById(req, res, next) {
   }
 }
 
+async function getHorasAcumuladas(req, res, next) {
+  try {
+    const id_maquina = toNumberOrNull(req.params.id_maquina);
+    if (id_maquina === null) {
+      return res.status(400).json({ message: 'id_maquina debe ser numerico y mayor o igual a 0' });
+    }
+
+    const data = await maquinariaRepo.getHorasAcumuladasByMaquina(id_maquina);
+    if (!data) {
+      return res.status(404).json({ message: 'Maquinaria no encontrada' });
+    }
+
+    return res.json(data);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function create(req, res, next) {
   try {
     const { error, parsed } = validatePayload(req.body);
@@ -170,6 +188,7 @@ async function remove(req, res, next) {
 module.exports = {
   list,
   getById,
+  getHorasAcumuladas,
   create,
   update,
   markAsNotOperative,

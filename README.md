@@ -63,6 +63,7 @@ Body ejemplo:
 ### Historial de uso (horometro)
 
 - `POST /api/historial-uso`
+- `POST /api/historial-uso/diario`
 - `GET /api/historial-uso/maquina/:maquinaria_id_maquina`
 
 Body ejemplo (POST):
@@ -83,11 +84,26 @@ Reglas implementadas:
 - El historial se consulta por maquina en orden cronologico.
 - No se permite registrar un horometro menor al ultimo valor guardado para la misma maquina.
 - Al registrar un nuevo horometro, el valor actual de la maquinaria queda sincronizado con el ultimo registro.
+- El ingreso diario valida formato `YYYY-MM-DD` cuando se envía `fecha_registro`.
+- No se permite duplicar un registro de horometro para la misma maquina en la misma fecha.
+
+Body ejemplo para ingreso diario:
+
+```json
+{
+	"maquinaria_id_maquina": 1,
+	"valor_horas": 1525,
+	"id_usuario": 4,
+	"arriendos_id_contrato": null,
+	"fecha_registro": "2026-04-27"
+}
+```
 
 ### Maquinaria
 
 - `GET /api/maquinaria`
 - `GET /api/maquinaria/:id_maquina`
+- `GET /api/maquinaria/:id_maquina/horas-acumuladas`
 - `POST /api/maquinaria`
 - `PUT /api/maquinaria/:id_maquina`
 - `PATCH /api/maquinaria/:id_maquina/mark-not-operative`
@@ -138,6 +154,27 @@ Respuesta:
 	"planes_mantencion_id_plan": null,
 	"created_at": "2026-04-27T10:00:00.000Z",
 	"updated_at": "2026-04-27T11:30:00.000Z"
+}
+```
+
+**Consultar horas acumuladas:**
+
+- `GET /api/maquinaria/:id_maquina/horas-acumuladas`
+
+Respuesta esperada:
+```json
+{
+	"id_maquina": 1,
+	"modelo_equipo": "CAT 320D",
+	"estado": "Disponible",
+	"horas_acumuladas": "1525.00",
+	"especificaciones": "Excavadora de orugas",
+	"created_at": "2026-04-27T10:00:00.000Z",
+	"updated_at": "2026-04-27T11:30:00.000Z",
+	"ultimo_registro_historial": 8,
+	"ultimo_valor_registrado": "1525.00",
+	"ultima_fecha_registro": "2026-04-27",
+	"total_registros_historial": "12"
 }
 ```
 ### Mantenimientos
