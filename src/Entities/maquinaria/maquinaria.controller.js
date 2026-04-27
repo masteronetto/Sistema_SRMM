@@ -118,6 +118,32 @@ async function update(req, res, next) {
   }
 }
 
+async function markAsNotOperative(req, res, next) {
+  try {
+    const id = toNumberOrNull(req.params.id_maquina);
+    if (id === null) {
+      return res.status(400).json({ message: 'id_maquina debe ser numerico' });
+    }
+
+    const maq = await maquinariaRepo.getMaquinariaById(id);
+    if (!maq) {
+      return res.status(404).json({ message: 'Maquinaria no encontrada' });
+    }
+
+    const updated = await maquinariaRepo.updateMaquinaria(id, {
+      modelo_equipo: maq.modelo_equipo,
+      horometro_actual: maq.horometro_actual,
+      estado: 'Bloqueada',
+      especificaciones: maq.especificaciones,
+      planes_mantencion_id_plan: maq.planes_mantencion_id_plan
+    });
+
+    return res.json(updated);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function remove(req, res, next) {
   try {
     const id_maquina = toNumberOrNull(req.params.id_maquina);
@@ -146,5 +172,6 @@ module.exports = {
   getById,
   create,
   update,
+  markAsNotOperative,
   remove
 };
