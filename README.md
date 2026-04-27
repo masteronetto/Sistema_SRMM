@@ -1,6 +1,6 @@
 # Sistema_SRMM
 
-API base para SRMM con CRUD de usuarios usando Node.js, Express y PostgreSQL.
+API base para SRMM usando Node.js, Express y PostgreSQL.
 
 ## Requisitos
 
