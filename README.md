@@ -1,4 +1,4 @@
-# Sistema_SRMM
+stema_SRMM
 
 API base para SRMM usando Node.js, Express y PostgreSQL.
 
@@ -90,6 +90,7 @@ Reglas implementadas:
 - `GET /api/maquinaria/:id_maquina`
 - `POST /api/maquinaria`
 - `PUT /api/maquinaria/:id_maquina`
+- `PATCH /api/maquinaria/:id_maquina/mark-not-operative`
 - `DELETE /api/maquinaria/:id_maquina`
 
 Body ejemplo (POST):
@@ -112,6 +113,31 @@ Body ejemplo (PUT):
 	"estado": "Mantencion",
 	"especificaciones": "Excavadora revisada",
 	"planes_mantencion_id_plan": null
+}
+```
+
+**Marcar máquina como No Operativa:**
+
+- `PATCH /api/maquinaria/:id_maquina/mark-not-operative`
+
+Cambia el estado a `Bloqueada`. No requiere body.
+
+Ejemplo:
+```bash
+PATCH http://localhost:3000/api/maquinaria/1/mark-not-operative
+```
+
+Respuesta:
+```json
+{
+	"id_maquina": 1,
+	"modelo_equipo": "CAT 320D",
+	"horometro_actual": 1300,
+	"estado": "Bloqueada",
+	"especificaciones": "Excavadora de orugas",
+	"planes_mantencion_id_plan": null,
+	"created_at": "2026-04-27T10:00:00.000Z",
+	"updated_at": "2026-04-27T11:30:00.000Z"
 }
 ```
 ### Mantenimientos
