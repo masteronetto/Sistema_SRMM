@@ -3,6 +3,7 @@ const usuariosRoutes = require('./Entities/usuarios/usuarios.routes');
 const historialUsoRoutes = require('./Entities/historial_uso/historial_uso.routes');
 const maquinariaRoutes = require('./Entities/maquinaria/maquinaria.routes');
 const mantenimientosRoutes = require('./Entities/mantenimientos/mantenimientos.routes');
+const reportesRoutes = require('./Entities/reportes/reportes.routes');
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/maquinaria', maquinariaRoutes);
 app.use('/api/mantenimientos', mantenimientosRoutes);
 app.use('/api/historial-uso', historialUsoRoutes);
+app.use('/api/reportes', reportesRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
