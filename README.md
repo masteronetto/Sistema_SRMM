@@ -103,7 +103,17 @@ Body ejemplo (POST):
 	"planes_mantencion_id_plan": null
 }
 ```
+Body ejemplo (PUT):
 
+```json
+{
+	"modelo_equipo": "CAT 320D Actualizada",
+	"horometro_actual": 1300,
+	"estado": "Mantencion",
+	"especificaciones": "Excavadora revisada",
+	"planes_mantencion_id_plan": null
+}
+```
 ### Mantenimientos
 
 - `POST /api/mantenimientos`
