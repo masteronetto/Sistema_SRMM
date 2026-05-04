@@ -40,7 +40,47 @@ async function getHorasAcumuladasByMaquina(id_maquina) {
 }
 
 async function listMaquinaria() {
-  const query = `${baseSelect} ORDER BY id_maquina ASC`;
+  const query = `
+    SELECT 
+      m.id_maquina, 
+      m.modelo_equipo, 
+      m.horometro_actual, 
+      m.estado, 
+      m.especificaciones, 
+      m.planes_mantencion_id_plan, 
+      m.created_at, 
+      m.updated_at,
+      p.intervalo_horas,
+      CASE
+        WHEN p.intervalo_horas IS NULL THEN 'Baja'
+        WHEN (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + p.intervalo_horas - m.horometro_actual) <= 0 THEN 'Alta'
+        WHEN (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + p.intervalo_horas - m.horometro_actual) <= (p.intervalo_horas * 0.3) THEN 'Media'
+        ELSE 'Baja'
+      END AS prioridad
+    FROM maquinaria m
+    LEFT JOIN planes_mantencion p ON p.id_plan = m.planes_mantencion_id_plan
+    LEFT JOIN LATERAL (
+      SELECT horometro_registro 
+      FROM mantenimiento 
+      WHERE mantenimiento.maquinaria_id_maquina = m.id_maquina 
+      ORDER BY fecha_servicio DESC, id_mantencion DESC 
+      LIMIT 1
+    ) um ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT valor_horas AS ultimo_valor_registrado
+      FROM historial_horometro hh
+      WHERE hh.maquinaria_id_maquina = m.id_maquina
+      ORDER BY fecha_registro DESC, id_registro DESC
+      LIMIT 1
+    ) uh ON TRUE
+    ORDER BY 
+      CASE 
+        WHEN (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + COALESCE(p.intervalo_horas, 0) - m.horometro_actual) <= 0 THEN 1
+        WHEN (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + COALESCE(p.intervalo_horas, 0) - m.horometro_actual) <= (COALESCE(p.intervalo_horas, 0) * 0.3) THEN 2
+        ELSE 3
+      END ASC,
+      m.id_maquina ASC
+  `;
   const { rows } = await pool.query(query);
   return rows;
 }
