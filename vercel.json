@@ -1,5 +1,6 @@
 {
   "buildCommand": "npm install",
+  "outputDirectory": "frontend",
   "regions": ["iad1"],
   "cleanUrls": true,
   "trailingSlash": false,
