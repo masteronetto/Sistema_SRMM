@@ -3,7 +3,7 @@ const path = require('path');
 const { hasDatabaseConfig } = require('./config/env');
 
 const app = express();
-const frontendPath = path.join(__dirname, '..', 'frontend');
+const publicPath = path.join(__dirname, '..', 'public');
 
 function isDatabaseUnavailableError(error) {
   if (!error) {
@@ -24,7 +24,7 @@ function isDatabaseUnavailableError(error) {
 }
 
 app.use(express.json());
-app.use(express.static(frontendPath));
+app.use(express.static(publicPath));
 
 // Permitir bots de preview y captura de Vercel
 app.use((_req, res, next) => {
@@ -34,11 +34,11 @@ app.use((_req, res, next) => {
 
 app.get(['/favicon.ico', '/favicon.png'], (_req, res) => {
   res.type('image/svg+xml');
-  res.sendFile(path.join(frontendPath, 'favicon.svg'));
+  res.sendFile(path.join(publicPath, 'favicon.svg'));
 });
 
 app.get('/', (_req, res) => {
-  res.sendFile(path.join(frontendPath, 'index.html'));
+  res.sendFile(path.join(publicPath, 'index.html'));
 });
 
 app.get('/health', (_req, res) => {
@@ -47,7 +47,7 @@ app.get('/health', (_req, res) => {
 
 app.get('/robots.txt', (_req, res) => {
   res.type('text/plain');
-  res.sendFile(path.join(frontendPath, 'robots.txt'));
+  res.sendFile(path.join(publicPath, 'robots.txt'));
 });
 
 if (hasDatabaseConfig) {
@@ -89,7 +89,7 @@ app.use((err, _req, res, _next) => {
 // Fallback: cualquier ruta no encontrada que no sea API, servir index.html
 app.use((_req, res) => {
   if (!_req.path.startsWith('/api')) {
-    return res.status(200).sendFile(path.join(frontendPath, 'index.html'));
+    return res.status(200).sendFile(path.join(publicPath, 'index.html'));
   }
   res.status(404).json({ message: 'Not found' });
 });
