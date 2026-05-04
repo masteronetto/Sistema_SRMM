@@ -99,6 +99,27 @@ async function getHorasAcumuladas(req, res, next) {
   }
 }
 
+async function listUrgentMaintenance(req, res, next) {
+  try {
+    const umbralRaw = req.query.umbral;
+    const limitRaw = req.query.limit;
+    const offsetRaw = req.query.offset;
+
+    const umbral = umbralRaw === undefined || umbralRaw === null || umbralRaw === '' ? 0 : Number(umbralRaw);
+    const limit = limitRaw === undefined || limitRaw === null || limitRaw === '' ? null : Number(limitRaw);
+    const offset = offsetRaw === undefined || offsetRaw === null || offsetRaw === '' ? null : Number(offsetRaw);
+
+    if (Number.isNaN(umbral) || (limit !== null && Number.isNaN(limit)) || (offset !== null && Number.isNaN(offset))) {
+      return res.status(400).json({ message: 'Parámetros de query inválidos: umbral, limit, offset deben ser numéricos' });
+    }
+
+    const data = await maquinariaRepo.listMaquinasConMantenimientoUrgente(Number(umbral || 0), limit, offset);
+    return res.json(data);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function create(req, res, next) {
   try {
     const { error, parsed } = validatePayload(req.body);
@@ -189,6 +210,7 @@ module.exports = {
   list,
   getById,
   getHorasAcumuladas,
+  listUrgentMaintenance,
   create,
   update,
   markAsNotOperative,

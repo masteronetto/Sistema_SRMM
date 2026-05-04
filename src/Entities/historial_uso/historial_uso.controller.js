@@ -100,6 +100,21 @@ async function create(req, res, next) {
       });
     }
 
+    // Si viene asociado a un arriendo, validar integridad: horometro_retorno >= horometro_salida
+    if (parsed.arriendos_id_contrato) {
+      const arriendoRes = await pool.query(
+        'SELECT id_contrato, horometro_salida FROM arriendos WHERE id_contrato = $1 LIMIT 1',
+        [parsed.arriendos_id_contrato]
+      );
+      const arriendo = arriendoRes.rows[0];
+      if (!arriendo) {
+        return res.status(400).json({ message: 'Contrato de arriendo no encontrado' });
+      }
+      if (Number(parsed.valor_horas) < Number(arriendo.horometro_salida)) {
+        return res.status(400).json({ message: 'valor_horas (retorno) no puede ser menor que horometro_salida del contrato de arriendo' });
+      }
+    }
+
     if (Number(parsed.valor_horas) < Number(maquinaria.horometro_actual)) {
       return res.status(400).json({
         message: 'El valor_horas no puede ser menor al ultimo registro de la maquina'

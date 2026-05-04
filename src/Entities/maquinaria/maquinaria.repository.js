@@ -45,6 +45,59 @@ async function listMaquinaria() {
   return rows;
 }
 
+async function listMaquinasConMantenimientoUrgente(umbralHoras = 0, limit = null, offset = null) {
+  // umbralHoras: devuelve máquinas con horas_restantes <= umbralHoras
+  // Calcula referencia_horometro: último mantenimiento.horometro_registro o último historial.valor_horas
+  const query = `
+    SELECT
+      m.id_maquina,
+      m.modelo_equipo,
+      m.horometro_actual,
+      m.estado,
+      p.intervalo_horas,
+      COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) AS referencia_horometro,
+      (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + COALESCE(p.intervalo_horas, 0) - m.horometro_actual) AS horas_restantes,
+      CASE
+        WHEN (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + COALESCE(p.intervalo_horas, 0) - m.horometro_actual) <= 0 THEN 'Alta'
+        WHEN (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + COALESCE(p.intervalo_horas, 0) - m.horometro_actual) <= COALESCE(p.intervalo_horas, 0) * 0.3 THEN 'Media'
+        ELSE 'Baja'
+      END AS prioridad
+    FROM maquinaria m
+    LEFT JOIN planes_mantencion p ON p.id_plan = m.planes_mantencion_id_plan
+    LEFT JOIN LATERAL (
+      SELECT horometro_registro
+      FROM mantenimiento
+      WHERE mantenimiento.maquinaria_id_maquina = m.id_maquina
+      ORDER BY fecha_servicio DESC, id_mantencion DESC
+      LIMIT 1
+    ) um ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT valor_horas AS ultimo_valor_registrado
+      FROM historial_horometro hh
+      WHERE hh.maquinaria_id_maquina = m.id_maquina
+      ORDER BY fecha_registro DESC, id_registro DESC
+      LIMIT 1
+    ) uh ON TRUE
+    WHERE p.intervalo_horas IS NOT NULL
+      AND (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + COALESCE(p.intervalo_horas, 0) - m.horometro_actual) <= $1
+    ORDER BY horas_restantes ASC
+  `;
+
+  const params = [umbralHoras];
+  const { rows } = await pool.query(query, params);
+
+  // apply limit/offset in JS if provided (keeps SQL simple and portable)
+  let result = rows;
+  if (offset !== null) {
+    result = result.slice(offset);
+  }
+  if (limit !== null) {
+    result = result.slice(0, limit);
+  }
+
+  return result;
+}
+
 async function getMaquinariaById(id_maquina) {
   const query = `${baseSelect} WHERE id_maquina = $1`;
   const { rows } = await pool.query(query, [id_maquina]);
@@ -122,5 +175,6 @@ module.exports = {
   createMaquinaria,
   updateMaquinaria,
   updateHorometroActual,
+  listMaquinasConMantenimientoUrgente,
   deleteMaquinaria
 };

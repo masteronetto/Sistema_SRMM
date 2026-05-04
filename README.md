@@ -209,6 +209,113 @@ Servidor local para pruebas:
 http://localhost:3000
 ```
 
+## Pruebas automatizadas (sugeridas)
+
+Se sugiere usar `jest` + `supertest` para pruebas unitarias e integración de endpoints.
+
+1) Instalar dependencias de desarrollo:
+
+```bash
+npm install --save-dev jest supertest
+```
+
+2) Añadir script en `package.json` (sección `scripts`):
+
+```json
+"scripts": {
+	"dev": "node src/server.js",
+	"test": "jest --runInBand"
+}
+```
+
+3) Estructura de tests recomendada:
+
+- `tests/maquinaria.urgent.test.js` — tests para `GET /api/maquinaria/urgent-maintenance`.
+- `tests/historial.integracion.test.js` — tests de integración para validación de arriendos y `historial-uso`.
+
+4) Ejemplo de test con `supertest` (archivo: `tests/maquinaria.urgent.test.js`):
+
+```javascript
+const request = require('supertest');
+const app = require('../src/app'); // exporta tu app Express desde src/app.js
+
+describe('GET /api/maquinaria/urgent-maintenance', () => {
+	test('responde 200 y devuelve lista con esquema esperado', async () => {
+		const res = await request(app).get('/api/maquinaria/urgent-maintenance?umbral=50');
+		expect(res.statusCode).toBe(200);
+		expect(Array.isArray(res.body)).toBe(true);
+		if (res.body.length > 0) {
+			const item = res.body[0];
+			expect(item).toHaveProperty('id_maquina');
+			expect(item).toHaveProperty('modelo_equipo');
+			expect(item).toHaveProperty('horas_restantes');
+		}
+	});
+});
+```
+
+5) Ejecutar tests:
+
+```bash
+npm test
+```
+
+Nota: estos tests son sugeridos; el repositorio actual no incluye tests automáticos por defecto.
+
+## Funciones añadidas y cómo probarlas
+
+1) Listar máquinas con mantenimiento urgente
+
+- Ruta: `GET /api/maquinaria/urgent-maintenance`
+- Query params opcionales: `umbral` (número de horas), `limit`, `offset`.
+- Descripción: devuelve máquinas cuyo cálculo de `horas_restantes` <= `umbral`. El cálculo usa la última referencia conocida (último `mantenimiento.horometro_registro` o último `historial_horometro.valor_horas`) y el `intervalo_horas` del plan de mantención.
+- Ejemplo curl:
+
+```bash
+curl -s "http://localhost:3000/api/maquinaria/urgent-maintenance?umbral=0" | jq
+```
+
+- Respuesta esperada (ejemplo):
+
+```json
+[
+	{
+		"id_maquina": 1,
+		"modelo_equipo": "CAT 320D",
+		"horometro_actual": 1525,
+		"estado": "Disponible",
+		"intervalo_horas": 250,
+		"referencia_horometro": 1300,
+		"horas_restantes": 25,
+		"prioridad": "Alta"
+	}
+]
+```
+
+2) Validación de integridad de telemetría al registrar historial de uso
+
+- Endpoint: `POST /api/historial-uso` (ya existente)
+- Comportamiento añadido: si se envía `arriendos_id_contrato`, el servidor valida que el `valor_horas` (horometro de retorno) sea mayor o igual que el `horometro_salida` registrado en la tabla de `arriendos`. Si es menor, la petición falla con `400`.
+- Ejemplo curl (registro válido):
+
+```bash
+curl -X POST http://localhost:3000/api/historial-uso \
+	-H 'Content-Type: application/json' \
+	-d '{"maquinaria_id_maquina":1,"valor_horas":1600,"id_usuario":4,"arriendos_id_contrato":10}'
+```
+
+Ejemplo de respuesta en caso de dato inválido (horometro retorno menor que salida del contrato):
+
+```json
+{ "message": "valor_horas (retorno) no puede ser menor que horometro_salida del contrato de arriendo" }
+```
+
+3) Observaciones adicionales
+
+- Se añadió documentación técnica en `docs/SRS_extensiones.md` con criterios de aceptación y subtareas.
+- La API actual incluye `POST /api/mantenimientos` para registrar mantenimientos; si se desea el flujo de "finalizar y desbloquear" automática, hay una propuesta en el SRS pero la acción de finalizar debe implementarse explícitamente.
+
+
 ## Actualizar el proyecto en Codespaces desde consola
 
 Flujo rapido para guardar y subir cambios a GitHub desde tu Codespace:
@@ -219,3 +326,11 @@ git add .               # Agregar cambios
 git commit -m "mensaje" # Comprometer cambios
 git push origin main    # Subir a GitHub
 ```
+
+
+- Backend (implementación mínima):
+  - `src/Entities/maquinaria/maquinaria.repository.js`: función `listMaquinasConMantenimientoUrgente(umbral, limit, offset)`.
+  - `src/Entities/maquinaria/maquinaria.controller.js`: handler `listUrgentMaintenance`.
+  - `src/Entities/maquinaria/maquinaria.routes.js`: ruta `GET /api/maquinaria/urgent-maintenance`.
+  - `src/Entities/historial_uso/historial_uso.controller.js`: validación de integridad telemetría para registros con `arriendos_id_contrato`.
+

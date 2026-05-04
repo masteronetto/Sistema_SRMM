@@ -4,6 +4,7 @@ const controller = require('./maquinaria.controller');
 const router = Router();
 
 router.get('/', controller.list);
+router.get('/urgent-maintenance', controller.listUrgentMaintenance);
 router.get('/:id_maquina', controller.getById);
 router.get('/:id_maquina/horas-acumuladas', controller.getHorasAcumuladas);
 router.post('/', controller.create);
