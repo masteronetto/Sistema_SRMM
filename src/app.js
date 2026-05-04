@@ -26,6 +26,12 @@ function isDatabaseUnavailableError(error) {
 app.use(express.json());
 app.use(express.static(frontendPath));
 
+// Permitir bots de preview y captura de Vercel
+app.use((_req, res, next) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  next();
+});
+
 app.get(['/favicon.ico', '/favicon.png'], (_req, res) => {
   res.type('image/svg+xml');
   res.sendFile(path.join(frontendPath, 'favicon.svg'));
@@ -37,6 +43,11 @@ app.get('/', (_req, res) => {
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
+});
+
+app.get('/robots.txt', (_req, res) => {
+  res.type('text/plain');
+  res.sendFile(path.join(frontendPath, 'robots.txt'));
 });
 
 if (hasDatabaseConfig) {
@@ -73,6 +84,14 @@ app.use((err, _req, res, _next) => {
   }
 
   res.status(500).json({ message: 'Error interno del servidor' });
+});
+
+// Fallback: cualquier ruta no encontrada que no sea API, servir index.html
+app.use((_req, res) => {
+  if (!_req.path.startsWith('/api')) {
+    return res.status(200).sendFile(path.join(frontendPath, 'index.html'));
+  }
+  res.status(404).json({ message: 'Not found' });
 });
 
 module.exports = app;
