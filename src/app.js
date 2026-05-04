@@ -38,7 +38,20 @@ app.get(['/favicon.ico', '/favicon.png'], (_req, res) => {
 });
 
 app.get('/', (_req, res) => {
-  res.sendFile(path.join(publicPath, 'index.html'));
+  const protocol = _req.protocol;
+  const host = _req.get('host');
+  const absoluteUrl = `${protocol}://${host}`;
+  
+  // Leer y servir el HTML con URLs absolutas para OpenGraph
+  const fs = require('fs');
+  let htmlContent = fs.readFileSync(path.join(publicPath, 'index.html'), 'utf-8');
+  
+  // Reemplazar rutas relativas de og:image y twitter:image con URLs absolutas
+  htmlContent = htmlContent
+    .replace('content="/og-image.svg"', `content="${absoluteUrl}/og-image.svg"`)
+    .replace('content="/og-image.svg"', `content="${absoluteUrl}/og-image.svg"`);
+  
+  res.type('text/html').send(htmlContent);
 });
 
 app.get('/health', (_req, res) => {
