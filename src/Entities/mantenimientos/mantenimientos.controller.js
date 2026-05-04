@@ -1,6 +1,8 @@
 const mantenimientosRepo = require('./mantenimientos.repository');
 const maquinariaRepo = require('../maquinaria/maquinaria.repository');
 const usuariosRepo = require('../usuarios/usuarios.repository');
+const notificacionesTiempoRealRepo = require('../notificaciones_tiempo_real/notificaciones_tiempo_real.repository');
+const { enviarNotificacionAAdministradores } = require('../../config/socketio');
 
 function toNumberOrNull(value) {
   if (value === undefined || value === null || value === '') {
@@ -90,7 +92,222 @@ async function listByMaquina(req, res, next) {
   }
 }
 
+async function programar(req, res, next) {
+  try {
+    const { tipo_servicio, detalle_tecnico, fecha_programada, maquinaria_id_maquina, mecanico_asignado } = req.body;
+    const pool = require('../../db/pool');
+    const maq_id = toNumberOrNull(maquinaria_id_maquina);
+    const mec_id = toNumberOrNull(mecanico_asignado);
+
+    if (!tipo_servicio || !detalle_tecnico || !fecha_programada || maq_id === null || mec_id === null) {
+      return res.status(400).json({ 
+        message: 'Campos obligatorios: tipo_servicio, detalle_tecnico, fecha_programada, maquinaria_id_maquina, mecanico_asignado' 
+      });
+    }
+
+    // Validar formato de fecha
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(fecha_programada)) {
+      return res.status(400).json({ message: 'fecha_programada debe tener formato YYYY-MM-DD' });
+    }
+
+    // Validar que la fecha sea futura o hoy
+    const programada = new Date(fecha_programada);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    if (programada < hoy) {
+      return res.status(400).json({ message: 'fecha_programada no puede ser en el pasado' });
+    }
+
+    const maquina = await maquinariaRepo.getMaquinariaById(maq_id);
+    if (!maquina) {
+      return res.status(404).json({ message: 'Maquinaria no encontrada' });
+    }
+
+    const mecanico = await usuariosRepo.getUsuarioById(mec_id);
+    if (!mecanico) {
+      return res.status(404).json({ message: 'Mecánico no encontrado' });
+    }
+
+    const orden = await mantenimientosRepo.programarMantenimiento({
+      tipo_servicio,
+      detalle_tecnico,
+      fecha_programada,
+      maquinaria_id_maquina: maq_id,
+      mecanico_asignado: mec_id
+    });
+
+    // Cambiar estado de máquina a 'En Mantencion'
+    await maquinariaRepo.updateMaquinaria(maq_id, {
+      modelo_equipo: maquina.modelo_equipo,
+      horometro_actual: maquina.horometro_actual,
+      estado: 'Mantencion',
+      especificaciones: maquina.especificaciones,
+      planes_mantencion_id_plan: maquina.planes_mantencion_id_plan
+    });
+
+    // Crear notificación para el mecánico
+    await pool.query(
+      `INSERT INTO notificaciones (usuario_id, tipo_notificacion, referencia_id, mensaje) 
+       VALUES ($1, 'Orden Trabajo', $2, $3)`,
+      [
+        mec_id,
+        orden.id_orden,
+        `Nueva orden de trabajo asignada: ${tipo_servicio} para máquina ${maquina.modelo_equipo} programada para ${fecha_programada}`
+      ]
+    );
+
+    return res.status(201).json({
+      message: 'Mantenimiento programado exitosamente. Máquina cambiada a estado "En Mantencion"',
+      orden
+    });
+  } catch (error) {
+    if (error.code === '23503') {
+      return res.status(400).json({ message: 'Referencia inválida en maquinaria o usuarios' });
+    }
+    return next(error);
+  }
+}
+
+async function listOrdenesMaquina(req, res, next) {
+  try {
+    const maquinaria_id_maquina = toNumberOrNull(req.params.maquinaria_id_maquina);
+    if (maquinaria_id_maquina === null) {
+      return res.status(400).json({ message: 'maquinaria_id_maquina debe ser numérico' });
+    }
+
+    const ordenes = await mantenimientosRepo.listOrdenesByMaquina(maquinaria_id_maquina);
+    return res.json(ordenes);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function listOrdenesMecanico(req, res, next) {
+  try {
+    const mecanico_id = toNumberOrNull(req.params.mecanico_id);
+    if (mecanico_id === null) {
+      return res.status(400).json({ message: 'mecanico_id debe ser numérico' });
+    }
+
+    const estado = req.query.estado || null; // e.g., 'Programada', 'En Progreso'
+    const ordenes = await mantenimientosRepo.listOrdenesByMecanico(mecanico_id, estado);
+    return res.json(ordenes);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function iniciar(req, res, next) {
+  try {
+    const id_orden = toNumberOrNull(req.params.id_orden);
+    if (id_orden === null) {
+      return res.status(400).json({ message: 'id_orden debe ser numérico' });
+    }
+
+    const orden = await mantenimientosRepo.iniciarOrdenTrabajo(id_orden);
+    if (!orden) {
+      return res.status(404).json({ message: 'Orden no encontrada o ya fue iniciada' });
+    }
+
+    return res.json({
+      message: 'Orden de trabajo iniciada',
+      orden
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function listOrdenesAtrasadas(req, res, next) {
+  try {
+    const ordenes = await mantenimientosRepo.listOrdenesAtrasadas();
+    return res.json({
+      cantidad: ordenes.length,
+      ordenes,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function verificarRetrasos(req, res, next) {
+  try {
+    const resultado = await procesarRetrasos(req.app.get('io'));
+
+    return res.status(200).json(resultado);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function procesarRetrasos(io) {
+  const ordenes = await mantenimientosRepo.listOrdenesAtrasadas();
+  const adminId = 1;
+  const notificadas = [];
+
+  for (const orden of ordenes) {
+    if (orden.alerta_retraso_enviada) {
+      continue;
+    }
+
+    const diasAtraso = Number(orden.dias_atraso) || 0;
+    const prioridad = diasAtraso >= 7 ? 'Alta' : diasAtraso >= 3 ? 'Media' : 'Baja';
+    const mensaje = `La orden de mantenimiento de ${orden.modelo_equipo} está retrasada ${diasAtraso} día(s). Mecánico asignado: ${orden.mecanico_nombre}.`;
+
+    await notificacionesTiempoRealRepo.crearNotificacionTiempoReal(
+      adminId,
+      'Orden Trabajo',
+      orden.maquinaria_id_maquina,
+      orden.modelo_equipo,
+      prioridad,
+      diasAtraso * 24 * -1,
+      {
+        tipo_evento: 'Retraso en mantenimiento',
+        id_orden: orden.id_orden,
+        fecha_programada: orden.fecha_programada,
+        dias_atraso: diasAtraso,
+        mecanico_asignado: orden.mecanico_asignado,
+        mecanico_nombre: orden.mecanico_nombre,
+        estado_ot: orden.estado_ot,
+        timestamp: new Date().toISOString(),
+      }
+    );
+
+    if (io) {
+      enviarNotificacionAAdministradores(io, {
+        tipo: 'Orden Trabajo',
+        maquina_id: orden.maquinaria_id_maquina,
+        nombre_maquina: orden.modelo_equipo,
+        prioridad,
+        horas_restantes: diasAtraso * 24 * -1,
+        mensaje,
+        timestamp: new Date().toISOString(),
+        referencia_sistema: 'SIS-16',
+        dias_atraso: diasAtraso,
+        mecanico_asignado: orden.mecanico_nombre,
+      });
+    }
+
+    await mantenimientosRepo.marcarRetrasoNotificado(orden.id_orden);
+    notificadas.push(orden.id_orden);
+  }
+
+  return {
+    cantidad_detectadas: ordenes.length,
+    cantidad_notificadas: notificadas.length,
+    ids_notificados: notificadas,
+  };
+}
+
 module.exports = {
   create,
-  listByMaquina
+  listByMaquina,
+  programar,
+  listOrdenesMaquina,
+  listOrdenesMecanico,
+  iniciar,
+  listOrdenesAtrasadas,
+  verificarRetrasos,
+  procesarRetrasos
 };

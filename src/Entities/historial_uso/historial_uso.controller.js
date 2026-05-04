@@ -1,5 +1,8 @@
 const historialUsoRepo = require('./historial_uso.repository');
 const maquinariaRepo = require('../maquinaria/maquinaria.repository');
+const alertasRepo = require('../alertas_criticas/alertas_criticas.repository');
+const notificacionesRepo = require('../notificaciones_tiempo_real/notificaciones_tiempo_real.repository');
+const { enviarNotificacionAAdministradores } = require('../../config/socketio');
 const pool = require('../../db/pool');
 
 function toPositiveNumber(value) {
@@ -153,6 +156,124 @@ async function create(req, res, next) {
 
       if (updatedMaquinaria.rowCount === 0) {
         throw new Error('No fue posible actualizar la maquinaria');
+      }
+
+      // Verificar si se alcanzó el 100% del umbral crítico
+      if (maquinaria.planes_mantencion_id_plan) {
+        const planRes = await client.query(
+          `SELECT id_plan, intervalo_horas FROM planes_mantencion WHERE id_plan = $1 LIMIT 1`,
+          [maquinaria.planes_mantencion_id_plan]
+        );
+        const plan = planRes.rows[0];
+
+        if (plan && plan.intervalo_horas) {
+          // Obtener la referencia del último horometro (mantenimiento o historial)
+          const refRes = await client.query(
+            `
+            SELECT COALESCE(
+              (SELECT horometro_registro FROM mantenimiento 
+               WHERE maquinaria_id_maquina = $1 
+               ORDER BY fecha_servicio DESC, id_mantencion DESC LIMIT 1),
+              (SELECT valor_horas FROM historial_horometro 
+               WHERE maquinaria_id_maquina = $1 AND id_registro != (SELECT MAX(id_registro) FROM historial_horometro WHERE maquinaria_id_maquina = $1)
+               ORDER BY fecha_registro DESC, id_registro DESC LIMIT 1),
+              0
+            ) as referencia
+            `,
+            [parsed.maquinaria_id_maquina]
+          );
+
+          const referencia = refRes.rows[0]?.referencia || 0;
+          const horas_restantes = Number(referencia) + Number(plan.intervalo_horas) - Number(parsed.valor_horas);
+
+          // Si se alcanzó el 100% (horas_restantes <= 0)
+          if (horas_restantes <= 0) {
+            // Crear alerta crítica
+            await client.query(
+              `
+              INSERT INTO alertas_criticas (maquinaria_id_maquina, tipo_alerta, estado_alerta, porcentaje_umbral, horometro_critico, requiere_mantenimiento)
+              VALUES ($1, 'Critica', 'Pendiente', 100, $2, TRUE)
+              ON CONFLICT DO NOTHING
+              `,
+              [parsed.maquinaria_id_maquina, parsed.valor_horas]
+            );
+
+            // Bloquear la máquina automáticamente
+            await client.query(
+              `
+              UPDATE maquinaria
+              SET estado = 'Bloqueada',
+                  updated_at = NOW()
+              WHERE id_maquina = $1
+              `,
+              [parsed.maquinaria_id_maquina]
+            );
+
+            // Crear registro de bloqueo crítico
+            await client.query(
+              `
+              INSERT INTO bloqueos_criticos (maquinaria_id_maquina, motivo_bloqueo, costo_estimado_reparacion, estado_bloqueo)
+              VALUES ($1, 'Alerta crítica automática: se alcanzó el 100% del umbral de mantenimiento', 0, 'Activo')
+              ON CONFLICT (maquinaria_id_maquina) DO UPDATE
+              SET motivo_bloqueo = 'Alerta crítica automática: se alcanzó el 100% del umbral de mantenimiento',
+                  estado_bloqueo = 'Activo',
+                  updated_at = NOW()
+              `,
+              [parsed.maquinaria_id_maquina]
+            );
+
+            // Crear notificación en tiempo real para el administrador (SIS-20)
+            // Obtener datos del administrador (primer admin en BD)
+            const adminRes = await client.query(
+              `SELECT id_usuario FROM usuarios WHERE rol_acceso = 'Administrador' LIMIT 1`
+            );
+            const admin = adminRes.rows[0];
+
+            if (admin) {
+              try {
+                // Calcular prioridad basada en horas restantes
+                const prioridad = Math.abs(horas_restantes) > 50 ? 'Alta' : (Math.abs(horas_restantes) > 10 ? 'Media' : 'Alta');
+
+                // Crear notificación en BD
+                await notificacionesRepo.crearNotificacionTiempoReal(
+                  admin.id_usuario,
+                  'Alerta Critica',
+                  parsed.maquinaria_id_maquina,
+                  maquinaria.modelo_equipo,
+                  prioridad,
+                  horas_restantes,
+                  {
+                    tipo_evento: 'Alerta Crítica Automática',
+                    descripcion: 'Se alcanzó el 100% del umbral de mantenimiento preventivo',
+                    paso_critico: true,
+                    referencia_alerta: 'SIS-12',
+                    timestamp: new Date().toISOString()
+                  }
+                );
+
+                // Emitir notificación por WebSocket
+                const io = req.app.get('io');
+                if (io) {
+                  const notificacion = {
+                    tipo: 'Alerta Critica',
+                    maquina_id: parsed.maquinaria_id_maquina,
+                    nombre_maquina: maquinaria.modelo_equipo,
+                    prioridad: prioridad,
+                    horas_restantes: horas_restantes,
+                    mensaje: `⚠️ ALERTA CRÍTICA: ${maquinaria.modelo_equipo} ha alcanzado el 100% de su umbral de mantenimiento. Máquina bloqueada automáticamente.`,
+                    timestamp: new Date().toISOString(),
+                    referencia_sistema: 'SIS-12'
+                  };
+                  enviarNotificacionAAdministradores(io, notificacion);
+                  console.log('[historial_uso] Notificación WebSocket enviada a administradores');
+                }
+              } catch (notifError) {
+                console.error('[historial_uso] Error creando notificación en tiempo real:', notifError);
+                // No fallamos la transacción por error en notificación
+              }
+            }
+          }
+        }
       }
 
       await client.query('COMMIT');

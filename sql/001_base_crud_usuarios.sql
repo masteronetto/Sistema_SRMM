@@ -10,6 +10,19 @@ CREATE TABLE IF NOT EXISTS usuarios (
         CHECK (rol_acceso IN ('Administrador', 'Mecanico', 'Operador', 'Cliente'))
 );
 
+-- SIS-13: Tabla de planes de mantenimiento
+CREATE TABLE IF NOT EXISTS planes_mantencion (
+    id_plan BIGSERIAL PRIMARY KEY,
+    nombre_plan VARCHAR(100) NOT NULL UNIQUE,
+    intervalo_horas NUMERIC(12,2) NOT NULL CHECK (intervalo_horas > 0),
+    descripcion TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_planes_mantencion_nombre
+ON planes_mantencion (nombre_plan);
+
 CREATE TABLE IF NOT EXISTS maquinaria (
     id_maquina BIGSERIAL PRIMARY KEY,
     modelo_equipo VARCHAR(120) NOT NULL,
@@ -69,3 +82,145 @@ CREATE TABLE IF NOT EXISTS mantenimiento (
 
 CREATE INDEX IF NOT EXISTS idx_mantenimiento_maquina_fecha
 ON mantenimiento (maquinaria_id_maquina, fecha_servicio);
+
+CREATE TABLE IF NOT EXISTS ordenes_trabajo (
+    id_orden BIGSERIAL PRIMARY KEY,
+    maquinaria_id_maquina BIGINT NOT NULL,
+    mecanico_asignado BIGINT NOT NULL,
+    tipo_servicio VARCHAR(60) NOT NULL,
+    detalle_tecnico TEXT NOT NULL,
+    fecha_programada DATE NOT NULL,
+    estado_ot VARCHAR(30) NOT NULL DEFAULT 'Programada',
+    alerta_retraso_enviada BOOLEAN NOT NULL DEFAULT FALSE,
+    estado_maquina_al_bloquear VARCHAR(20),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_orden_maquinaria
+        FOREIGN KEY (maquinaria_id_maquina)
+        REFERENCES maquinaria (id_maquina)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_orden_mecanico
+        FOREIGN KEY (mecanico_asignado)
+        REFERENCES usuarios (id_usuario)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    CONSTRAINT chk_orden_estado
+        CHECK (estado_ot IN ('Programada', 'En Progreso', 'Completada', 'Cancelada'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ordenes_trabajo_maquina
+ON ordenes_trabajo (maquinaria_id_maquina, estado_ot);
+
+CREATE INDEX IF NOT EXISTS idx_ordenes_trabajo_mecanico
+ON ordenes_trabajo (mecanico_asignado, estado_ot);
+
+CREATE INDEX IF NOT EXISTS idx_ordenes_trabajo_fecha
+ON ordenes_trabajo (fecha_programada DESC);
+
+CREATE INDEX IF NOT EXISTS idx_ordenes_trabajo_retraso
+ON ordenes_trabajo (estado_ot, fecha_programada, alerta_retraso_enviada);
+
+CREATE TABLE IF NOT EXISTS notificaciones (
+    id_notificacion BIGSERIAL PRIMARY KEY,
+    usuario_id BIGINT NOT NULL,
+    tipo_notificacion VARCHAR(40) NOT NULL,
+    referencia_id BIGINT,
+    mensaje TEXT NOT NULL,
+    leida BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_notificacion_usuario
+        FOREIGN KEY (usuario_id)
+        REFERENCES usuarios (id_usuario)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    CONSTRAINT chk_notificacion_tipo
+        CHECK (tipo_notificacion IN ('Orden Trabajo', 'Alerta Critica', 'Bloqueo', 'Mantenimiento Completado'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_notificaciones_usuario_leida
+ON notificaciones (usuario_id, leida);
+
+CREATE TABLE IF NOT EXISTS bloqueos_criticos (
+    id_bloqueo BIGSERIAL PRIMARY KEY,
+    maquinaria_id_maquina BIGINT NOT NULL UNIQUE,
+    motivo_bloqueo TEXT NOT NULL,
+    costo_estimado_reparacion NUMERIC(12,2) NOT NULL DEFAULT 0,
+    estado_bloqueo VARCHAR(20) NOT NULL DEFAULT 'Activo',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_bloqueo_maquinaria
+        FOREIGN KEY (maquinaria_id_maquina)
+        REFERENCES maquinaria (id_maquina)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    CONSTRAINT chk_bloqueo_estado
+        CHECK (estado_bloqueo IN ('Activo', 'Resuelto'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_bloqueos_criticos_maquina
+ON bloqueos_criticos (maquinaria_id_maquina);
+
+CREATE TABLE IF NOT EXISTS alertas_criticas (
+    id_alerta BIGSERIAL PRIMARY KEY,
+    maquinaria_id_maquina BIGINT NOT NULL,
+    tipo_alerta VARCHAR(40) NOT NULL,
+    estado_alerta VARCHAR(20) NOT NULL DEFAULT 'Pendiente',
+    porcentaje_umbral NUMERIC(5,2) NOT NULL,
+    horometro_critico NUMERIC(12,2) NOT NULL,
+    requiere_mantenimiento BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_alerta_maquinaria
+        FOREIGN KEY (maquinaria_id_maquina)
+        REFERENCES maquinaria (id_maquina)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    CONSTRAINT chk_alerta_tipo
+        CHECK (tipo_alerta IN ('Critica', 'Advertencia')),
+    CONSTRAINT chk_alerta_estado
+        CHECK (estado_alerta IN ('Pendiente', 'Descartada', 'Resuelta'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_alertas_criticas_maquina
+ON alertas_criticas (maquinaria_id_maquina, estado_alerta);
+
+CREATE INDEX IF NOT EXISTS idx_alertas_criticas_timestamp
+ON alertas_criticas (created_at DESC);
+
+-- SIS-20: Tabla para notificaciones en tiempo real
+CREATE TABLE IF NOT EXISTS notificaciones_tiempo_real (
+    id_notificacion BIGSERIAL PRIMARY KEY,
+    admin_id BIGINT NOT NULL,
+    tipo_notificacion VARCHAR(40) NOT NULL,
+    maquina_id BIGINT NOT NULL,
+    nombre_maquina VARCHAR(120) NOT NULL,
+    prioridad VARCHAR(20) NOT NULL,
+    horas_restantes NUMERIC(12,2),
+    detalles JSONB NOT NULL,
+    leida BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_notif_admin
+        FOREIGN KEY (admin_id)
+        REFERENCES usuarios (id_usuario)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_notif_maquina
+        FOREIGN KEY (maquina_id)
+        REFERENCES maquinaria (id_maquina)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    CONSTRAINT chk_notif_tipo
+        CHECK (tipo_notificacion IN ('Alerta Critica', 'Orden Trabajo', 'Bloqueo')),
+    CONSTRAINT chk_notif_prioridad
+        CHECK (prioridad IN ('Alta', 'Media', 'Baja'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_notif_admin_leida
+ON notificaciones_tiempo_real (admin_id, leida);
+
+CREATE INDEX IF NOT EXISTS idx_notif_timestamp
+ON notificaciones_tiempo_real (created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_notif_maquina
+ON notificaciones_tiempo_real (maquina_id);

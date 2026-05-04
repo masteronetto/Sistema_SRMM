@@ -208,6 +208,93 @@ async function deleteMaquinaria(id_maquina) {
   return rowCount > 0;
 }
 
+async function blockMaquinariaWithReason(id_maquina, motivo_bloqueo, costo_estimado_reparacion) {
+  // Valida que la maquinaria exista
+  const maquina = await getMaquinariaById(id_maquina);
+  if (!maquina) {
+    throw new Error('Maquinaria no encontrada');
+  }
+
+  // Actualiza el estado a 'Bloqueada'
+  await updateMaquinaria(id_maquina, {
+    modelo_equipo: maquina.modelo_equipo,
+    horometro_actual: maquina.horometro_actual,
+    estado: 'Bloqueada',
+    especificaciones: maquina.especificaciones,
+    planes_mantencion_id_plan: maquina.planes_mantencion_id_plan
+  });
+
+  // Registra la razón del bloqueo
+  const query = `
+    INSERT INTO bloqueos_criticos (maquinaria_id_maquina, motivo_bloqueo, costo_estimado_reparacion, estado_bloqueo)
+    VALUES ($1, $2, $3, 'Activo')
+    ON CONFLICT (maquinaria_id_maquina) DO UPDATE
+    SET motivo_bloqueo = $2,
+        costo_estimado_reparacion = $3,
+        estado_bloqueo = 'Activo',
+        updated_at = NOW()
+    RETURNING id_bloqueo, maquinaria_id_maquina, motivo_bloqueo, costo_estimado_reparacion, estado_bloqueo, created_at, updated_at
+  `;
+
+  const { rows } = await pool.query(query, [
+    id_maquina,
+    motivo_bloqueo,
+    costo_estimado_reparacion || 0
+  ]);
+
+  return rows[0];
+}
+
+async function getBloqueoMaquinaria(id_maquina) {
+  const query = `
+    SELECT 
+      id_bloqueo, 
+      maquinaria_id_maquina, 
+      motivo_bloqueo, 
+      costo_estimado_reparacion, 
+      estado_bloqueo, 
+      created_at, 
+      updated_at
+    FROM bloqueos_criticos
+    WHERE maquinaria_id_maquina = $1 AND estado_bloqueo = 'Activo'
+  `;
+
+  const { rows } = await pool.query(query, [id_maquina]);
+  return rows[0] || null;
+}
+
+async function unblockMaquinaria(id_maquina) {
+  // Valida que la maquinaria exista
+  const maquina = await getMaquinariaById(id_maquina);
+  if (!maquina) {
+    throw new Error('Maquinaria no encontrada');
+  }
+
+  // Actualiza el estado a 'Disponible'
+  const updated = await updateMaquinaria(id_maquina, {
+    modelo_equipo: maquina.modelo_equipo,
+    horometro_actual: maquina.horometro_actual,
+    estado: 'Disponible',
+    especificaciones: maquina.especificaciones,
+    planes_mantencion_id_plan: maquina.planes_mantencion_id_plan
+  });
+
+  // Marca el bloqueo como resuelto
+  const query = `
+    UPDATE bloqueos_criticos
+    SET estado_bloqueo = 'Resuelto',
+        updated_at = NOW()
+    WHERE maquinaria_id_maquina = $1 AND estado_bloqueo = 'Activo'
+    RETURNING id_bloqueo, maquinaria_id_maquina, motivo_bloqueo, costo_estimado_reparacion, estado_bloqueo, created_at, updated_at
+  `;
+
+  const { rows } = await pool.query(query, [id_maquina]);
+  return {
+    maquinaria: updated,
+    bloqueo_resuelto: rows[0] || null
+  };
+}
+
 module.exports = {
   listMaquinaria,
   getMaquinariaById,
@@ -216,5 +303,8 @@ module.exports = {
   updateMaquinaria,
   updateHorometroActual,
   listMaquinasConMantenimientoUrgente,
-  deleteMaquinaria
+  deleteMaquinaria,
+  blockMaquinariaWithReason,
+  getBloqueoMaquinaria,
+  unblockMaquinaria
 };

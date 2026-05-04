@@ -1,336 +1,363 @@
-## Sistema_SRMM
+# Sistema_SRMM
 
-API base para SRMM usando Node.js, Express y PostgreSQL.
+API para gestión de maquinaria, mantenimiento, alertas y notificaciones en tiempo real usando Node.js, Express y PostgreSQL.
 
 ## Requisitos
 
-- Node.js 18+
-- PostgreSQL 14+
+- Node.js 18 o superior
+- PostgreSQL 14 o superior
 
-## Configuracion
+## Instalación
 
-1. Instalar dependencias:
+1. Instalar dependencias.
 
 ```bash
 npm install
 ```
 
-2. Crear archivo de entorno desde el ejemplo:
+2. Crear el archivo de entorno.
 
 ```bash
 cp .env.example .env
 ```
 
-3. Crear tablas base ejecutando:
+3. Cargar la base de datos del proyecto.
 
 ```bash
-psql -U <usuario> -d <base_datos> -f sql/001_base_crud_usuarios.sql
+psql -U <usuario> -d <base_datos> -f <archivo_sql_base>
 ```
 
-## Ejecucion
+## Ejecución
 
 ```bash
 npm run dev
 ```
 
-Servidor disponible en `http://localhost:3000`.
+Servidor local: http://localhost:3000
 
-## Endpoints
+## Descripción general
+
+El sistema expone endpoints para:
+
+- Usuarios
+- Maquinaria
+- Historial de uso
+- Alertas críticas
+- Mantenimientos y órdenes de trabajo
+- Planes de mantención
+- Notificaciones en tiempo real
+
+## Endpoints principales
 
 ### Health
 
-- `GET /health`
+- GET /health
 
 ### Usuarios
 
-- `GET /api/usuarios`
-- `GET /api/usuarios/:id`
-- `POST /api/usuarios`
-- `PUT /api/usuarios/:id`
-- `DELETE /api/usuarios/:id`
+- GET /api/usuarios
+- GET /api/usuarios/:id
+- POST /api/usuarios
+- PUT /api/usuarios/:id
+- DELETE /api/usuarios/:id
 
-Body ejemplo:
-
-```json
-{
-	"nombre_completo": "Juan Perez",
-	"email": "juan@srmm.cl",
-	"contrasena": "123456",
-	"rol_acceso": "Administrador"
-}
-```
-
-### Historial de uso (horometro)
-
-- `POST /api/historial-uso`
-- `POST /api/historial-uso/diario`
-- `GET /api/historial-uso/maquina/:maquinaria_id_maquina`
-
-Body ejemplo (POST):
+Ejemplo JSON:
 
 ```json
 {
-	"maquinaria_id_maquina": 1,
-	"valor_horas": 1520.5,
-	"id_usuario": 4,
-	"arriendos_id_contrato": null,
-	"fecha_registro": "2026-04-26T10:30:00Z"
-}
-```
-
-Reglas implementadas:
-
-- Cada registro se guarda con fecha/hora y usuario.
-- El historial se consulta por maquina en orden cronologico.
-- No se permite registrar un horometro menor al ultimo valor guardado para la misma maquina.
-- Al registrar un nuevo horometro, el valor actual de la maquinaria queda sincronizado con el ultimo registro.
-- El ingreso diario valida formato `YYYY-MM-DD` cuando se envía `fecha_registro`.
-- No se permite duplicar un registro de horometro para la misma maquina en la misma fecha.
-
-Body ejemplo para ingreso diario:
-
-```json
-{
-	"maquinaria_id_maquina": 1,
-	"valor_horas": 1525,
-	"id_usuario": 4,
-	"arriendos_id_contrato": null,
-	"fecha_registro": "2026-04-27"
+  "nombre_completo": "Juan Perez",
+  "email": "juan@srmm.cl",
+  "contrasena": "123456",
+  "rol_acceso": "Administrador"
 }
 ```
 
 ### Maquinaria
 
-- `GET /api/maquinaria`
-- `GET /api/maquinaria/:id_maquina`
-- `GET /api/maquinaria/:id_maquina/horas-acumuladas`
-- `POST /api/maquinaria`
-- `PUT /api/maquinaria/:id_maquina`
-- `PATCH /api/maquinaria/:id_maquina/mark-not-operative`
-- `DELETE /api/maquinaria/:id_maquina`
+- GET /api/maquinaria
+- GET /api/maquinaria/:id_maquina
+- GET /api/maquinaria/:id_maquina/horas-acumuladas
+- GET /api/maquinaria/:id_maquina/bloqueo
+- POST /api/maquinaria
+- POST /api/maquinaria/:id_maquina/bloqueo-critico
+- PUT /api/maquinaria/:id_maquina
+- PATCH /api/maquinaria/:id_maquina/mark-not-operative
+- PATCH /api/maquinaria/:id_maquina/desbloquear
+- DELETE /api/maquinaria/:id_maquina
 
-Body ejemplo (POST):
-
-```json
-{
-	"modelo_equipo": "CAT 320D",
-	"horometro_actual": 1245.5,
-	"estado": "Disponible",
-	"especificaciones": "Excavadora de orugas",
-	"planes_mantencion_id_plan": null
-}
-```
-Body ejemplo (PUT):
+Ejemplo JSON para crear o actualizar:
 
 ```json
 {
-	"modelo_equipo": "CAT 320D Actualizada",
-	"horometro_actual": 1300,
-	"estado": "Mantencion",
-	"especificaciones": "Excavadora revisada",
-	"planes_mantencion_id_plan": null
+  "modelo_equipo": "CAT 320D",
+  "horometro_actual": 1245.5,
+  "estado": "Disponible",
+  "especificaciones": "Excavadora de orugas",
+  "planes_mantencion_id_plan": 1
 }
 ```
 
-**Marcar máquina como No Operativa:**
+Ejemplo JSON para bloqueo crítico:
 
-- `PATCH /api/maquinaria/:id_maquina/mark-not-operative`
+```json
+{
+  "motivo_bloqueo": "Falla crítica en sistema hidráulico",
+  "costo_estimado_reparacion": 15000.5
+}
+```
 
-Cambia el estado a `Bloqueada`. No requiere body.
+### Historial de uso
 
-Ejemplo:
+- POST /api/historial-uso
+- POST /api/historial-uso/diario
+- GET /api/historial-uso/maquina/:maquinaria_id_maquina
+
+Ejemplo JSON:
+
+```json
+{
+  "maquinaria_id_maquina": 1,
+  "valor_horas": 1525,
+  "id_usuario": 4,
+  "arriendos_id_contrato": null,
+  "fecha_registro": "2026-04-27"
+}
+```
+
+Reglas principales:
+
+- No se permite registrar un horometro menor al último valor de la máquina.
+- No se permite duplicar el registro de una máquina en la misma fecha.
+- Al registrar un nuevo horometro, la maquinaria se sincroniza con el último valor.
+
+### Alertas críticas
+
+- GET /api/alertas-criticas
+- GET /api/alertas-criticas/:id_maquina/pendientes
+- PATCH /api/alertas-criticas/:id_alerta/descartar
+- PATCH /api/alertas-criticas/:id_alerta/resolver
+
+Comportamiento automático:
+
+- Si el horometro alcanza el 100% del umbral, se crea una alerta crítica.
+- La máquina pasa a estado Bloqueada.
+- Se registra el bloqueo crítico.
+- Se genera notificación en tiempo real para administradores.
+
+### Mantenimientos y órdenes de trabajo
+
+- POST /api/mantenimientos
+- GET /api/mantenimientos/maquina/:maquinaria_id_maquina
+- POST /api/mantenimientos/programar
+- GET /api/mantenimientos/ordenes/atrasadas
+- POST /api/mantenimientos/ordenes/verificar-retrasos
+- GET /api/mantenimientos/ordenes/maquina/:maquinaria_id_maquina
+- GET /api/mantenimientos/ordenes/mecanico/:mecanico_id
+- PATCH /api/mantenimientos/ordenes/:id_orden/iniciar
+
+La verificación de retrasos también se ejecuta automáticamente al iniciar el servidor y luego en intervalos configurables.
+
+Ejemplo JSON para mantenimiento:
+
+```json
+{
+  "tipo_servicio": "Preventivo",
+  "horometro_registro": 1240,
+  "detalle_tecnico": "Cambio de filtros y revision general",
+  "fecha_servicio": "2026-04-27",
+  "maquinaria_id_maquina": 1,
+  "usuarios_id_usuario": 4
+}
+```
+
+Ejemplo JSON para orden programada:
+
+```json
+{
+  "tipo_servicio": "Preventivo",
+  "detalle_tecnico": "Cambio de filtros, aceite y revisión general",
+  "fecha_programada": "2026-05-10",
+  "maquinaria_id_maquina": 1,
+  "mecanico_asignado": 4
+}
+```
+
+### Planes de mantención
+
+- GET /api/planes-mantencion
+- GET /api/planes-mantencion/:id
+- POST /api/planes-mantencion
+- PUT /api/planes-mantencion/:id
+- DELETE /api/planes-mantencion/:id
+- POST /api/planes-mantencion/:id/asignar-maquina/:maquina_id
+- DELETE /api/planes-mantencion/:id/desasignar-maquina/:maquina_id
+- GET /api/planes-mantencion/maquina/:maquina_id
+
+Ejemplo JSON:
+
+```json
+{
+  "nombre_plan": "Servicio Preventivo 500h",
+  "intervalo_horas": 500,
+  "descripcion": "Cambio de aceite, filtros y revisión general cada 500 horas de uso"
+}
+```
+
+### Notificaciones en tiempo real
+
+- GET /api/notificaciones-tiempo-real
+- PATCH /api/notificaciones-tiempo-real/:id/leida
+- PATCH /api/notificaciones-tiempo-real/admin/leer-todas
+- DELETE /api/notificaciones-tiempo-real/:id
+
+Las notificaciones incluyen:
+
+- Nombre de la máquina
+- Prioridad
+- Horas restantes
+
+## Ejemplos de uso con curl
+
+### Crear usuario
+
 ```bash
-PATCH http://localhost:3000/api/maquinaria/1/mark-not-operative
+curl -X POST http://localhost:3000/api/usuarios \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "nombre_completo": "Juan Perez",
+    "email": "juan@srmm.cl",
+    "contrasena": "123456",
+    "rol_acceso": "Administrador"
+  }'
 ```
 
-Respuesta:
-```json
-{
-	"id_maquina": 1,
-	"modelo_equipo": "CAT 320D",
-	"horometro_actual": 1300,
-	"estado": "Bloqueada",
-	"especificaciones": "Excavadora de orugas",
-	"planes_mantencion_id_plan": null,
-	"created_at": "2026-04-27T10:00:00.000Z",
-	"updated_at": "2026-04-27T11:30:00.000Z"
-}
+### Crear máquina
+
+```bash
+curl -X POST http://localhost:3000/api/maquinaria \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "modelo_equipo": "CAT 320D",
+    "horometro_actual": 1245.5,
+    "estado": "Disponible",
+    "especificaciones": "Excavadora de orugas",
+    "planes_mantencion_id_plan": 1
+  }'
 ```
 
-**Consultar horas acumuladas:**
+### Registrar horometro diario
 
-- `GET /api/maquinaria/:id_maquina/horas-acumuladas`
-
-Respuesta esperada:
-```json
-{
-	"id_maquina": 1,
-	"modelo_equipo": "CAT 320D",
-	"estado": "Disponible",
-	"horas_acumuladas": "1525.00",
-	"especificaciones": "Excavadora de orugas",
-	"created_at": "2026-04-27T10:00:00.000Z",
-	"updated_at": "2026-04-27T11:30:00.000Z",
-	"ultimo_registro_historial": 8,
-	"ultimo_valor_registrado": "1525.00",
-	"ultima_fecha_registro": "2026-04-27",
-	"total_registros_historial": "12"
-}
-```
-### Mantenimientos
-
-- `POST /api/mantenimientos`
-- `GET /api/mantenimientos/maquina/:maquinaria_id_maquina`
-
-Body ejemplo (POST):
-
-```json
-{
-	"tipo_servicio": "Preventivo",
-	"horometro_registro": 1240,
-	"detalle_tecnico": "Cambio de filtros y revision general",
-	"fecha_servicio": "2026-04-27",
-	"maquinaria_id_maquina": 1,
-	"usuarios_id_usuario": 4
-}
+```bash
+curl -X POST http://localhost:3000/api/historial-uso/diario \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "maquinaria_id_maquina": 1,
+    "valor_horas": 1525,
+    "id_usuario": 4,
+    "arriendos_id_contrato": null,
+    "fecha_registro": "2026-04-27"
+  }'
 ```
 
-Reglas implementadas:
+### Bloquear máquina crítica
 
-- El mantenimiento queda vinculado a maquinaria y usuario responsable.
-- El registro es inmutable desde la API actual: solo existe alta y consulta.
-- No se permite registrar un mantenimiento con horometro mayor al horometro_actual de la maquinaria.
+```bash
+curl -X POST http://localhost:3000/api/maquinaria/1/bloqueo-critico \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "motivo_bloqueo": "Falla crítica en sistema hidráulico",
+    "costo_estimado_reparacion": 15000.5
+  }'
+```
+
+### Crear plan de mantención
+
+```bash
+curl -X POST http://localhost:3000/api/planes-mantencion \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "nombre_plan": "Servicio Preventivo 500h",
+    "intervalo_horas": 500,
+    "descripcion": "Cambio de aceite, filtros y revisión general"
+  }'
+```
+
+### Asignar plan a máquina
+
+```bash
+curl -X POST http://localhost:3000/api/planes-mantencion/1/asignar-maquina/5 \
+  -H 'Content-Type: application/json'
+```
+
+### Programar mantenimiento
+
+```bash
+curl -X POST http://localhost:3000/api/mantenimientos/programar \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tipo_servicio": "Preventivo",
+    "detalle_tecnico": "Cambio de filtros, aceite y revisión general",
+    "fecha_programada": "2026-05-10",
+    "maquinaria_id_maquina": 1,
+    "mecanico_asignado": 4
+  }'
+```
+
+### Verificar retrasos en mantenimiento
+
+```bash
+curl -X POST http://localhost:3000/api/mantenimientos/ordenes/verificar-retrasos
+```
+
+Devuelve las órdenes vencidas y genera una notificación visual para el administrador con los días de atraso y el mecánico asignado.
+
+### Obtener notificaciones pendientes
+
+```bash
+curl "http://localhost:3000/api/notificaciones-tiempo-real?solo_no_leidas=true"
+```
 
 ## Pruebas en Postman
 
-Servidor local para pruebas:
+Base URL:
 
 ```bash
 http://localhost:3000
 ```
 
-## Pruebas automatizadas (sugeridas)
+Colección sugerida:
 
-Se sugiere usar `jest` + `supertest` para pruebas unitarias e integración de endpoints.
+- Usuarios
+- Maquinaria
+- Historial de uso
+- Alertas críticas
+- Mantenimientos
+- Planes de mantención
+- Notificaciones
 
-1) Instalar dependencias de desarrollo:
+## Pruebas automatizadas
 
-```bash
-npm install --save-dev jest supertest
-```
+Se recomienda usar Jest y Supertest para validar endpoints críticos, especialmente:
 
-2) Añadir script en `package.json` (sección `scripts`):
+- Registro de horometros
+- Bloqueo crítico de máquinas
+- Asignación de planes de mantención
+- Programación de órdenes de trabajo
+- Consulta de notificaciones
 
-```json
-"scripts": {
-	"dev": "node src/server.js",
-	"test": "jest --runInBand"
-}
-```
+## Notas de uso
 
-3) Estructura de tests recomendada:
+- El sistema ya incluye control de alertas, bloqueos, órdenes y notificaciones.
+- Los planes de mantención se usan para calcular intervalos y prioridades.
+- Si se requieren detalles de implementación, están en el código fuente.
 
-- `tests/maquinaria.urgent.test.js` — tests para `GET /api/maquinaria/urgent-maintenance`.
-- `tests/historial.integracion.test.js` — tests de integración para validación de arriendos y `historial-uso`.
+## Codespaces
 
-4) Ejemplo de test con `supertest` (archivo: `tests/maquinaria.urgent.test.js`):
-
-```javascript
-const request = require('supertest');
-const app = require('../src/app'); // exporta tu app Express desde src/app.js
-
-describe('GET /api/maquinaria/urgent-maintenance', () => {
-	test('responde 200 y devuelve lista con esquema esperado', async () => {
-		const res = await request(app).get('/api/maquinaria/urgent-maintenance?umbral=50');
-		expect(res.statusCode).toBe(200);
-		expect(Array.isArray(res.body)).toBe(true);
-		if (res.body.length > 0) {
-			const item = res.body[0];
-			expect(item).toHaveProperty('id_maquina');
-			expect(item).toHaveProperty('modelo_equipo');
-			expect(item).toHaveProperty('horas_restantes');
-		}
-	});
-});
-```
-
-5) Ejecutar tests:
+Flujo rápido para guardar cambios:
 
 ```bash
-npm test
+git status
+git add .
+git commit -m "Actualizar documentación"
+git push origin main
 ```
-
-Nota: estos tests son sugeridos; el repositorio actual no incluye tests automáticos por defecto.
-
-## Funciones añadidas y cómo probarlas
-
-1) Listar máquinas con mantenimiento urgente
-
-- Ruta: `GET /api/maquinaria/urgent-maintenance`
-- Query params opcionales: `umbral` (número de horas), `limit`, `offset`.
-- Descripción: devuelve máquinas cuyo cálculo de `horas_restantes` <= `umbral`. El cálculo usa la última referencia conocida (último `mantenimiento.horometro_registro` o último `historial_horometro.valor_horas`) y el `intervalo_horas` del plan de mantención.
-- Ejemplo curl:
-
-```bash
-curl -s "http://localhost:3000/api/maquinaria/urgent-maintenance?umbral=0" | jq
-```
-
-- Respuesta esperada (ejemplo):
-
-```json
-[
-	{
-		"id_maquina": 1,
-		"modelo_equipo": "CAT 320D",
-		"horometro_actual": 1525,
-		"estado": "Disponible",
-		"intervalo_horas": 250,
-		"referencia_horometro": 1300,
-		"horas_restantes": 25,
-		"prioridad": "Alta"
-	}
-]
-```
-
-2) Validación de integridad de telemetría al registrar historial de uso
-
-- Endpoint: `POST /api/historial-uso` (ya existente)
-- Comportamiento añadido: si se envía `arriendos_id_contrato`, el servidor valida que el `valor_horas` (horometro de retorno) sea mayor o igual que el `horometro_salida` registrado en la tabla de `arriendos`. Si es menor, la petición falla con `400`.
-- Ejemplo curl (registro válido):
-
-```bash
-curl -X POST http://localhost:3000/api/historial-uso \
-	-H 'Content-Type: application/json' \
-	-d '{"maquinaria_id_maquina":1,"valor_horas":1600,"id_usuario":4,"arriendos_id_contrato":10}'
-```
-
-Ejemplo de respuesta en caso de dato inválido (horometro retorno menor que salida del contrato):
-
-```json
-{ "message": "valor_horas (retorno) no puede ser menor que horometro_salida del contrato de arriendo" }
-```
-
-3) Observaciones adicionales
-
-- Se añadió documentación técnica en `docs/SRS_extensiones.md` con criterios de aceptación y subtareas.
-- La API actual incluye `POST /api/mantenimientos` para registrar mantenimientos; si se desea el flujo de "finalizar y desbloquear" automática, hay una propuesta en el SRS pero la acción de finalizar debe implementarse explícitamente.
-
-
-## Actualizar el proyecto en Codespaces desde consola
-
-Flujo rapido para guardar y subir cambios a GitHub desde tu Codespace:
-
-```bash
-git status              # Ver que cambio
-git add .               # Agregar cambios
-git commit -m "mensaje" # Comprometer cambios
-git push origin main    # Subir a GitHub
-```
-
-
-- Backend (implementación mínima):
-  - `src/Entities/maquinaria/maquinaria.repository.js`: función `listMaquinasConMantenimientoUrgente(umbral, limit, offset)`.
-  - `src/Entities/maquinaria/maquinaria.controller.js`: handler `listUrgentMaintenance`.
-  - `src/Entities/maquinaria/maquinaria.routes.js`: ruta `GET /api/maquinaria/urgent-maintenance`.
-  - `src/Entities/historial_uso/historial_uso.controller.js`: validación de integridad telemetría para registros con `arriendos_id_contrato`.
-

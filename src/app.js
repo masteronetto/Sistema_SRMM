@@ -4,6 +4,9 @@ const historialUsoRoutes = require('./Entities/historial_uso/historial_uso.route
 const maquinariaRoutes = require('./Entities/maquinaria/maquinaria.routes');
 const mantenimientosRoutes = require('./Entities/mantenimientos/mantenimientos.routes');
 const reportesRoutes = require('./Entities/reportes/reportes.routes');
+const alertasCriticasRoutes = require('./Entities/alertas_criticas/alertas_criticas.routes');
+const notificacionesTiempoRealRoutes = require('./Entities/notificaciones_tiempo_real/notificaciones_tiempo_real.routes');
+const planesMantencionRoutes = require('./Entities/planes_mantencion/planes_mantencion.routes');
 
 const app = express();
 
@@ -36,6 +39,9 @@ app.use('/api/maquinaria', maquinariaRoutes);
 app.use('/api/mantenimientos', mantenimientosRoutes);
 app.use('/api/historial-uso', historialUsoRoutes);
 app.use('/api/reportes', reportesRoutes);
+app.use('/api/alertas-criticas', alertasCriticasRoutes);
+app.use('/api/notificaciones-tiempo-real', notificacionesTiempoRealRoutes);
+app.use('/api/planes-mantencion', planesMantencionRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

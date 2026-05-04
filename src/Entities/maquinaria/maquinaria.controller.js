@@ -206,6 +206,77 @@ async function remove(req, res, next) {
   }
 }
 
+async function blockCritical(req, res, next) {
+  try {
+    const id_maquina = toNumberOrNull(req.params.id_maquina);
+    if (id_maquina === null) {
+      return res.status(400).json({ message: 'id_maquina debe ser numerico' });
+    }
+
+    const { motivo_bloqueo, costo_estimado_reparacion } = req.body;
+    if (!motivo_bloqueo || typeof motivo_bloqueo !== 'string' || motivo_bloqueo.trim() === '') {
+      return res.status(400).json({ message: 'motivo_bloqueo es obligatorio y debe ser texto' });
+    }
+
+    const costo = costo_estimado_reparacion !== undefined 
+      ? toNumberOrNull(costo_estimado_reparacion) 
+      : 0;
+
+    if (costo === null || costo < 0) {
+      return res.status(400).json({ message: 'costo_estimado_reparacion debe ser numerico y no negativo' });
+    }
+
+    const bloqueo = await maquinariaRepo.blockMaquinariaWithReason(id_maquina, motivo_bloqueo.trim(), costo);
+    return res.status(201).json({
+      message: 'Máquina bloqueada crítica registrada',
+      bloqueo
+    });
+  } catch (error) {
+    if (error.message === 'Maquinaria no encontrada') {
+      return res.status(404).json({ message: error.message });
+    }
+    return next(error);
+  }
+}
+
+async function getBloqueo(req, res, next) {
+  try {
+    const id_maquina = toNumberOrNull(req.params.id_maquina);
+    if (id_maquina === null) {
+      return res.status(400).json({ message: 'id_maquina debe ser numerico' });
+    }
+
+    const bloqueo = await maquinariaRepo.getBloqueoMaquinaria(id_maquina);
+    if (!bloqueo) {
+      return res.status(404).json({ message: 'Máquina no tiene bloqueos activos' });
+    }
+
+    return res.json(bloqueo);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function unblock(req, res, next) {
+  try {
+    const id_maquina = toNumberOrNull(req.params.id_maquina);
+    if (id_maquina === null) {
+      return res.status(400).json({ message: 'id_maquina debe ser numerico' });
+    }
+
+    const result = await maquinariaRepo.unblockMaquinaria(id_maquina);
+    return res.json({
+      message: 'Máquina desbloqueada exitosamente',
+      ...result
+    });
+  } catch (error) {
+    if (error.message === 'Maquinaria no encontrada') {
+      return res.status(404).json({ message: error.message });
+    }
+    return next(error);
+  }
+}
+
 module.exports = {
   list,
   getById,
@@ -214,5 +285,8 @@ module.exports = {
   create,
   update,
   markAsNotOperative,
+  blockCritical,
+  getBloqueo,
+  unblock,
   remove
 };
