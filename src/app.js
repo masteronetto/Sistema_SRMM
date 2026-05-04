@@ -1,9 +1,22 @@
 const express = require('express');
+const fs = require('fs');
 const path = require('path');
 const { hasDatabaseConfig } = require('./config/env');
 
 const app = express();
-const publicPath = path.join(__dirname, '..', 'public');
+const staticDirCandidates = [
+  path.join(__dirname, '..', 'public'),
+  path.join(__dirname, '..', 'frontend')
+];
+const publicPath = staticDirCandidates.find((dirPath) => fs.existsSync(path.join(dirPath, 'index.html'))) || staticDirCandidates[0];
+
+function staticFilePath(fileName) {
+  return path.join(publicPath, fileName);
+}
+
+function staticFileExists(fileName) {
+  return fs.existsSync(staticFilePath(fileName));
+}
 
 function isDatabaseUnavailableError(error) {
   if (!error) {
@@ -26,32 +39,21 @@ function isDatabaseUnavailableError(error) {
 app.use(express.json());
 app.use(express.static(publicPath));
 
-// Permitir bots de preview y captura de Vercel
-app.use((_req, res, next) => {
-  res.set('X-Robots-Tag', 'noindex, nofollow');
-  next();
-});
-
 app.get(['/favicon.ico', '/favicon.png'], (_req, res) => {
+  if (!staticFileExists('favicon.svg')) {
+    return res.status(404).json({ message: 'favicon no encontrado' });
+  }
+
   res.type('image/svg+xml');
-  res.sendFile(path.join(publicPath, 'favicon.svg'));
+  res.sendFile(staticFilePath('favicon.svg'));
 });
 
 app.get('/', (_req, res) => {
-  const protocol = _req.protocol;
-  const host = _req.get('host');
-  const absoluteUrl = `${protocol}://${host}`;
-  
-  // Leer y servir el HTML con URLs absolutas para OpenGraph
-  const fs = require('fs');
-  let htmlContent = fs.readFileSync(path.join(publicPath, 'index.html'), 'utf-8');
-  
-  // Reemplazar rutas relativas de og:image y twitter:image con URLs absolutas
-  htmlContent = htmlContent
-    .replace('content="/og-image.svg"', `content="${absoluteUrl}/og-image.svg"`)
-    .replace('content="/og-image.svg"', `content="${absoluteUrl}/og-image.svg"`);
-  
-  res.type('text/html').send(htmlContent);
+  if (!staticFileExists('index.html')) {
+    return res.status(500).json({ message: 'index.html no encontrado en frontend estático' });
+  }
+
+  res.sendFile(staticFilePath('index.html'));
 });
 
 app.get('/health', (_req, res) => {
@@ -59,8 +61,12 @@ app.get('/health', (_req, res) => {
 });
 
 app.get('/robots.txt', (_req, res) => {
+  if (!staticFileExists('robots.txt')) {
+    return res.status(404).type('text/plain').send('User-agent: *\nAllow: /\n');
+  }
+
   res.type('text/plain');
-  res.sendFile(path.join(publicPath, 'robots.txt'));
+  res.sendFile(staticFilePath('robots.txt'));
 });
 
 if (hasDatabaseConfig) {
@@ -102,7 +108,11 @@ app.use((err, _req, res, _next) => {
 // Fallback: cualquier ruta no encontrada que no sea API, servir index.html
 app.use((_req, res) => {
   if (!_req.path.startsWith('/api')) {
-    return res.status(200).sendFile(path.join(publicPath, 'index.html'));
+    if (!staticFileExists('index.html')) {
+      return res.status(500).json({ message: 'index.html no encontrado en frontend estático' });
+    }
+
+    return res.status(200).sendFile(staticFilePath('index.html'));
   }
   res.status(404).json({ message: 'Not found' });
 });
