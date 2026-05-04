@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hola Mundo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 flex items-center justify-center min-h-screen">
+
+    <div class="bg-white p-10 rounded-2xl shadow-xl text-center border border-slate-100">
+        <h1 class="text-4xl font-bold text-indigo-600 mb-4">
+            ¡Hola Mundo!
+        </h1>
+        <p class="text-slate-600 text-lg">
+            Este es un script básico de HTML con estilos modernos.
+        </p>
+        <button 
+            onclick="saludar()" 
+            class="mt-6 px-6 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors duration-300">
+            Haz clic aquí
+        </button>
+    </div>
+
+    <script>
+        // Función sencilla para interactuar con el usuario
+        function saludar() {
+            const mensaje = document.createElement('div');
+            mensaje.className = "fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-lg shadow-lg transition-opacity duration-500";
+            mensaje.textContent = "¡Bienvenido a tu primer script!";
+            
+            document.body.appendChild(mensaje);
+            
+            // Eliminar el mensaje después de 3 segundos
+            setTimeout(() => {
+                mensaje.style.opacity = '0';
+                setTimeout(() => mensaje.remove(), 500);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
