@@ -3,15 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hola Mundo</title>
-    <meta name="description" content="Sistema SRMM - Gestión de maquinaria, mantenimiento y alertas en tiempo real.">
+    <title>Sistema SRMM - Gestión de Maquinaria</title>
+    <meta name="description" content="Sistema integral de gestión de maquinaria, mantenimiento preventivo y alertas en tiempo real.">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="">
     <meta property="og:title" content="Sistema SRMM">
     <meta property="og:description" content="Gestión de maquinaria, mantenimiento y alertas en tiempo real.">
-    <meta property="og:type" content="website">
     <meta property="og:image" content="/og-image.svg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/svg+xml">
+    
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Sistema SRMM">
+    <meta name="twitter:description" content="Gestión de maquinaria, mantenimiento y alertas en tiempo real.">
     <meta name="twitter:image" content="/og-image.svg">
+    
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/og-image.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -23,15 +35,18 @@
 
     <div class="bg-white p-10 rounded-2xl shadow-xl text-center border border-slate-100">
         <h1 class="text-4xl font-bold text-indigo-600 mb-4">
-            ¡Hola Mundo!
+            ¡Bienvenido a Sistema SRMM!
         </h1>
-        <p class="text-slate-600 text-lg">
-            Este es un script básico de HTML con estilos modernos.
+        <p class="text-slate-600 text-lg mb-2">
+            Gestión integral de maquinaria y mantenimiento
+        </p>
+        <p class="text-slate-500 text-sm mb-6">
+            Monitoreo en tiempo real • Alertas automáticas • Reportes avanzados
         </p>
         <button 
             onclick="saludar()" 
             class="mt-6 px-6 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors duration-300">
-            Haz clic aquí
+            Explorar Sistema
         </button>
     </div>
 
@@ -40,7 +55,7 @@
         function saludar() {
             const mensaje = document.createElement('div');
             mensaje.className = "fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-lg shadow-lg transition-opacity duration-500";
-            mensaje.textContent = "¡Bienvenido a tu primer script!";
+            mensaje.textContent = "¡Bienvenido a Sistema SRMM!";
             
             document.body.appendChild(mensaje);
             
