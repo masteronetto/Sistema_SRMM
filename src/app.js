@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { PNG } = require('pngjs');
 const { hasDatabaseConfig } = require('./config/env');
 
 const app = express();
@@ -16,6 +17,38 @@ function staticFilePath(fileName) {
 
 function staticFileExists(fileName) {
   return fs.existsSync(staticFilePath(fileName));
+}
+
+let ogPngBuffer;
+
+function getOgPngBuffer() {
+  if (ogPngBuffer) {
+    return ogPngBuffer;
+  }
+
+  const width = 1200;
+  const height = 630;
+  const png = new PNG({ width, height });
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const idx = (width * y + x) << 2;
+      const ratioX = x / (width - 1);
+      const ratioY = y / (height - 1);
+
+      const r = Math.round(15 + (79 - 15) * ratioX);
+      const g = Math.round(23 + (70 - 23) * ratioY);
+      const b = Math.round(42 + (229 - 42) * (0.6 * ratioX + 0.4 * ratioY));
+
+      png.data[idx] = r;
+      png.data[idx + 1] = g;
+      png.data[idx + 2] = b;
+      png.data[idx + 3] = 255;
+    }
+  }
+
+  ogPngBuffer = PNG.sync.write(png);
+  return ogPngBuffer;
 }
 
 function isDatabaseUnavailableError(error) {
@@ -67,6 +100,14 @@ app.get('/robots.txt', (_req, res) => {
 
   res.type('text/plain');
   res.sendFile(staticFilePath('robots.txt'));
+});
+
+app.get('/og-image.png', (_req, res) => {
+  const imageBuffer = getOgPngBuffer();
+
+  res.set('Cache-Control', 'public, max-age=31536000, immutable');
+  res.type('image/png');
+  res.send(imageBuffer);
 });
 
 if (hasDatabaseConfig) {
