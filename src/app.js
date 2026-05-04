@@ -26,6 +26,11 @@ function isDatabaseUnavailableError(error) {
 app.use(express.json());
 app.use(express.static(frontendPath));
 
+app.get(['/favicon.ico', '/favicon.png'], (_req, res) => {
+  res.type('image/svg+xml');
+  res.sendFile(path.join(frontendPath, 'favicon.svg'));
+});
+
 app.get('/', (_req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
