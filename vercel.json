@@ -1,11 +1,15 @@
 {
   "buildCommand": "npm install",
-  "outputDirectory": "frontend",
   "regions": ["iad1"],
   "cleanUrls": true,
   "trailingSlash": false,
   "env": {
     "NODE_ENV": "production"
+  },
+  "functions": {
+    "src/server.js": {
+      "includeFiles": "{frontend/**,public/**}"
+    }
   },
   "headers": [
     {
