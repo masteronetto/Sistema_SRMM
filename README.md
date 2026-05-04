@@ -5,37 +5,204 @@ API para gestión de maquinaria, mantenimiento, alertas y notificaciones en tiem
 ## Requisitos
 
 - Node.js 18 o superior
-- PostgreSQL 14 o superior
+- Docker y Docker Compose instalados
+- npm
 
 ## Instalación
 
-1. Instalar dependencias.
+### 1. Instalar dependencias
 
 ```bash
 npm install
 ```
 
-2. Crear el archivo de entorno.
+### 2. Configurar variables de entorno
 
 ```bash
 cp .env.example .env
 ```
 
-3. Cargar la base de datos del proyecto.
+El archivo `.env` ya contiene los valores preconfigurados para desarrollo:
 
-```bash
-psql -U <usuario> -d <base_datos> -f <archivo_sql_base>
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=srmm
+DB_USER=postgres
+DB_PASSWORD=Daniel15
+PORT=3000
 ```
 
+### 3. Iniciar la base de datos con Docker
+
+```bash
+npm run db:start
+```
+
+Este comando:
+- 🐳 Levanta PostgreSQL 15 en Docker
+- 📊 Crea la BD `srmm` automáticamente
+- 📋 Ejecuta los scripts SQL para crear tablas y vistas
+- ✅ Verifica que todo esté funcionando correctamente
+
 ## Ejecución
+
+### Iniciar el servidor de desarrollo
+
+En otra terminal:
 
 ```bash
 npm run dev
 ```
 
+Deberías ver:
+```
+SRMM API escuchando en puerto 3000
+WebSocket (Socket.IO) disponible en puerto 3000
+Chequeo automático de retrasos cada 60000 ms
+```
+
 Servidor local: http://localhost:3000
 
-## Descripción general
+## Comandos Disponibles
+
+### Desarrollo
+```bash
+npm run dev                 # Inicia servidor con auto-reload
+npm start                   # Inicia servidor normal
+```
+
+### Base de Datos
+```bash
+npm run db:start            # Iniciar PostgreSQL en Docker
+npm run db:stop             # Detener PostgreSQL
+npm run db:status           # Ver estado de contenedores
+npm run db:logs             # Ver logs en tiempo real
+npm run db:connect          # Conectar a la BD con psql
+```
+
+### Utilidades Adicionales
+```bash
+bash scripts/db-utils.sh              # Ver todos los comandos disponibles
+bash scripts/db-utils.sh backup       # Hacer backup de la BD
+bash scripts/db-utils.sh clean        # Limpiar datos (⚠️ irreversible)
+bash scripts/db-utils.sh restart      # Reiniciar PostgreSQL
+```
+
+## Estructura de Directorios
+
+```
+Sistema_SRMM/
+├── src/                          # Código del servidor
+│   ├── Entities/                # Módulos (usuarios, maquinaria, etc.)
+│   │   ├── usuarios/
+│   │   ├── maquinaria/
+│   │   ├── mantenimientos/
+│   │   ├── planes_mantencion/
+│   │   ├── alertas_criticas/
+│   │   ├── notificaciones_tiempo_real/
+│   │   ├── historial_uso/
+│   │   └── reportes/
+│   ├── config/                  # Configuración (env, socketio)
+│   ├── db/                      # Pool de conexión a BD
+│   ├── app.js                   # Configuración de Express
+│   └── server.js                # Punto de entrada
+├── frontend/                     # Frontend estático
+│   └── index.html
+├── sql/                          # Scripts de BD
+│   ├── 001_base_crud_usuarios.sql
+│   ├── vistas_reportes.sql
+│   └── init-db.sh
+├── scripts/                      # Scripts útiles
+│   ├── start-db.sh
+│   ├── restore-db.sh
+│   └── db-utils.sh
+├── .env                          # Variables de entorno (no versionar)
+├── .env.example                  # Template de .env
+├── docker-compose.yml            # Configuración Docker
+├── package.json
+└── README.md
+```
+
+## Solución de Problemas
+
+### PostgreSQL no inicia
+
+```bash
+# Ver logs
+npm run db:logs
+
+# Limpiar y reintentar
+docker-compose down -v
+npm run db:start
+```
+
+### Error: "Port 5432 is already in use"
+
+```bash
+# Encontrar qué usa el puerto
+lsof -i :5432
+
+# O cambiar el puerto en docker-compose.yml
+# Cambiar "5432:5432" a "5433:5432"
+```
+
+### Error: "Connection refused"
+
+```bash
+# Verificar que PostgreSQL está corriendo
+npm run db:status
+
+# Ver logs detallados
+npm run db:logs
+
+# Reiniciar
+npm run db:stop
+npm run db:start
+```
+
+### Error de autenticación: "password authentication failed"
+
+Asegúrate que las credenciales en `.env` coinciden con `docker-compose.yml`:
+- `DB_PASSWORD` en `.env` debe ser igual a `POSTGRES_PASSWORD` en `docker-compose.yml`
+
+```bash
+# Limpiar y reiniciar
+docker-compose down -v
+npm run db:start
+```
+
+### Recuperar base de datos desde backup
+
+```bash
+bash scripts/restore-db.sh sql/backup_produccion.sql
+```
+
+### Hacer backup de la base de datos
+
+```bash
+bash scripts/db-utils.sh backup
+```
+
+## Flujo Típico de Desarrollo
+
+**Terminal 1: Base de datos**
+```bash
+npm run db:start
+```
+
+**Terminal 2: Servidor**
+```bash
+npm run dev
+```
+
+**Terminal 3: Tu editor/trabajo**
+```bash
+# VS Code u otro editor
+code .
+```
+
+## Descripción General del Sistema
 
 El sistema expone endpoints para:
 

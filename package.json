@@ -6,7 +6,12 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "db:start": "bash scripts/start-db.sh",
+    "db:stop": "docker-compose down",
+    "db:logs": "docker-compose logs -f postgres",
+    "db:connect": "docker-compose exec postgres psql -U postgres -d srmm_db",
+    "db:status": "docker-compose ps"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
