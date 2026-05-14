@@ -1020,7 +1020,7 @@ function applyRolePermissions() {
     // Mostrar solo los botones de menú permitidos
     document.querySelectorAll('.nav-link[data-role-required]').forEach(btn => {
         const required = btn.dataset.roleRequired.split(',');
-        btn.style.display = required.includes(userRole) ? '' : 'none';
+        btn.style.display = required.includes(userRole) ? 'flex' : 'none';
     });
 
     // Ocultar botones del topbar que no aplican a este rol
