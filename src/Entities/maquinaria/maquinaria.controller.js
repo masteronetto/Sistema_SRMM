@@ -99,6 +99,33 @@ async function getHorasAcumuladas(req, res, next) {
   }
 }
 
+async function getDisponibilidad(req, res, next) {
+  try {
+    const id_maquina = toNumberOrNull(req.params.id_maquina);
+    if (id_maquina === null) {
+      return res.status(400).json({ message: 'id_maquina debe ser numerico y mayor o igual a 0' });
+    }
+
+    const margenRaw = req.query.margen_minimo_horas;
+    const margenMinimoHoras = margenRaw === undefined || margenRaw === null || margenRaw === ''
+      ? 50
+      : Number(margenRaw);
+
+    if (!Number.isFinite(margenMinimoHoras) || margenMinimoHoras < 0) {
+      return res.status(400).json({ message: 'margen_minimo_horas debe ser numerico y no negativo' });
+    }
+
+    const data = await maquinariaRepo.getDisponibilidadMaquina(id_maquina, margenMinimoHoras);
+    if (!data) {
+      return res.status(404).json({ message: 'Maquinaria no encontrada' });
+    }
+
+    return res.json(data);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function listUrgentMaintenance(req, res, next) {
   try {
     const umbralRaw = req.query.umbral;
@@ -281,6 +308,7 @@ module.exports = {
   list,
   getById,
   getHorasAcumuladas,
+  getDisponibilidad,
   listUrgentMaintenance,
   create,
   update,

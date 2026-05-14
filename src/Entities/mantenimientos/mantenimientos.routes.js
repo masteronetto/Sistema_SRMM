@@ -6,6 +6,7 @@ const router = Router();
 // Mantenimientos completados (legacy)
 router.post('/', controller.create);
 router.get('/maquina/:maquinaria_id_maquina', controller.listByMaquina);
+router.get('/maquina/:maquinaria_id_maquina/historial', controller.historialByMaquina);
 
 // Órdenes de trabajo (SIS-15: Programar mantenimientos preventivos)
 router.post('/programar', controller.programar);

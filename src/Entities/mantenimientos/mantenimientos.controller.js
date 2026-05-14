@@ -17,6 +17,29 @@ function toNumberOrNull(value) {
   return parsed;
 }
 
+function normalizeDateInput(value) {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmedValue = value.trim();
+  const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+  if (!isoDatePattern.test(trimmedValue)) {
+    return null;
+  }
+
+  const parsedDate = new Date(`${trimmedValue}T00:00:00Z`);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+
+  return trimmedValue;
+}
+
 function validatePayload(payload) {
   const tipo_servicio = payload.tipo_servicio;
   const horometro_registro = toNumberOrNull(payload.horometro_registro);
@@ -87,6 +110,61 @@ async function listByMaquina(req, res, next) {
 
     const data = await mantenimientosRepo.listMantenimientosByMaquina(maquinaria_id_maquina);
     return res.json(data);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function historialByMaquina(req, res, next) {
+  try {
+    const maquinaria_id_maquina = toNumberOrNull(req.params.maquinaria_id_maquina);
+    if (maquinaria_id_maquina === null) {
+      return res.status(400).json({ message: 'maquinaria_id_maquina debe ser numerico y mayor o igual a 0' });
+    }
+
+    const fecha_inicio = normalizeDateInput(req.query.fecha_inicio);
+    const fecha_fin = normalizeDateInput(req.query.fecha_fin);
+    const tipo_servicio = typeof req.query.tipo_servicio === 'string' && req.query.tipo_servicio.trim() !== ''
+      ? req.query.tipo_servicio.trim()
+      : null;
+    const limit = req.query.limit === undefined || req.query.limit === null || req.query.limit === ''
+      ? null
+      : toNumberOrNull(req.query.limit);
+    const offset = req.query.offset === undefined || req.query.offset === null || req.query.offset === ''
+      ? null
+      : toNumberOrNull(req.query.offset);
+
+    if (
+      (req.query.fecha_inicio && fecha_inicio === null) ||
+      (req.query.fecha_fin && fecha_fin === null) ||
+      (req.query.limit !== undefined && req.query.limit !== null && req.query.limit !== '' && limit === null) ||
+      (req.query.offset !== undefined && req.query.offset !== null && req.query.offset !== '' && offset === null)
+    ) {
+      return res.status(400).json({
+        message: 'fecha_inicio y fecha_fin deben usar formato YYYY-MM-DD; limit y offset deben ser numericos'
+      });
+    }
+
+    const historial = await mantenimientosRepo.listHistorialMantencionesByMaquina(maquinaria_id_maquina, {
+      fecha_inicio,
+      fecha_fin,
+      tipo_servicio,
+      limit,
+      offset
+    });
+
+    return res.json({
+      maquinaria_id_maquina,
+      filtros: {
+        fecha_inicio,
+        fecha_fin,
+        tipo_servicio,
+        limit,
+        offset
+      },
+      cantidad: historial.length,
+      historial
+    });
   } catch (error) {
     return next(error);
   }
@@ -303,6 +381,7 @@ async function procesarRetrasos(io) {
 module.exports = {
   create,
   listByMaquina,
+  historialByMaquina,
   programar,
   listOrdenesMaquina,
   listOrdenesMecanico,

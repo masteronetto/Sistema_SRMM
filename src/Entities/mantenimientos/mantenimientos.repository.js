@@ -5,6 +5,75 @@ const baseSelect = `
   FROM mantenimiento
 `;
 
+function buildHistorialMantencionesQuery(maquinaria_id_maquina, filtros = {}) {
+  const {
+    fecha_inicio = null,
+    fecha_fin = null,
+    tipo_servicio = null,
+    limit = null,
+    offset = null
+  } = filtros;
+
+  let query = `
+    SELECT
+      m.id_mantencion,
+      m.tipo_servicio,
+      m.horometro_registro,
+      m.detalle_tecnico,
+      m.fecha_servicio,
+      m.maquinaria_id_maquina,
+      m.usuarios_id_usuario,
+      m.created_at,
+      u.nombre_completo AS usuario_responsable,
+      maq.modelo_equipo
+    FROM mantenimiento m
+    INNER JOIN usuarios u ON u.id_usuario = m.usuarios_id_usuario
+    INNER JOIN maquinaria maq ON maq.id_maquina = m.maquinaria_id_maquina
+    WHERE m.maquinaria_id_maquina = $1
+  `;
+
+  const values = [maquinaria_id_maquina];
+  let paramIndex = 1;
+
+  if (fecha_inicio) {
+    paramIndex += 1;
+    query += ` AND m.fecha_servicio >= $${paramIndex}`;
+    values.push(fecha_inicio);
+  }
+
+  if (fecha_fin) {
+    paramIndex += 1;
+    query += ` AND m.fecha_servicio <= $${paramIndex}`;
+    values.push(fecha_fin);
+  }
+
+  if (tipo_servicio) {
+    paramIndex += 1;
+    query += ` AND m.tipo_servicio ILIKE $${paramIndex}`;
+    values.push(`%${tipo_servicio}%`);
+  }
+
+  query += ` ORDER BY m.fecha_servicio DESC, m.id_mantencion DESC`;
+
+  if (limit !== null) {
+    paramIndex += 1;
+    query += ` LIMIT $${paramIndex}`;
+    values.push(limit);
+
+    if (offset !== null) {
+      paramIndex += 1;
+      query += ` OFFSET $${paramIndex}`;
+      values.push(offset);
+    }
+  } else if (offset !== null) {
+    paramIndex += 1;
+    query += ` OFFSET $${paramIndex}`;
+    values.push(offset);
+  }
+
+  return { query, values };
+}
+
 async function getMantenimientoById(id_mantencion) {
   const query = `${baseSelect} WHERE id_mantencion = $1`;
   const { rows } = await pool.query(query, [id_mantencion]);
@@ -14,6 +83,12 @@ async function getMantenimientoById(id_mantencion) {
 async function listMantenimientosByMaquina(maquinaria_id_maquina) {
   const query = `${baseSelect} WHERE maquinaria_id_maquina = $1 ORDER BY fecha_servicio DESC, id_mantencion DESC`;
   const { rows } = await pool.query(query, [maquinaria_id_maquina]);
+  return rows;
+}
+
+async function listHistorialMantencionesByMaquina(maquinaria_id_maquina, filtros = {}) {
+  const { query, values } = buildHistorialMantencionesQuery(maquinaria_id_maquina, filtros);
+  const { rows } = await pool.query(query, values);
   return rows;
 }
 
@@ -185,6 +260,7 @@ async function marcarRetrasoNotificado(id_orden) {
 module.exports = {
   getMantenimientoById,
   listMantenimientosByMaquina,
+  listHistorialMantencionesByMaquina,
   createMantenimiento,
   programarMantenimiento,
   getOrdenTrabajoById,

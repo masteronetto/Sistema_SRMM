@@ -138,6 +138,71 @@ async function listMaquinasConMantenimientoUrgente(umbralHoras = 0, limit = null
   return result;
 }
 
+async function getDisponibilidadMaquina(id_maquina, margenMinimoHoras = 50) {
+  const query = `
+    SELECT
+      m.id_maquina,
+      m.modelo_equipo,
+      m.horometro_actual,
+      m.estado,
+      m.especificaciones,
+      m.planes_mantencion_id_plan,
+      p.intervalo_horas,
+      COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) AS referencia_horometro,
+      (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + COALESCE(p.intervalo_horas, 0) - m.horometro_actual) AS horas_restantes,
+      bloqueo.id_bloqueo AS bloqueo_activo_id,
+      bloqueo.motivo_bloqueo AS bloqueo_activo_motivo,
+      bloqueo.costo_estimado_reparacion AS bloqueo_activo_costo,
+      bloqueo.estado_bloqueo AS bloqueo_activo_estado,
+      CASE
+        WHEN bloqueo.id_bloqueo IS NOT NULL THEN 'Bloqueada'
+        ELSE m.estado
+      END AS estado_disponibilidad,
+      CASE
+        WHEN m.estado <> 'Disponible' THEN FALSE
+        WHEN bloqueo.id_bloqueo IS NOT NULL THEN FALSE
+        WHEN p.intervalo_horas IS NULL THEN FALSE
+        WHEN (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + COALESCE(p.intervalo_horas, 0) - m.horometro_actual) <= $2 THEN FALSE
+        ELSE TRUE
+      END AS puede_arrendar,
+      CASE
+        WHEN bloqueo.id_bloqueo IS NOT NULL THEN bloqueo.motivo_bloqueo
+        WHEN m.estado <> 'Disponible' THEN 'La máquina no está en estado Disponible'
+        WHEN p.intervalo_horas IS NULL THEN 'La máquina no tiene un plan de mantenimiento asignado'
+        WHEN (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + COALESCE(p.intervalo_horas, 0) - m.horometro_actual) <= $2 THEN 'No cumple con el margen mínimo de horas antes del próximo mantenimiento'
+        ELSE NULL
+      END AS motivo_no_disponibilidad
+    FROM maquinaria m
+    LEFT JOIN planes_mantencion p ON p.id_plan = m.planes_mantencion_id_plan
+    LEFT JOIN LATERAL (
+      SELECT horometro_registro
+      FROM mantenimiento
+      WHERE mantenimiento.maquinaria_id_maquina = m.id_maquina
+      ORDER BY fecha_servicio DESC, id_mantencion DESC
+      LIMIT 1
+    ) um ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT valor_horas AS ultimo_valor_registrado
+      FROM historial_horometro hh
+      WHERE hh.maquinaria_id_maquina = m.id_maquina
+      ORDER BY fecha_registro DESC, id_registro DESC
+      LIMIT 1
+    ) uh ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT id_bloqueo, motivo_bloqueo, costo_estimado_reparacion, estado_bloqueo
+      FROM bloqueos_criticos bc
+      WHERE bc.maquinaria_id_maquina = m.id_maquina
+        AND bc.estado_bloqueo = 'Activo'
+      ORDER BY created_at DESC, id_bloqueo DESC
+      LIMIT 1
+    ) bloqueo ON TRUE
+    WHERE m.id_maquina = $1
+  `;
+
+  const { rows } = await pool.query(query, [id_maquina, margenMinimoHoras]);
+  return rows[0] || null;
+}
+
 async function getMaquinariaById(id_maquina) {
   const query = `${baseSelect} WHERE id_maquina = $1`;
   const { rows } = await pool.query(query, [id_maquina]);
@@ -303,6 +368,7 @@ module.exports = {
   updateMaquinaria,
   updateHorometroActual,
   listMaquinasConMantenimientoUrgente,
+  getDisponibilidadMaquina,
   deleteMaquinaria,
   blockMaquinariaWithReason,
   getBloqueoMaquinaria,

@@ -1,6 +1,6 @@
 # Sistema_SRMM
 
-API para gestión de maquinaria, mantenimiento, alertas y notificaciones en tiempo real usando Node.js, Express y PostgreSQL.
+API para gestión de maquinaria, mantenimiento, disponibilidad operativa, historial de mantenciones, alertas y notificaciones en tiempo real usando Node.js, Express y PostgreSQL.
 
 ## Requisitos
 
@@ -209,8 +209,10 @@ El sistema expone endpoints para:
 - Usuarios
 - Maquinaria
 - Historial de uso
+- Disponibilidad y bloqueos de maquinaria
 - Alertas críticas
 - Mantenimientos y órdenes de trabajo
+- Historial detallado de mantenciones
 - Planes de mantención
 - Notificaciones en tiempo real
 
@@ -244,6 +246,7 @@ Ejemplo JSON:
 - GET /api/maquinaria
 - GET /api/maquinaria/:id_maquina
 - GET /api/maquinaria/:id_maquina/horas-acumuladas
+- GET /api/maquinaria/:id_maquina/disponibilidad
 - GET /api/maquinaria/:id_maquina/bloqueo
 - POST /api/maquinaria
 - POST /api/maquinaria/:id_maquina/bloqueo-critico
@@ -272,6 +275,8 @@ Ejemplo JSON para bloqueo crítico:
   "costo_estimado_reparacion": 15000.5
 }
 ```
+
+La consulta de disponibilidad permite verificar si una máquina puede arrendarse antes de confirmar la operación. Devuelve el estado actual, el bloqueo activo si existe, las horas restantes hasta el próximo mantenimiento y si cumple con el margen mínimo de horas configurado. Por defecto, el margen es de 50 horas y puede ajustarse con el parámetro `margen_minimo_horas`.
 
 ### Historial de uso
 
@@ -315,6 +320,7 @@ Comportamiento automático:
 
 - POST /api/mantenimientos
 - GET /api/mantenimientos/maquina/:maquinaria_id_maquina
+- GET /api/mantenimientos/maquina/:maquinaria_id_maquina/historial
 - POST /api/mantenimientos/programar
 - GET /api/mantenimientos/ordenes/atrasadas
 - POST /api/mantenimientos/ordenes/verificar-retrasos
@@ -348,6 +354,8 @@ Ejemplo JSON para orden programada:
   "mecanico_asignado": 4
 }
 ```
+
+El historial de mantenciones por máquina permite filtrar por rango de fechas, tipo de servicio y paginación. La respuesta incluye el detalle técnico, fecha, horómetro, responsable y la máquina asociada para facilitar la trazabilidad operativa.
 
 ### Planes de mantención
 
