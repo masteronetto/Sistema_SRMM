@@ -22,7 +22,9 @@
       ]
     }
   ]
+ ,
   "rewrites": [
     { "source": "/", "destination": "/login.html" },
     { "source": "/((?!api|.*\\..*).*)", "destination": "/login.html" }
   ]
+}
