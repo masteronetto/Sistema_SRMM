@@ -1,7 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
+        <meta charset="UTF-8">
+        <script>
+            (function(){
+                try{
+                    if (!localStorage.getItem('srmm_token') && !location.pathname.endsWith('/login.html')){
+                        location.replace('/login.html');
+                    }
+                }catch(e){}
+            })();
+        </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SRMM | Panel de Administrador</title>
     <meta name="description" content="Panel de administrador SRMM para inventario, mantenimiento, arriendos, logística, usuarios y reportes.">
