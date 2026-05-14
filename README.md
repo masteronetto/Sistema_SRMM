@@ -33,6 +33,27 @@ DB_PASSWORD=Daniel15
 PORT=3000
 ```
 
+### Base de datos en Supabase
+
+Si vas a usar PostgreSQL administrado en Supabase, el flujo recomendado es:
+
+```bash
+supabase login
+supabase init
+supabase link --project-ref zwsdcardcfxtjngxvsqw
+```
+
+Después debes tomar la cadena de conexión real desde Supabase Database Settings y ponerla en `DATABASE_URL` dentro de `.env` o en las variables de entorno del hosting.
+
+Ejemplo:
+
+```env
+DATABASE_URL=postgresql://postgres:TU_PASSWORD_REAL@db.zwsdcardcfxtjngxvsqw.supabase.co:5432/postgres
+DB_SSL=true
+```
+
+La opción `DB_SSL=true` activa SSL para conexiones gestionadas. Si usas el entorno local, puedes seguir usando `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASSWORD`.
+
 ### 3. Iniciar la base de datos con Docker
 
 ```bash

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SRMM | Recuperar contraseña</title>
+  <link rel="icon" href="/favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--accent:#6d5141;--muted:#7a6c62;--panel:#fff}
+    body{margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#faf6f2 0%,#f3ede6 100%);display:grid;place-items:center;min-height:100vh}
+    .card{background:var(--panel);border-radius:12px;padding:22px;max-width:480px;width:100%;box-shadow:0 10px 26px rgba(12,10,8,0.06)}
+    input{padding:12px;border-radius:8px;border:1px solid #e9ddd3;background:#faf7f4;width:100%}
+    button{background:var(--accent);color:#fff;border:0;padding:10px 12px;border-radius:8px;font-weight:700}
+    p.small{color:var(--muted)}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Recuperar contraseña</h1>
+    <p class="small">Ingresa tu correo y te enviaremos un enlace para restablecerla.</p>
+    <form id="recoverForm">
+      <input type="email" id="email" placeholder="Correo electrónico" required>
+      <div style="height:10px"></div>
+      <button type="submit">Enviar enlace</button>
+    </form>
+    <div id="msg" style="margin-top:10px;color:#3d6f19;font-weight:700"></div>
+  </main>
+  <script>
+    const form = document.getElementById('recoverForm');
+    const msg = document.getElementById('msg');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault(); msg.textContent='';
+      const email = document.getElementById('email').value;
+      try{
+        const res = await fetch('/api/auth/recover', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+        const data = await res.json();
+        msg.textContent = data.message || 'Si el correo existe, se enviará un email.';
+      }catch(err){ msg.textContent='Error de conexión' }
+    });
+  </script>
+</body>
+</html>

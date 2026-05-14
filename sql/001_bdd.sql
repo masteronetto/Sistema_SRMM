@@ -266,3 +266,30 @@ ON notificaciones_tiempo_real (created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_notif_maquina
 ON notificaciones_tiempo_real (maquina_id);
+
+-- Tabla para arriendos / contratos de arriendo (referenciada desde historial_horometro)
+CREATE TABLE IF NOT EXISTS arriendos (
+    id_contrato BIGSERIAL PRIMARY KEY,
+    maquinaria_id_maquina BIGINT NOT NULL,
+    cliente_id BIGINT NULL,
+    horometro_entrada NUMERIC(12,2) NULL,
+    horometro_salida NUMERIC(12,2) NULL,
+    fecha_inicio DATE NOT NULL DEFAULT CURRENT_DATE,
+    fecha_fin DATE NULL,
+    estado_contrato VARCHAR(30) NOT NULL DEFAULT 'Activo',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_arriendos_maquina
+        FOREIGN KEY (maquinaria_id_maquina)
+        REFERENCES maquinaria (id_maquina)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_arriendos_cliente
+        FOREIGN KEY (cliente_id)
+        REFERENCES usuarios (id_usuario)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_arriendos_maquina ON arriendos (maquinaria_id_maquina);
+CREATE INDEX IF NOT EXISTS idx_arriendos_cliente ON arriendos (cliente_id);

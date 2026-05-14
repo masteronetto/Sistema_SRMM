@@ -2,7 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const { PNG } = require('pngjs');
-const { hasDatabaseConfig } = require('./config/env');
+const { hasDatabaseConfig, hasDatabaseUrl } = require('./config/env');
 
 const app = express();
 const staticDirCandidates = [
@@ -110,7 +110,7 @@ app.get('/og-image.png', (_req, res) => {
   res.send(imageBuffer);
 });
 
-if (hasDatabaseConfig) {
+if (hasDatabaseConfig || hasDatabaseUrl) {
   const usuariosRoutes = require('./Entities/usuarios/usuarios.routes');
   const historialUsoRoutes = require('./Entities/historial_uso/historial_uso.routes');
   const maquinariaRoutes = require('./Entities/maquinaria/maquinaria.routes');
@@ -119,6 +119,7 @@ if (hasDatabaseConfig) {
   const alertasCriticasRoutes = require('./Entities/alertas_criticas/alertas_criticas.routes');
   const notificacionesTiempoRealRoutes = require('./Entities/notificaciones_tiempo_real/notificaciones_tiempo_real.routes');
   const planesMantencionRoutes = require('./Entities/planes_mantencion/planes_mantencion.routes');
+  const authRoutes = require('./Entities/auth/auth.routes');
 
   app.use('/api/usuarios', usuariosRoutes);
   app.use('/api/maquinaria', maquinariaRoutes);
@@ -128,6 +129,7 @@ if (hasDatabaseConfig) {
   app.use('/api/alertas-criticas', alertasCriticasRoutes);
   app.use('/api/notificaciones-tiempo-real', notificacionesTiempoRealRoutes);
   app.use('/api/planes-mantencion', planesMantencionRoutes);
+  app.use('/api/auth', authRoutes);
 } else {
   app.use('/api', (_req, res) => {
     res.status(503).json({
