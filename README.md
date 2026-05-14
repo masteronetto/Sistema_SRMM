@@ -109,6 +109,8 @@ Sistema_SRMM/
 │   └── server.js                # Punto de entrada
 ├── frontend/                     # Frontend estático
 │   └── index.html
+├── public/                       # Frontend principal con UI completa
+│   └── index.html
 ├── sql/                          # Scripts de BD
 │   ├── 001_base_crud_usuarios.sql
 │   ├── vistas_reportes.sql
@@ -215,6 +217,9 @@ El sistema expone endpoints para:
 - Historial detallado de mantenciones
 - Planes de mantención
 - Notificaciones en tiempo real
+- **Sistema de incidencias y alertas operativas**
+- **Registro de fallas por máquina con operador responsable**
+- **Alertas automáticas para máquinas críticas**
 
 ## Endpoints principales
 
@@ -248,8 +253,11 @@ Ejemplo JSON:
 - GET /api/maquinaria/:id_maquina/horas-acumuladas
 - GET /api/maquinaria/:id_maquina/disponibilidad
 - GET /api/maquinaria/:id_maquina/bloqueo
+- GET /api/maquinaria/:id_maquina/incidencias
 - POST /api/maquinaria
 - POST /api/maquinaria/:id_maquina/bloqueo-critico
+- POST /api/maquinaria/:id_maquina/incidencias
+- POST /api/maquinaria/:id_maquina/notify-operator
 - PUT /api/maquinaria/:id_maquina
 - PATCH /api/maquinaria/:id_maquina/mark-not-operative
 - PATCH /api/maquinaria/:id_maquina/desbloquear
@@ -391,7 +399,104 @@ Las notificaciones incluyen:
 - Prioridad
 - Horas restantes
 
+## Sistema de Incidencias y Alertas Operativas
+
+### Alertas para máquinas críticas
+
+Cuando un operador intenta seleccionar una máquina en estado "Bloqueada" o "No Operativa", el sistema muestra un modal de alerta que:
+
+- Impide la confirmación de uso sin autorización administrativa
+- Registra automáticamente la notificación al operador en el log del sistema
+- Muestra el motivo del bloqueo y requiere confirmación antes de continuar
+
+**Endpoint para notificar operador:**
+- POST /api/maquinaria/:id_maquina/notify-operator
+
+Ejemplo JSON:
+
+```json
+{
+  "operador_id": 4,
+  "motivo": "La máquina está bloqueada por seguridad y requiere autorización administrativa."
+}
+```
+
+### Registro de incidencias
+
+El administrador puede registrar fallas o incidencias inesperadas para mejorar la planificación operativa. Cada incidencia incluye:
+
+- Fecha del evento
+- Descripción detallada
+- Nivel de criticidad (Alta/Media/Baja)
+- Operador responsable
+- Vinculación opcional a orden de mantenimiento existente
+
+**Endpoints para incidencias:**
+- GET /api/maquinaria/:id_maquina/incidencias
+- POST /api/maquinaria/:id_maquina/incidencias
+
+Parámetros de consulta para GET:
+- `solo_no_resueltas=true`: Filtra solo incidencias con estado "Pendiente"
+
+Ejemplo JSON para registrar incidencia:
+
+```json
+{
+  "operador_id": 4,
+  "fecha": "2026-05-14",
+  "descripcion": "Falla hidráulica detectada durante operación en terreno",
+  "criticidad": "Alta",
+  "mantenimiento_id": null
+}
+```
+
+### Comportamiento del sistema
+
+- **Estado inicial**: Toda incidencia se registra con estado "Pendiente"
+- **Vinculación**: Las incidencias pueden vincularse a órdenes de mantenimiento existentes o nuevas
+- **Dashboard en tiempo real**: Al registrar una nueva incidencia, el contador de "Mantenimiento urgente" se actualiza automáticamente
+- **Vista de detalle**: Los mecánicos pueden ver todas las incidencias por máquina con filtro para mostrar solo las no resueltas
+
+### Estados de máquina críticos
+
+- **Bloqueada**: Máquina con falla crítica que requiere intervención inmediata
+- **No Operativa**: Máquina fuera de servicio por mantenimiento o revisión
+
+Ambos estados activan alertas automáticas y requieren autorización administrativa para uso.
+
+## Interfaz de Usuario
+
+### Dashboard Principal
+
+- **Vista general**: Estadísticas de disponibilidad, arriendos activos y alertas críticas
+- **Actualización en tiempo real**: Contadores se actualizan automáticamente al registrar incidencias
+- **Alertas visuales**: Indicadores de estado para máquinas críticas (Bloqueada/No Operativa)
+
+### Gestión de Mantenimiento
+
+- **Vista de máquinas**: Lista de equipos con indicadores de estado y prioridad
+- **Panel de detalle**: Sección "Fallas e Incidencias" por máquina con:
+  - Fecha, descripción y criticidad de cada incidencia
+  - Operador responsable
+  - Estado (Pendiente/Resuelta)
+  - Vinculación a órdenes de mantenimiento
+  - Filtro "Solo no resueltas"
+
+### Formulario de Registro de Incidencias
+
+- **Campos obligatorios**: Máquina, fecha, descripción, criticidad, operador responsable
+- **Campo opcional**: Orden de mantenimiento existente para vinculación
+- **Validación**: Verifica existencia de operador y orden de mantenimiento
+- **Estado automático**: Todas las incidencias se registran como "Pendiente"
+
+### Alertas Operativas
+
+- **Modal de confirmación**: Aparece al seleccionar máquinas críticas
+- **Registro automático**: Notifica al operador y registra en log del sistema
+- **Prevención de uso**: Impide confirmación sin autorización administrativa
+
 ## Ejemplos de uso con curl
+
 
 ### Crear usuario
 
@@ -486,10 +591,48 @@ curl -X POST http://localhost:3000/api/mantenimientos/ordenes/verificar-retrasos
 
 Devuelve las órdenes vencidas y genera una notificación visual para el administrador con los días de atraso y el mecánico asignado.
 
+### Verificar retrasos en mantenimiento
+
+```bash
+curl -X POST http://localhost:3000/api/mantenimientos/ordenes/verificar-retrasos
+```
+
+Devuelve las órdenes vencidas y genera una notificación visual para el administrador con los días de atraso y el mecánico asignado.
+
 ### Obtener notificaciones pendientes
 
 ```bash
 curl "http://localhost:3000/api/notificaciones-tiempo-real?solo_no_leidas=true"
+```
+
+### Registrar incidencia en máquina
+
+```bash
+curl -X POST http://localhost:3000/api/maquinaria/1/incidencias \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "operador_id": 4,
+    "fecha": "2026-05-14",
+    "descripcion": "Falla hidráulica detectada durante operación en terreno",
+    "criticidad": "Alta",
+    "mantenimiento_id": null
+  }'
+```
+
+### Listar incidencias de una máquina
+
+```bash
+curl "http://localhost:3000/api/maquinaria/1/incidencias?solo_no_resueltas=true"
+```
+
+### Notificar operador sobre máquina crítica
+
+```bash
+curl -X POST http://localhost:3000/api/maquinaria/1/notify-operator \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "operador_id": 4
+  }'
 ```
 
 ## Pruebas en Postman
