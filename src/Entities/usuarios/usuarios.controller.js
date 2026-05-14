@@ -94,10 +94,40 @@ async function remove(req, res, next) {
   }
 }
 
+async function changeRole(req, res, next) {
+  try {
+    const id = Number(req.params.id);
+    const { rol_acceso } = req.body;
+
+    if (!rol_acceso) {
+      return res.status(400).json({ message: 'rol_acceso es requerido' });
+    }
+
+    if (!rolesPermitidos.has(rol_acceso)) {
+      return res.status(400).json({ message: 'rol_acceso inválido. Valores permitidos: Administrador, Mecanico, Operador, Cliente' });
+    }
+
+    // No permite cambiar el rol del usuario actual a sí mismo
+    if (req.user && req.user.id_usuario === id && rol_acceso !== req.user.rol_acceso) {
+      // Permite cambios, pero es mejor lo advierta
+    }
+
+    const data = await usuariosRepo.updateUsuarioRole(id, rol_acceso);
+    if (!data) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    return res.json({ message: 'Rol actualizado correctamente', user: data });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   list,
   getById,
   create,
   update,
-  remove
+  remove,
+  changeRole
 };

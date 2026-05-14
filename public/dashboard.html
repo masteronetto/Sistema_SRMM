@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - SRMM</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .navbar h1 {
+            font-size: 1.5rem;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .user-details {
+            text-align: right;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .role-badge.cliente {
+            background: #3498db;
+        }
+
+        .role-badge.mecanico {
+            background: #e74c3c;
+        }
+
+        .role-badge.operador {
+            background: #f39c12;
+        }
+
+        .role-badge.administrador {
+            background: #27ae60;
+        }
+
+        .logout-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 0.7rem 1.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            padding: 2rem;
+            gap: 2rem;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            margin-bottom: 1rem;
+            color: #333;
+            font-size: 1rem;
+            text-transform: uppercase;
+        }
+
+        .nav-item {
+            display: block;
+            padding: 0.8rem 1rem;
+            margin: 0.5rem 0;
+            background: #f0f0f0;
+            border-left: 4px solid transparent;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+            text-decoration: none;
+            color: #333;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: #667eea;
+            color: white;
+            border-left-color: white;
+        }
+
+        .main-content {
+            flex: 1;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .content-section {
+            display: none;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        .section-title {
+            color: #333;
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+
+        .manage-users-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .manage-users-table thead {
+            background: #667eea;
+            color: white;
+        }
+
+        .manage-users-table th,
+        .manage-users-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .manage-users-table tbody tr:hover {
+            background: #f9f9f9;
+        }
+
+        .role-select {
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.7rem 1.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin: 0.5rem;
+        }
+
+        .btn:hover {
+            background: #764ba2;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .message {
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .restricted-message {
+            background: #fff3cd;
+            padding: 1.5rem;
+            border-radius: 5px;
+            text-align: center;
+            color: #856404;
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+            }
+
+            .navbar {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>🔧 SRMM - Dashboard</h1>
+        <div class="user-info">
+            <div class="user-details">
+                <div id="userName" style="font-weight: bold;">Cargando...</div>
+                <div id="userRole" class="role-badge"></div>
+            </div>
+            <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <h2>Menú</h2>
+            <a class="nav-item active" onclick="showSection('overview')">📊 Inicio</a>
+            <a class="nav-item" id="maquinaria-nav" onclick="showSection('maquinaria')" style="display: none;">🤖 Maquinaria</a>
+            <a class="nav-item" id="mantenimientos-nav" onclick="showSection('mantenimientos')" style="display: none;">🔧 Mantenimientos</a>
+            <a class="nav-item" id="usuarios-nav" onclick="showSection('usuarios')" style="display: none;">👥 Gestionar Usuarios</a>
+            <a class="nav-item" id="reportes-nav" onclick="showSection('reportes')" style="display: none;">📈 Reportes</a>
+        </div>
+
+        <div class="main-content">
+            <!-- Overview/Inicio -->
+            <div id="overview" class="content-section active">
+                <h2 class="section-title">Bienvenido al Sistema SRMM</h2>
+                <p>Aquí puedes gestionar el sistema de mantenimiento de maquinaria.</p>
+                <div id="role-info"></div>
+            </div>
+
+            <!-- Maquinaria -->
+            <div id="maquinaria" class="content-section">
+                <h2 class="section-title">Gestión de Maquinaria</h2>
+                <p>Contenido disponible solo para Mecanico, Operador y Administrador.</p>
+                <div id="maquinaria-content"></div>
+            </div>
+
+            <!-- Mantenimientos -->
+            <div id="mantenimientos" class="content-section">
+                <h2 class="section-title">Mantenimientos</h2>
+                <p>Contenido disponible solo para Mecanico, Operador y Administrador.</p>
+                <div id="mantenimientos-content"></div>
+            </div>
+
+            <!-- Gestionar Usuarios (Solo Admin) -->
+            <div id="usuarios" class="content-section">
+                <h2 class="section-title">Gestionar Usuarios</h2>
+                <div id="usuarios-content"></div>
+            </div>
+
+            <!-- Reportes -->
+            <div id="reportes" class="content-section">
+                <h2 class="section-title">Reportes</h2>
+                <p>Contenido de reportes del sistema.</p>
+                <div id="reportes-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('srmm_token');
+        let currentUser = null;
+
+        if (!token) {
+            location.replace('/login.html');
+        }
+
+        async function initDashboard() {
+            try {
+                // Verificar token y obtener datos del usuario
+                const payloadMatch = token.split('.')[1];
+                if (!payloadMatch) {
+                    throw new Error('Token inválido');
+                }
+
+                const decoded = JSON.parse(atob(payloadMatch));
+                currentUser = decoded;
+
+                // Actualizar información del usuario
+                document.getElementById('userName').textContent = `Usuario: ${currentUser.email}`;
+                const roleElement = document.getElementById('userRole');
+                roleElement.textContent = currentUser.rol_acceso;
+                roleElement.className = `role-badge ${currentUser.rol_acceso.toLowerCase()}`;
+
+                // Mostrar mensajes de bienvenida según rol
+                const roleInfo = document.getElementById('role-info');
+                roleInfo.innerHTML = `
+                    <div class="message success">
+                        <strong>Tu rol actual:</strong> ${currentUser.rol_acceso}
+                    </div>
+                    ${getRoleWelcomeMessage(currentUser.rol_acceso)}
+                `;
+
+                // Mostrar/ocultar opciones de menú según rol
+                showMenuByRole(currentUser.rol_acceso);
+            } catch (error) {
+                console.error('Error al inicializar dashboard:', error);
+                localStorage.removeItem('srmm_token');
+                location.replace('/login.html');
+            }
+        }
+
+        function getRoleWelcomeMessage(role) {
+            const messages = {
+                'Cliente': `
+                    <div class="message">
+                        Como cliente, tienes acceso limitado al sistema. 
+                        Si necesitas acceder a funcionalidades adicionales, contacta con el administrador.
+                    </div>
+                `,
+                'Mecanico': `
+                    <div class="message">
+                        Como mecánico, puedes gestionar mantenimientos y revisar la maquinaria.
+                    </div>
+                `,
+                'Operador': `
+                    <div class="message">
+                        Como operador, puedes ver y gestionar la maquinaria del sistema.
+                    </div>
+                `,
+                'Administrador': `
+                    <div class="message success">
+                        ¡Bienvenido administrador! Tienes acceso completo al sistema, incluyendo la gestión de usuarios y roles.
+                    </div>
+                `
+            };
+            return messages[role] || '<div class="message">Rol no reconocido</div>';
+        }
+
+        function showMenuByRole(role) {
+            // Mostrar siempre el menú de Inicio
+            
+            // Mostrar opciones según rol
+            if (role === 'Administrador') {
+                show('maquinaria-nav');
+                show('mantenimientos-nav');
+                show('usuarios-nav');
+                show('reportes-nav');
+            } else if (role === 'Mecanico' || role === 'Operador') {
+                show('maquinaria-nav');
+                show('mantenimientos-nav');
+                show('reportes-nav');
+            } else if (role === 'Cliente') {
+                // Cliente solo ve Inicio
+                document.getElementById('role-info').innerHTML += `
+                    <div class="restricted-message">
+                        Tu acceso está limitado a la vista de cliente. 
+                        Si necesitas otros permisos, solicítalo al administrador.
+                    </div>
+                `;
+            }
+        }
+
+        function show(elementId) {
+            document.getElementById(elementId).style.display = 'block';
+        }
+
+        function hide(elementId) {
+            document.getElementById(elementId).style.display = 'none';
+        }
+
+        function showSection(sectionId) {
+            // Ocultar todas las secciones
+            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+            // Mostrar sección seleccionada
+            document.getElementById(sectionId).classList.add('active');
+
+            // Actualizar estado del menú
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Cargar contenido si es necesario
+            if (sectionId === 'usuarios' && currentUser.rol_acceso === 'Administrador') {
+                loadUsersList();
+            }
+        }
+
+        async function loadUsersList() {
+            const container = document.getElementById('usuarios-content');
+            container.innerHTML = '<p>Cargando usuarios...</p>';
+
+            try {
+                const response = await fetch('/api/usuarios', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error al cargar usuarios: ${response.statusText}`);
+                }
+
+                const users = await response.json();
+                renderUsersList(users);
+            } catch (error) {
+                console.error('Error:', error);
+                container.innerHTML = `<div class="message error">Error al cargar usuarios: ${error.message}</div>`;
+            }
+        }
+
+        function renderUsersList(users) {
+            const container = document.getElementById('usuarios-content');
+            
+            let html = `
+                <table class="manage-users-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Rol Actual</th>
+                            <th>Nuevo Rol</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            users.forEach(user => {
+                html += `
+                    <tr>
+                        <td>${user.id_usuario}</td>
+                        <td>${user.nombre_completo}</td>
+                        <td>${user.email}</td>
+                        <td><span class="role-badge ${user.rol_acceso.toLowerCase()}">${user.rol_acceso}</span></td>
+                        <td>
+                            <select class="role-select" id="role-select-${user.id_usuario}">
+                                <option value="Cliente" ${user.rol_acceso === 'Cliente' ? 'selected' : ''}>Cliente</option>
+                                <option value="Mecanico" ${user.rol_acceso === 'Mecanico' ? 'selected' : ''}>Mecánico</option>
+                                <option value="Operador" ${user.rol_acceso === 'Operador' ? 'selected' : ''}>Operador</option>
+                                <option value="Administrador" ${user.rol_acceso === 'Administrador' ? 'selected' : ''}>Administrador</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="btn" onclick="changeUserRole(${user.id_usuario})">Cambiar Rol</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        async function changeUserRole(userId) {
+            const select = document.getElementById(`role-select-${userId}`);
+            const newRole = select.value;
+
+            try {
+                const response = await fetch(`/api/usuarios/${userId}/role`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ rol_acceso: newRole })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Error al cambiar el rol');
+                }
+
+                const result = await response.json();
+                alert(`✅ Rol actualizado correctamente a: ${newRole}`);
+                loadUsersList(); // Recargar lista
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`❌ Error: ${error.message}`);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('srmm_token');
+            location.replace('/login.html');
+        }
+
+        // Inicializar dashboard cuando se carga la página
+        initDashboard();
+    </script>
+</body>
+</html>

@@ -50,7 +50,7 @@
         if(!res.ok){ msg.textContent = data.message || 'Error'; return; }
         // store token
         localStorage.setItem('srmm_token', data.token);
-        window.location.href = '/';
+        window.location.href = '/dashboard.html';
       }catch(err){ msg.textContent = 'Error de conexión' }
     });
   </script>

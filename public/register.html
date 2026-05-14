@@ -24,18 +24,12 @@
 <body>
   <main class="card">
     <h1>Crear cuenta</h1>
-    <p class="lead">Registra un nuevo usuario</p>
+    <p class="lead">Registra un nuevo usuario como Cliente</p>
+    <p class="small" style="color:#667eea; margin-bottom: 15px;">ℹ️ <strong>Nota:</strong> Los nuevos usuarios se registran como Cliente. Solo un Administrador puede cambiar el rol asignado.</p>
     <form id="registerForm">
       <input type="text" id="nombre_completo" name="nombre_completo" placeholder="Nombre completo" required>
       <input type="email" id="email" name="email" placeholder="Correo electrónico" required>
       <input type="password" id="contrasena" name="contrasena" placeholder="Contraseña" required>
-      <select id="rol_acceso" name="rol_acceso" required>
-        <option value="">Seleccionar rol</option>
-        <option value="Administrador">Administrador</option>
-        <option value="Mecanico">Mecánico</option>
-        <option value="Operador">Operador</option>
-        <option value="Cliente">Cliente</option>
-      </select>
       <button type="submit">Crear cuenta</button>
     </form>
     <p class="small">¿Ya tienes cuenta? <a href="/login.html">Inicia sesión</a></p>
@@ -50,9 +44,8 @@
       const nombre_completo = document.getElementById('nombre_completo').value;
       const email = document.getElementById('email').value;
       const contrasena = document.getElementById('contrasena').value;
-      const rol_acceso = document.getElementById('rol_acceso').value;
       try{
-        const res = await fetch('/api/auth/register', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre_completo,email,contrasena,rol_acceso})});
+        const res = await fetch('/api/auth/register', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre_completo,email,contrasena})});
         const data = await res.json();
         if(!res.ok){ msg.textContent = data.message || 'Error'; return; }
         msg.style.color='green'; msg.textContent='Cuenta creada correctamente. Redirigiendo...';

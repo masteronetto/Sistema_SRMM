@@ -8,10 +8,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 
 async function register(req, res, next) {
   try {
-    const { nombre_completo, email, contrasena, rol_acceso } = req.body;
+    const { nombre_completo, email, contrasena } = req.body;
 
-    if (!nombre_completo || !email || !contrasena || !rol_acceso) {
-      return res.status(400).json({ message: 'Campos obligatorios: nombre_completo, email, contrasena, rol_acceso' });
+    if (!nombre_completo || !email || !contrasena) {
+      return res.status(400).json({ message: 'Campos obligatorios: nombre_completo, email, contrasena' });
     }
 
     const existing = await usuariosRepo.getUsuarioByEmail(email);
@@ -20,7 +20,8 @@ async function register(req, res, next) {
     }
 
     const hashed = await bcrypt.hash(contrasena, 10);
-    const user = await usuariosRepo.createUsuario({ nombre_completo, email, contrasena: hashed, rol_acceso });
+    // Todos los nuevos usuarios se registran como "Cliente"
+    const user = await usuariosRepo.createUsuario({ nombre_completo, email, contrasena: hashed, rol_acceso: 'Cliente' });
 
     return res.status(201).json(user);
   } catch (error) {
