@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS maquinaria (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_maquinaria_estado
-        CHECK (estado IN ('Disponible', 'Arrendada', 'Mantencion', 'Bloqueada'))
+        CHECK (estado IN ('Disponible', 'Arrendada', 'Mantencion', 'Bloqueada', 'No Operativa'))
 );
 
 CREATE TABLE IF NOT EXISTS historial_horometro (
@@ -160,6 +160,48 @@ CREATE TABLE IF NOT EXISTS bloqueos_criticos (
 
 CREATE INDEX IF NOT EXISTS idx_bloqueos_criticos_maquina
 ON bloqueos_criticos (maquinaria_id_maquina);
+
+CREATE TABLE IF NOT EXISTS incidencias_maquina (
+    id_incidencia BIGSERIAL PRIMARY KEY,
+    maquinaria_id_maquina BIGINT NOT NULL,
+    operador_id BIGINT NOT NULL,
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    descripcion TEXT NOT NULL,
+    criticidad VARCHAR(20) NOT NULL DEFAULT 'Media',
+    vinculada_mantenimiento BOOLEAN NOT NULL DEFAULT FALSE,
+    mantenimiento_id BIGINT NULL,
+    estado VARCHAR(20) NOT NULL DEFAULT 'Pendiente',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_incidencia_maquinaria
+        FOREIGN KEY (maquinaria_id_maquina)
+        REFERENCES maquinaria (id_maquina)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_incidencia_operador
+        FOREIGN KEY (operador_id)
+        REFERENCES usuarios (id_usuario)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_incidencia_mantenimiento
+        FOREIGN KEY (mantenimiento_id)
+        REFERENCES mantenimiento (id_mantencion)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    CONSTRAINT chk_incidencia_criticidad
+        CHECK (criticidad IN ('Alta', 'Media', 'Baja')),
+    CONSTRAINT chk_incidencia_estado
+        CHECK (estado IN ('Pendiente', 'Resuelta'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_incidencias_maquina_maquina
+ON incidencias_maquina (maquinaria_id_maquina);
+
+CREATE INDEX IF NOT EXISTS idx_incidencias_maquina_estado
+ON incidencias_maquina (estado);
+
+CREATE INDEX IF NOT EXISTS idx_incidencias_maquina_operador
+ON incidencias_maquina (operador_id);
 
 CREATE TABLE IF NOT EXISTS alertas_criticas (
     id_alerta BIGSERIAL PRIMARY KEY,

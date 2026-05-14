@@ -1,6 +1,9 @@
+const pool = require('../../db/pool');
 const maquinariaRepo = require('./maquinaria.repository');
+const usuariosRepo = require('../usuarios/usuarios.repository');
+const mantenimientosRepo = require('../mantenimientos/mantenimientos.repository');
 
-const estadosPermitidos = new Set(['Disponible', 'Arrendada', 'Mantencion', 'Bloqueada']);
+const estadosPermitidos = new Set(['Disponible', 'Arrendada', 'Mantencion', 'Bloqueada', 'No Operativa']);
 
 function toNumberOrNull(value) {
   if (value === undefined || value === null || value === '') {
@@ -147,6 +150,111 @@ async function listUrgentMaintenance(req, res, next) {
   }
 }
 
+async function getIncidencias(req, res, next) {
+  try {
+    const id_maquina = toNumberOrNull(req.params.id_maquina);
+    if (id_maquina === null) {
+      return res.status(400).json({ message: 'id_maquina debe ser numerico y mayor o igual a 0' });
+    }
+
+    const soloNoResueltas = req.query.solo_no_resueltas === 'true' || req.query.solo_no_resueltas === '1';
+    const incidencias = await maquinariaRepo.listIncidenciasByMaquina(id_maquina, soloNoResueltas);
+    return res.json(incidencias);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+function validateIncidenciaPayload(payload) {
+  const descripcion = payload.descripcion ? payload.descripcion.toString().trim() : '';
+  const criticidad = payload.criticidad ? payload.criticidad.toString().trim() : 'Media';
+  const operador_id = toNumberOrNull(payload.operador_id);
+  const fecha = payload.fecha ? new Date(payload.fecha) : new Date();
+  const mantenimiento_id = payload.mantenimiento_id !== undefined && payload.mantenimiento_id !== null && payload.mantenimiento_id !== ''
+    ? toNumberOrNull(payload.mantenimiento_id)
+    : null;
+
+  if (!descripcion) {
+    return { error: 'descripcion es obligatoria', parsed: null };
+  }
+
+  if (operador_id === null) {
+    return { error: 'operador_id es obligatorio y debe ser numerico', parsed: null };
+  }
+
+  if (!['Alta', 'Media', 'Baja'].includes(criticidad)) {
+    return { error: 'criticidad invalida. Valores permitidos: Alta, Media, Baja', parsed: null };
+  }
+
+  if (!(fecha instanceof Date) || Number.isNaN(fecha.getTime())) {
+    return { error: 'fecha invalida', parsed: null };
+  }
+
+  if (mantenimiento_id !== null && mantenimiento_id < 0) {
+    return { error: 'mantenimiento_id debe ser numerico y mayor o igual a 0', parsed: null };
+  }
+
+  return {
+    error: null,
+    parsed: {
+      fecha: fecha.toISOString().slice(0, 10),
+      descripcion,
+      criticidad,
+      operador_id,
+      vinculada_mantenimiento: mantenimiento_id !== null,
+      mantenimiento_id
+    }
+  };
+}
+
+async function createIncidencia(req, res, next) {
+  try {
+    const id_maquina = toNumberOrNull(req.params.id_maquina);
+    if (id_maquina === null) {
+      return res.status(400).json({ message: 'id_maquina debe ser numerico y mayor o igual a 0' });
+    }
+
+    const { error, parsed } = validateIncidenciaPayload(req.body);
+    if (error) {
+      return res.status(400).json({ message: error });
+    }
+
+    const maquina = await maquinariaRepo.getMaquinariaById(id_maquina);
+    if (!maquina) {
+      return res.status(404).json({ message: 'Maquinaria no encontrada' });
+    }
+
+    const operador = await usuariosRepo.getUsuarioById(parsed.operador_id);
+    if (!operador) {
+      return res.status(404).json({ message: 'Operador no encontrado' });
+    }
+
+    if (parsed.mantenimiento_id !== null) {
+      const mantenimiento = await mantenimientosRepo.getMantenimientoById(parsed.mantenimiento_id);
+      if (!mantenimiento) {
+        return res.status(400).json({ message: 'mantenimiento_id no corresponde a una orden existente' });
+      }
+    }
+
+    const incidencia = await maquinariaRepo.createIncidenciaForMaquina({
+      maquinaria_id_maquina: id_maquina,
+      operador_id: parsed.operador_id,
+      fecha: parsed.fecha,
+      descripcion: parsed.descripcion,
+      criticidad: parsed.criticidad,
+      vinculada_mantenimiento: parsed.vinculada_mantenimiento,
+      mantenimiento_id: parsed.mantenimiento_id
+    });
+
+    return res.status(201).json({ message: 'Incidencia registrada con estado Pendiente', incidencia });
+  } catch (error) {
+    if (error.code === '23503') {
+      return res.status(400).json({ message: 'Referencia invalida en operador, maquina o mantenimiento' });
+    }
+    return next(error);
+  }
+}
+
 async function create(req, res, next) {
   try {
     const { error, parsed } = validatePayload(req.body);
@@ -206,6 +314,61 @@ async function markAsNotOperative(req, res, next) {
 
     return res.json(updated);
   } catch (error) {
+    return next(error);
+  }
+}
+
+async function notifyOperator(req, res, next) {
+  try {
+    const id_maquina = toNumberOrNull(req.params.id_maquina);
+    if (id_maquina === null) {
+      return res.status(400).json({ message: 'id_maquina debe ser numerico' });
+    }
+
+    const operadorId = toNumberOrNull(req.body.operador_id ?? req.body.operadorId ?? 4);
+    if (operadorId === null) {
+      return res.status(400).json({ message: 'operador_id debe ser numerico y mayor o igual a 0' });
+    }
+
+    const maquina = await maquinariaRepo.getMaquinariaById(id_maquina);
+    if (!maquina) {
+      return res.status(404).json({ message: 'Maquinaria no encontrada' });
+    }
+
+    const operador = await usuariosRepo.getUsuarioById(operadorId);
+    if (!operador) {
+      return res.status(404).json({ message: 'Operador no encontrado' });
+    }
+
+    const estadoCritico = new Set(['Bloqueada', 'No Operativa']);
+    if (!estadoCritico.has(maquina.estado)) {
+      return res.status(400).json({ message: 'La máquina no está en estado crítico para notificar al operador.' });
+    }
+
+    const bloqueoActivo = await maquinariaRepo.getBloqueoMaquinaria(id_maquina);
+    const motivoBloqueo = bloqueoActivo?.motivo_bloqueo || req.body.motivo || (maquina.estado === 'Bloqueada'
+      ? 'La máquina está bloqueada por seguridad y requiere autorización administrativa.'
+      : 'La máquina está marcada como no operativa y no puede usarse sin revisión.');
+
+    const mensaje = `Advertencia al operador: ${maquina.modelo_equipo} se encuentra en estado "${maquina.estado}". ${motivoBloqueo}`;
+
+    const { rows } = await pool.query(
+      `INSERT INTO notificaciones (usuario_id, tipo_notificacion, referencia_id, mensaje)
+       VALUES ($1, 'Bloqueo', $2, $3)
+       RETURNING *;`,
+      [operadorId, id_maquina, mensaje]
+    );
+
+    console.log(`[maquinaria] Operador ${operadorId} notificado sobre máquina ${id_maquina} (${maquina.modelo_equipo}) en estado "${maquina.estado}"`);
+
+    return res.status(201).json({
+      message: 'Notificación registrada. El operador fue advertido antes de cualquier acción.',
+      notificacion: rows[0]
+    });
+  } catch (error) {
+    if (error.code === '23503') {
+      return res.status(400).json({ message: 'Referencia inválida en operador o máquina' });
+    }
     return next(error);
   }
 }
@@ -310,6 +473,8 @@ module.exports = {
   getHorasAcumuladas,
   getDisponibilidad,
   listUrgentMaintenance,
+  getIncidencias,
+  createIncidencia,
   create,
   update,
   markAsNotOperative,

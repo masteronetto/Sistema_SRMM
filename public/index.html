@@ -341,12 +341,291 @@
         .pill.maintenance { background: #eadbc8; color: #705331; }
         .pill.success { background: #d7efbf; color: #3d6f19; }
 
-        .machine-body {
-            padding: 0.9rem 1rem 1rem;
+        .machine-head-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .status-indicator {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 999px;
+            display: grid;
+            place-items: center;
+            font-size: 1rem;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .status-indicator.status-locked { background: rgba(255, 229, 230, 0.95); color: #9f2934; }
+        .status-indicator.status-warning { background: rgba(255, 246, 205, 0.95); color: #8d6c12; }
+        .status-indicator.status-available { background: rgba(215, 239, 191, 0.95); color: #326622; }
+
+        .machine-card[data-maquina-id] {
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .machine-card[data-maquina-id]:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem;
+            z-index: 100;
+        }
+
+        .modal.visible {
+            display: flex;
+        }
+
+        .modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.42);
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-card {
+            position: relative;
+            max-width: 520px;
+            width: 100%;
+            background: white;
+            border-radius: 24px;
+            padding: 1.5rem;
+            box-shadow: 0 24px 60px rgba(12, 10, 8, 0.16);
+            z-index: 1;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .modal-header .modal-icon {
+            display: grid;
+            place-items: center;
+            width: 2.3rem;
+            height: 2.3rem;
+            border-radius: 50%;
+            background: #feece9;
+            color: #b92232;
+            font-size: 1.1rem;
+        }
+
+        .modal-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+        }
+
+        .modal-body {
+            color: #3e2f26;
+            line-height: 1.6;
+            margin-bottom: 1.25rem;
+        }
+
+        .modal-body strong {
+            display: inline-block;
+            margin-top: 0.75rem;
+            font-weight: 700;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        .modal-button {
+            border: 0;
+            border-radius: 999px;
+            padding: 0.75rem 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .modal-button.primary {
+            background: #d33d46;
+            color: white;
+        }
+
+        .modal-button.secondary {
+            background: #f2f0ee;
+            color: #3e2f26;
+        }
+
+        .modal-button:hover {
+            opacity: 0.95;
+        }
+
+        .modal-footer-note {
+            margin-top: 0.8rem;
+            font-size: 0.9rem;
+            color: #6a5d56;
+        }
+
+        .modal-status {
+            font-weight: 700;
+            color: #7a222e;
+        }
+
+        .modal-reason {
+            margin-top: 0.65rem;
+            padding: 0.95rem 1rem;
+            background: #fff3f1;
+            border-left: 4px solid #e29f98;
+            border-radius: 16px;
+            color: #6d3933;
+        }
+
+        .modal-note {
+            margin-top: 0.75rem;
+            font-size: 0.88rem;
+            color: #5f5048;
+        }
+
+        .hidden { display: none !important; }
+
+        .detail-panel {
+            background: var(--panel);
+            border: 1px solid rgba(55, 43, 35, 0.08);
+            border-radius: 18px;
+            padding: 1.15rem;
+            margin-top: 1rem;
+        }
+
+        .detail-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .detail-title {
+            font-size: 1rem;
+            font-weight: 800;
+            margin-bottom: 0.25rem;
+        }
+
+        .detail-subtitle {
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .detail-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .detail-table th,
+        .detail-table td {
+            padding: 0.85rem 0.9rem;
+            border-bottom: 1px solid rgba(40, 28, 22, 0.08);
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        .detail-table th {
+            font-size: 0.82rem;
+            color: #6b5b52;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            background: #faf4ef;
+        }
+
+        .pill.tag {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.35rem 0.65rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .pill.tag.high { background: #fce8e8; color: #9f2934; }
+        .pill.tag.medium { background: #fdf2d7; color: #8d6c12; }
+        .pill.tag.low { background: #def2d8; color: #17632d; }
+
+        .detail-empty {
+            padding: 1rem;
+            border-radius: 14px;
+            background: #f7f5f1;
+            color: #5f5048;
+            font-size: 0.95rem;
+            margin-top: 0.75rem;
+        }
+
+        .incident-form {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .incident-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 0.7rem 1.2rem;
-            font-size: 0.92rem;
+            gap: 1rem;
+        }
+
+        .incident-form label {
+            display: grid;
+            gap: 0.5rem;
+            font-size: 0.93rem;
+            color: #3a2d24;
+        }
+
+        .incident-form input,
+        .incident-form select,
+        .incident-form textarea {
+            width: 100%;
+            border: 1px solid rgba(40, 28, 22, 0.16);
+            border-radius: 12px;
+            padding: 0.9rem 1rem;
+            background: #faf7f4;
+            color: #201915;
+            font: inherit;
+        }
+
+        .incident-form textarea {
+            min-height: 140px;
+            resize: vertical;
+        }
+
+        .incident-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .form-status {
+            color: #3d6f19;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .modal-error {
+            color: #9f2934;
+            margin-top: 0.75rem;
         }
 
         .machine-body strong { display: block; color: #111; }
@@ -628,11 +907,14 @@
                         </section>
 
                         <section class="mini-grid">
-                            <article class="section-card machine-card">
+                            <article class="section-card machine-card" data-maquina-id="101" data-nombre="Excavadora CAT 320" data-estado="Bloqueada" data-motivo="Falla hidráulica detectada y bloqueo de seguridad activo">
                                 <div class="machine-head">
-                                    <div>
-                                        <div class="machine-name">Excavadora CAT 320 — Mantenimiento mayor</div>
-                                        <div class="machine-sub">Umbral superado · 2.840 / 2.500 hrs</div>
+                                    <div class="machine-head-info">
+                                        <span class="status-indicator status-locked" title="Bloqueada">🔒</span>
+                                        <div>
+                                            <div class="machine-name">Excavadora CAT 320 — Mantenimiento mayor</div>
+                                            <div class="machine-sub">Umbral superado · 2.840 / 2.500 hrs</div>
+                                        </div>
                                     </div>
                                     <span class="pill blocked">Urgente</span>
                                 </div>
@@ -644,11 +926,14 @@
                                 </div>
                             </article>
 
-                            <article class="section-card machine-card">
+                            <article class="section-card machine-card" data-maquina-id="102" data-nombre="Grúa Liebherr LTM 1050" data-estado="Disponible" data-motivo="Maquina preparada y disponible para uso">
                                 <div class="machine-head">
-                                    <div>
-                                        <div class="machine-name">Grúa Liebherr LTM 1050 — Revisión de aceite</div>
-                                        <div class="machine-sub">120 hrs para próximo umbral · 1.380 / 1.500 hrs</div>
+                                    <div class="machine-head-info">
+                                        <span class="status-indicator status-available" title="Disponible">✔</span>
+                                        <div>
+                                            <div class="machine-name">Grúa Liebherr LTM 1050 — Revisión de aceite</div>
+                                            <div class="machine-sub">120 hrs para próximo umbral · 1.380 / 1.500 hrs</div>
+                                        </div>
                                     </div>
                                     <span class="pill available">Próximo</span>
                                 </div>
@@ -660,21 +945,98 @@
                                 </div>
                             </article>
 
-                            <article class="section-card machine-card">
+                            <article class="section-card machine-card" data-maquina-id="103" data-nombre="Retroexcavadora JCB 3CX" data-estado="No Operativa" data-motivo="Registro de horómetro pendiente y equipo marcado como no operativa">
                                 <div class="machine-head">
-                                    <div>
-                                        <div class="machine-name">Retroexcavadora JCB 3CX — Actualizar horómetro</div>
-                                        <div class="machine-sub">Sin registro de horas hace 48h · Serie #RE-003</div>
+                                    <div class="machine-head-info">
+                                        <span class="status-indicator status-warning" title="No Operativa">⚠</span>
+                                        <div>
+                                            <div class="machine-name">Retroexcavadora JCB 3CX — Actualizar horómetro</div>
+                                            <div class="machine-sub">Sin registro de horas hace 48h · Serie #RE-003</div>
+                                        </div>
                                     </div>
-                                    <span class="pill maintenance">Sin datos</span>
+                                    <span class="pill maintenance">No operativa</span>
                                 </div>
                                 <div class="machine-body">
                                     <div><strong>Tipo</strong><span>Correctivo</span></div>
-                                    <div><strong>Estado</strong><span>En revisión</span></div>
+                                    <div><strong>Estado</strong><span>No operativa</span></div>
                                     <div><strong>Responsable</strong><span>Operador</span></div>
                                     <div><strong>Prioridad</strong><span>Alta</span></div>
                                 </div>
                             </article>
+                        </section>
+
+                        <section class="section-card">
+                            <div class="section-title">Registrar incidencia</div>
+                            <form id="incidentRegisterForm" class="incident-form">
+                                <div class="incident-grid">
+                                    <label>
+                                        Máquina
+                                        <select id="incidentMachine" required>
+                                            <option value="">Cargando máquinas...</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Fecha
+                                        <input id="incidentDate" type="date" required />
+                                    </label>
+                                    <label>
+                                        Criticidad
+                                        <select id="incidentSeverity" required>
+                                            <option value="Alta">Alta</option>
+                                            <option value="Media" selected>Media</option>
+                                            <option value="Baja">Baja</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Operador responsable
+                                        <select id="incidentOperator" required>
+                                            <option value="">Cargando operadores...</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Orden de mantención (ID)
+                                        <input id="incidentMaintenanceId" type="number" min="1" placeholder="Opcional" />
+                                    </label>
+                                </div>
+                                <label>
+                                    Descripción de la falla
+                                    <textarea id="incidentDescription" required placeholder="Describir el evento, el lugar y el impacto"></textarea>
+                                </label>
+                                <div class="incident-actions">
+                                    <button type="submit" class="top-button primary">Registrar incidencia</button>
+                                    <span id="incidentFormStatus" class="form-status"></span>
+                                </div>
+                            </form>
+                        </section>
+
+                        <section id="machineDetailPanel" class="detail-panel hidden">
+                            <div class="detail-header">
+                                <div>
+                                    <div id="detailTitle" class="detail-title">Seleccione una máquina para ver fallas e incidencias</div>
+                                    <div id="detailSubtitle" class="detail-subtitle">Verás fecha, criticidad y si cada incidencia fue vinculada a una mantención.</div>
+                                </div>
+                                <div class="detail-toolbar">
+                                    <label>
+                                        <input id="detailFilterPending" type="checkbox" /> Solo no resueltas
+                                    </label>
+                                </div>
+                            </div>
+                            <div id="detailMachineMotive" class="detail-subtitle"></div>
+                            <table class="detail-table">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Descripción</th>
+                                        <th>Criticidad</th>
+                                        <th>Operador</th>
+                                        <th>Vinculada</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detailIncidentRows">
+                                    <tr><td colspan="5" class="detail-empty">Selecciona una máquina para cargar incidencias.</td></tr>
+                                </tbody>
+                            </table>
                         </section>
                     </div>
                 </section>
@@ -836,6 +1198,27 @@
         </main>
     </div>
 
+    <div id="machineAlertModal" class="modal" aria-hidden="true">
+        <div class="modal-backdrop"></div>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalContent">
+            <div class="modal-header">
+                <span class="modal-icon">⚠</span>
+                <div>
+                    <div id="modalTitle" class="modal-title">Alerta de máquina crítica</div>
+                    <div class="modal-note">El operador debe detener la acción hasta recibir autorización administrativa.</div>
+                </div>
+            </div>
+            <div id="modalContent" class="modal-body">
+                <p class="modal-status"></p>
+                <p class="modal-reason"></p>
+                <p class="modal-note">Registrar en log que el operador fue notificado antes de cualquier acción.</p>
+            </div>
+            <div class="modal-actions">
+                <button id="modalCloseButton" class="modal-button primary">Cerrar y notificar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const titleByView = {
             dashboard: 'Dashboard',
@@ -879,6 +1262,281 @@
         });
 
         showView(window.location.hash.replace('#', '') || 'dashboard', false);
+
+        const machineCards = Array.from(document.querySelectorAll('.machine-card[data-maquina-id]'));
+        const machineAlertModal = document.getElementById('machineAlertModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalStatus = document.querySelector('.modal-status');
+        const modalReason = document.querySelector('.modal-reason');
+        const modalCloseButton = document.getElementById('modalCloseButton');
+        const modalBackdrop = document.querySelector('.modal-backdrop');
+        const machineDetailPanel = document.getElementById('machineDetailPanel');
+        const detailTitle = document.getElementById('detailTitle');
+        const detailSubtitle = document.getElementById('detailSubtitle');
+        const detailMachineMotive = document.getElementById('detailMachineMotive');
+        const detailFilterPending = document.getElementById('detailFilterPending');
+        const detailIncidentRows = document.getElementById('detailIncidentRows');
+
+        let currentMachineId = null;
+        const incidentMachineSelect = document.getElementById('incidentMachine');
+        const incidentDateInput = document.getElementById('incidentDate');
+        const incidentSeveritySelect = document.getElementById('incidentSeverity');
+        const incidentOperatorSelect = document.getElementById('incidentOperator');
+        const incidentDescriptionInput = document.getElementById('incidentDescription');
+        const incidentMaintenanceIdInput = document.getElementById('incidentMaintenanceId');
+        const incidentForm = document.getElementById('incidentRegisterForm');
+        const incidentFormStatus = document.getElementById('incidentFormStatus');
+        const machineCountUrgent = document.querySelector('.hero-grid .stat-card:nth-child(4) .stat-value');
+        let availableMachines = [];
+
+        function isCriticalMachine(state) {
+            return ['Bloqueada', 'No Operativa'].includes(state);
+        }
+
+        function padZero(number) {
+            return String(number).padStart(2, '0');
+        }
+
+        function formatDateForInput(date) {
+            return `${date.getFullYear()}-${padZero(date.getMonth() + 1)}-${padZero(date.getDate())}`;
+        }
+
+        async function loadIncidentFormOptions() {
+            try {
+                const [machinesResponse, usersResponse] = await Promise.all([
+                    fetch('/api/maquinaria'),
+                    fetch('/api/usuarios')
+                ]);
+
+                if (!machinesResponse.ok || !usersResponse.ok) {
+                    throw new Error('Error cargando opciones de formulario');
+                }
+
+                const [machines, users] = await Promise.all([machinesResponse.json(), usersResponse.json()]);
+                availableMachines = machines;
+                incidentMachineSelect.innerHTML = `<option value="">Selecciona una máquina</option>` + machines.map((machine) => `
+                    <option value="${machine.id_maquina}">${machine.modelo_equipo} — ${machine.estado}</option>
+                `).join('');
+
+                const operators = users.filter((user) => user.rol_acceso === 'Operador');
+                incidentOperatorSelect.innerHTML = operators.length > 0
+                    ? `<option value="">Selecciona un operador</option>` + operators.map((operator) => `
+                        <option value="${operator.id_usuario}">${operator.nombre_completo}</option>
+                    `).join('')
+                    : '<option value="">No hay operadores disponibles</option>';
+            } catch (error) {
+                incidentMachineSelect.innerHTML = '<option value="">No se pudieron cargar máquinas</option>';
+                incidentOperatorSelect.innerHTML = '<option value="">No se pudieron cargar operadores</option>';
+                console.warn(error);
+            }
+        }
+
+        async function registerIncident(event) {
+            event.preventDefault();
+            incidentFormStatus.textContent = '';
+
+            const maquinaId = incidentMachineSelect.value;
+            const operadorId = incidentOperatorSelect.value;
+            const fecha = incidentDateInput.value;
+            const criticidad = incidentSeveritySelect.value;
+            const descripcion = incidentDescriptionInput.value.trim();
+            const mantenimientoId = incidentMaintenanceIdInput.value.trim();
+
+            if (!maquinaId || !operadorId || !fecha || !descripcion) {
+                incidentFormStatus.textContent = 'Completa todos los campos obligatorios.';
+                incidentFormStatus.style.color = '#9f2934';
+                return;
+            }
+
+            const payload = {
+                operador_id: Number(operadorId),
+                fecha,
+                criticidad,
+                descripcion,
+                mantenimiento_id: mantenimientoId ? Number(mantenimientoId) : null
+            };
+
+            try {
+                const response = await fetch(`/api/maquinaria/${maquinaId}/incidencias`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.message || 'No se pudo registrar la incidencia');
+                }
+
+                incidentFormStatus.textContent = 'Incidencia registrada con estado Pendiente.';
+                incidentFormStatus.style.color = '#1f9d49';
+                incidentDescriptionInput.value = '';
+                incidentMaintenanceIdInput.value = '';
+
+                if (String(maquinaId) === String(currentMachineId)) {
+                    loadMachineIncidencias();
+                }
+
+                const machineCard = availableMachines.find((machine) => String(machine.id_maquina) === String(maquinaId));
+                if (machineCard && machineCountUrgent) {
+                    const currentUrgent = Number(machineCountUrgent.textContent) || 0;
+                    machineCountUrgent.textContent = currentUrgent + 1;
+                }
+            } catch (error) {
+                incidentFormStatus.textContent = `Error: ${error.message}`;
+                incidentFormStatus.style.color = '#9f2934';
+            }
+        }
+
+        function initializeIncidentForm() {
+            incidentDateInput.value = formatDateForInput(new Date());
+            incidentForm.addEventListener('submit', registerIncident);
+            loadIncidentFormOptions();
+        }
+
+        function createCriticityPill(level) {
+            const pill = document.createElement('span');
+            pill.className = `pill tag ${level.toLowerCase()}`;
+            pill.textContent = level;
+            return pill;
+        }
+
+        function renderIncidencias(incidencias) {
+            if (!incidencias || incidencias.length === 0) {
+                detailIncidentRows.innerHTML = '<tr><td colspan="6" class="detail-empty">No hay incidencias registradas para esta máquina.</td></tr>';
+                return;
+            }
+
+            detailIncidentRows.innerHTML = incidencias.map((incidencia) => {
+                const vinculada = incidencia.vinculada_mantenimiento ? 'Sí' : 'No';
+                const criticidad = incidencia.criticidad || 'Media';
+                const estado = incidencia.estado || 'Pendiente';
+                const operador = incidencia.operador_nombre || `#${incidencia.operador_id}`;
+                return `
+                    <tr>
+                        <td>${new Date(incidencia.fecha).toLocaleDateString('es-CL')}</td>
+                        <td>${incidencia.descripcion}</td>
+                        <td><span class="pill tag ${criticidad.toLowerCase()}">${criticidad}</span></td>
+                        <td>${operador}</td>
+                        <td>${vinculada}</td>
+                        <td>${estado}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function showMachineDetailPanel({ id, name, state, motive }) {
+            currentMachineId = id;
+            detailTitle.textContent = `${name} — Fallas e Incidencias`;
+            detailSubtitle.textContent = `Estado: ${state}`;
+            detailMachineMotive.textContent = motive;
+            machineDetailPanel.classList.remove('hidden');
+            loadMachineIncidencias();
+        }
+
+        function closeMachineDetailPanel() {
+            machineDetailPanel.classList.add('hidden');
+            detailIncidentRows.innerHTML = '<tr><td colspan="6" class="detail-empty">Selecciona una máquina para cargar incidencias.</td></tr>';
+        }
+
+        async function loadMachineIncidencias() {
+            if (!currentMachineId) {
+                return;
+            }
+
+            detailIncidentRows.innerHTML = '<tr><td colspan="6" class="detail-empty">Cargando incidencias...</td></tr>';
+            const filtro = detailFilterPending.checked ? 'true' : 'false';
+            try {
+                const response = await fetch(`/api/maquinaria/${currentMachineId}/incidencias?solo_no_resueltas=${filtro}`);
+                if (!response.ok) {
+                    throw new Error('No se pudo cargar el listado de incidencias.');
+                }
+                const incidencias = await response.json();
+                renderIncidencias(incidencias);
+            } catch (error) {
+                detailIncidentRows.innerHTML = `<tr><td colspan="6" class="detail-empty">Error cargando incidencias: ${error.message}</td></tr>`;
+            }
+        }
+
+        function updateMachineDetail() {
+            if (currentMachineId) {
+                loadMachineIncidencias();
+            }
+        }
+
+        function openMachineAlert({ name, state, reason, logStatus }) {
+            modalTitle.textContent = `Advertencia: ${name}`;
+            modalStatus.textContent = `Estado crítico detectado: ${state}. No puedes confirmar el uso sin autorización del administrador.`;
+            modalReason.textContent = reason;
+
+            const extraNote = document.createElement('p');
+            extraNote.className = 'modal-note';
+            extraNote.textContent = logStatus;
+
+            const existingNote = machineAlertModal.querySelector('.modal-note:last-of-type');
+            if (existingNote) {
+                existingNote.replaceWith(extraNote);
+            } else {
+                document.getElementById('modalContent').appendChild(extraNote);
+            }
+
+            machineAlertModal.classList.add('visible');
+        }
+
+        function closeMachineAlert() {
+            machineAlertModal.classList.remove('visible');
+        }
+
+        async function notifyOperator(maquinaId) {
+            try {
+                const response = await fetch(`/api/maquinaria/${maquinaId}/notify-operator`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ operador_id: 4 })
+                });
+
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(payload.message || 'No se pudo registrar la notificación.');
+                }
+
+                return payload.message || 'El aviso fue registrado en el sistema.';
+            } catch (error) {
+                return `No se pudo registrar el aviso: ${error.message}`;
+            }
+        }
+
+        machineCards.forEach((card) => {
+            card.addEventListener('click', async () => {
+                const machineData = {
+                    id: card.dataset.maquinaId,
+                    name: card.dataset.nombre || 'Máquina',
+                    state: card.dataset.estado || 'Desconocido',
+                    motive: card.dataset.motivo || 'Sin descripción de incidencia disponible.'
+                };
+
+                showMachineDetailPanel(machineData);
+
+                if (isCriticalMachine(machineData.state)) {
+                    const logStatus = await notifyOperator(machineData.id);
+                    openMachineAlert({
+                        name: machineData.name,
+                        state: machineData.state,
+                        reason: machineData.motive,
+                        logStatus
+                    });
+                }
+            });
+        });
+
+        detailFilterPending.addEventListener('change', updateMachineDetail);
+        modalCloseButton.addEventListener('click', closeMachineAlert);
+        modalBackdrop.addEventListener('click', closeMachineAlert);
+        initializeIncidentForm();
     </script>
 </body>
 </html>

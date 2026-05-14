@@ -138,6 +138,58 @@ async function listMaquinasConMantenimientoUrgente(umbralHoras = 0, limit = null
   return result;
 }
 
+async function listIncidenciasByMaquina(maquinaria_id_maquina, solo_no_resueltas = false) {
+  const query = `
+    SELECT
+      i.id_incidencia,
+      i.fecha,
+      i.descripcion,
+      i.criticidad,
+      i.vinculada_mantenimiento,
+      i.mantenimiento_id,
+      i.estado,
+      i.operador_id,
+      u.nombre_completo AS operador_nombre
+    FROM incidencias_maquina i
+    LEFT JOIN usuarios u ON u.id_usuario = i.operador_id
+    WHERE i.maquinaria_id_maquina = $1
+      ${solo_no_resueltas ? "AND i.estado = 'Pendiente'" : ''}
+    ORDER BY i.fecha DESC, i.id_incidencia DESC
+  `;
+
+  const { rows } = await pool.query(query, [maquinaria_id_maquina]);
+  return rows;
+}
+
+async function createIncidenciaForMaquina({ maquinaria_id_maquina, operador_id, fecha, descripcion, criticidad, vinculada_mantenimiento = false, mantenimiento_id = null }) {
+  const query = `
+    INSERT INTO incidencias_maquina (
+      maquinaria_id_maquina,
+      operador_id,
+      fecha,
+      descripcion,
+      criticidad,
+      vinculada_mantenimiento,
+      mantenimiento_id,
+      estado
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'Pendiente')
+    RETURNING id_incidencia, maquinaria_id_maquina, operador_id, fecha, descripcion, criticidad, vinculada_mantenimiento, mantenimiento_id, estado, created_at, updated_at
+  `;
+
+  const values = [
+    maquinaria_id_maquina,
+    operador_id,
+    fecha || new Date(),
+    descripcion,
+    criticidad || 'Media',
+    vinculada_mantenimiento,
+    mantenimiento_id
+  ];
+
+  const { rows } = await pool.query(query, values);
+  return rows[0];
+}
+
 async function getDisponibilidadMaquina(id_maquina, margenMinimoHoras = 50) {
   const query = `
     SELECT
@@ -368,6 +420,8 @@ module.exports = {
   updateMaquinaria,
   updateHorometroActual,
   listMaquinasConMantenimientoUrgente,
+  listIncidenciasByMaquina,
+  createIncidenciaForMaquina,
   getDisponibilidadMaquina,
   deleteMaquinaria,
   blockMaquinariaWithReason,
