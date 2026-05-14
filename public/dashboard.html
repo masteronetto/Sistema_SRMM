@@ -2,533 +2,1319 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <script>
+        (function(){
+            try{
+                if (!localStorage.getItem('srmm_token') && !location.pathname.endsWith('/login.html')){
+                    location.replace('/login.html');
+                }
+            }catch(e){}
+        })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - SRMM</title>
+    <title>SRMM | Dashboard</title>
+    <meta name="description" content="Panel de control SRMM para inventario, mantenimiento, arriendos, logística, usuarios y reportes.">
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --bg: #f5efe8;
+            --panel: #ffffff;
+            --panel-soft: #faf7f4;
+            --text: #201915;
+            --muted: #7a6c62;
+            --accent: #6d5141;
+            --accent-strong: #4d372d;
+            --line: #e9ddd3;
+            --success: #c8efb3;
+            --warning: #ffd8a8;
+            --danger: #f8c8c2;
+            --info: #d9e6f8;
         }
 
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background:
+                radial-gradient(circle at top right, rgba(109, 81, 65, 0.08), transparent 22%),
+                linear-gradient(180deg, #faf6f2 0%, #f3ede6 100%);
+            color: var(--text);
+        }
+
+        .shell {
             min-height: 100vh;
+            display: grid;
+            grid-template-columns: 250px minmax(0, 1fr);
+        }
+
+        /* ── SIDEBAR ── */
+        .sidebar {
+            background: #5c524c;
+            color: #fff;
+            border-right: 1px solid rgba(255,255,255,0.08);
             display: flex;
             flex-direction: column;
         }
 
-        .navbar {
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
+        .brand {
+            padding: 1rem 1rem 0.85rem;
+            border-bottom: 1px solid rgba(255,255,255,0.16);
+        }
+
+        .brand-mark {
+            display: inline-flex;
             align-items: center;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.13);
+            font-weight: 800;
+            margin-right: 0.8rem;
         }
 
-        .navbar h1 {
-            font-size: 1.5rem;
+        .nav-group-title {
+            color: rgba(255,255,255,0.72);
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 0.9rem 1rem 0.4rem;
         }
 
-        .user-info {
+        .nav-link {
             display: flex;
             align-items: center;
-            gap: 2rem;
+            gap: 0.7rem;
+            width: 100%;
+            padding: 0.72rem 1rem;
+            color: rgba(255,255,255,0.88);
+            text-decoration: none;
+            border: 0;
+            background: transparent;
+            border-left: 4px solid transparent;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s ease;
+            text-align: left;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
         }
 
-        .user-details {
-            text-align: right;
+        .nav-link:hover,
+        .nav-link.active {
+            background: rgba(255,255,255,0.08);
+            border-left-color: #f0d4b6;
+            color: #fff;
+        }
+
+        /* Ocultar ítems de menú según rol */
+        .nav-link[data-role-required] { display: none; }
+
+        .nav-icon { width: 18px; text-align: center; opacity: 0.9; }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 1rem;
+            border-top: 1px solid rgba(255,255,255,0.16);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 999px;
+            background: #d9d3ca;
+            color: #3d332d;
+            font-weight: 800;
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
         }
 
         .role-badge {
             display: inline-block;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
         }
 
-        .role-badge.cliente {
-            background: #3498db;
-        }
-
-        .role-badge.mecanico {
-            background: #e74c3c;
-        }
-
-        .role-badge.operador {
-            background: #f39c12;
-        }
-
-        .role-badge.administrador {
-            background: #27ae60;
-        }
+        .role-badge.administrador { background: rgba(39,174,96,0.25); color: #27ae60; }
+        .role-badge.mecanico      { background: rgba(231,76,60,0.2);  color: #e74c3c; }
+        .role-badge.operador      { background: rgba(243,156,18,0.2); color: #e67e22; }
+        .role-badge.cliente       { background: rgba(52,152,219,0.2); color: #2980b9; }
 
         .logout-btn {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            padding: 0.7rem 1.5rem;
-            border-radius: 5px;
+            background: rgba(231,76,60,0.15);
+            color: #e74c3c;
+            border: 1px solid rgba(231,76,60,0.3);
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 1rem;
-            transition: background 0.3s;
+            font-size: 0.82rem;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            transition: background 0.2s;
+            margin-top: 0.35rem;
         }
+        .logout-btn:hover { background: rgba(231,76,60,0.28); }
 
-        .logout-btn:hover {
-            background: #c0392b;
-        }
-
-        .container {
-            flex: 1;
+        /* ── MAIN ── */
+        .main {
             display: flex;
-            padding: 2rem;
-            gap: 2rem;
+            flex-direction: column;
+            min-width: 0;
         }
 
-        .sidebar {
-            width: 250px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            padding: 1.5rem;
-            overflow-y: auto;
+        .topbar {
+            height: 70px;
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 20;
         }
 
-        .sidebar h2 {
-            margin-bottom: 1rem;
-            color: #333;
-            font-size: 1rem;
-            text-transform: uppercase;
+        .topbar-actions {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
         }
 
-        .nav-item {
-            display: block;
-            padding: 0.8rem 1rem;
-            margin: 0.5rem 0;
-            background: #f0f0f0;
-            border-left: 4px solid transparent;
+        .top-button {
+            border: 0;
+            border-radius: 999px;
+            padding: 0.6rem 1rem;
+            font-weight: 700;
             cursor: pointer;
-            border-radius: 5px;
-            transition: all 0.3s;
-            text-decoration: none;
-            color: #333;
+            transition: 0.2s ease;
+            font-family: 'Inter', sans-serif;
         }
 
-        .nav-item:hover,
-        .nav-item.active {
-            background: #667eea;
-            color: white;
-            border-left-color: white;
+        .top-button.secondary { background: #ddd8d3; color: #26201c; }
+        .top-button.primary   { background: var(--accent); color: #fff; }
+        .top-button.primary:hover { background: var(--accent-strong); }
+
+        /* ── CONTENT ── */
+        .content { padding: 1.25rem 1.5rem 2rem; }
+
+        .view { display: none; animation: fadeIn 0.24s ease; }
+        .view.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
 
-        .main-content {
-            flex: 1;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            padding: 2rem;
-            overflow-y: auto;
+        /* ── CARDS ── */
+        .hero-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0,1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
         }
 
-        .content-section {
-            display: none;
+        .stat-card, .section-card {
+            background: var(--panel);
+            border: 1px solid rgba(55,43,35,0.08);
+            border-radius: 18px;
+            box-shadow: 0 10px 28px rgba(43,30,24,0.06);
         }
 
-        .content-section.active {
-            display: block;
-        }
-
-        .section-title {
-            color: #333;
-            margin-bottom: 1.5rem;
-            font-size: 1.8rem;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 0.5rem;
-        }
-
-        .manage-users-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-
-        .manage-users-table thead {
-            background: #667eea;
-            color: white;
-        }
-
-        .manage-users-table th,
-        .manage-users-table td {
+        .stat-card {
             padding: 1rem;
+            min-height: 96px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .stat-value { font-size: 1.65rem; font-weight: 800; line-height: 1; margin-top: 0.35rem; }
+        .stat-label { font-weight: 700; color: #16110d; }
+        .stat-note  { color: var(--muted); font-size: 0.92rem; margin-top: 0.2rem; }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .section-card { padding: 1rem; }
+        .section-title { font-size: 1.05rem; font-weight: 800; margin-bottom: 0.9rem; }
+
+        /* ── ALERTAS ── */
+        .alert-list  { display: grid; gap: 0.7rem; }
+        .alert-item  {
+            border-radius: 14px; padding: 0.75rem 0.85rem;
+            display: grid; grid-template-columns: 28px 1fr;
+            gap: 0.75rem; align-items: start; border: 1px solid transparent;
+        }
+        .alert-item strong { display: block; font-size: 0.95rem; }
+        .alert-item span   { color: #342a24; font-size: 0.9rem; }
+        .alert-critical { background: var(--danger); border-color: #f2b8b0; }
+        .alert-warning  { background: var(--warning); border-color: #edc389; }
+        .alert-info     { background: #f5e6c7; border-color: #e7ca91; }
+
+        /* ── BARRAS ── */
+        .bar-row {
+            display: grid;
+            grid-template-columns: 130px 1fr 90px;
+            gap: 0.75rem; align-items: center; margin-bottom: 0.95rem; font-size: 0.94rem;
+        }
+        .bar-track { height: 10px; background: #ede7e1; border-radius: 999px; overflow: hidden; }
+        .bar-fill  { height: 100%; border-radius: 999px; background: linear-gradient(90deg,#8fbf6b,#d7bc62,#e57d67); }
+
+        /* ── MINI GRID ── */
+        .mini-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0,1fr));
+            gap: 1rem;
+        }
+
+        /* ── MACHINE CARDS ── */
+        .machine-card { padding: 0; overflow: hidden; }
+        .machine-head {
+            padding: 0.85rem 1rem 0.75rem;
+            border-bottom: 2px solid #1d1916;
+            display: flex; justify-content: space-between;
+            gap: 0.75rem; align-items: center;
+        }
+        .machine-name { font-weight: 800; font-size: 0.98rem; }
+        .machine-sub  { color: #2f2622; font-size: 0.88rem; font-weight: 700; }
+        .machine-head-info { display: flex; align-items: center; gap: 0.75rem; }
+
+        .machine-body { padding: 0.85rem 1rem; display: grid; gap: 0.4rem; }
+        .machine-body div { display: flex; justify-content: space-between; font-size: 0.9rem; }
+        .machine-body strong { color: #111; font-weight: 600; }
+        .machine-body span   { color: #b71b1b; font-weight: 800; }
+
+        /* ── PILLS ── */
+        .pill {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 0.4rem 0.7rem; border-radius: 999px;
+            font-size: 0.78rem; font-weight: 800; white-space: nowrap;
+        }
+        .pill.available   { background: #f5ddea; color: #7b3658; }
+        .pill.blocked     { background: #efc6cb; color: #7a2032; }
+        .pill.maintenance { background: #eadbc8; color: #705331; }
+        .pill.success     { background: #d7efbf; color: #3d6f19; }
+        .pill.tag         { padding: 0.35rem 0.65rem; font-size: 0.75rem; }
+        .pill.tag.high    { background: #fce8e8; color: #9f2934; }
+        .pill.tag.medium  { background: #fdf2d7; color: #8d6c12; }
+        .pill.tag.low     { background: #def2d8; color: #17632d; }
+
+        /* ── STATUS INDICATOR ── */
+        .status-indicator {
+            width: 2rem; height: 2rem; border-radius: 999px;
+            display: grid; place-items: center;
+            font-size: 1rem; border: 1px solid rgba(0,0,0,0.08);
+        }
+        .status-indicator.status-locked    { background: rgba(255,229,230,0.95); color: #9f2934; }
+        .status-indicator.status-warning   { background: rgba(255,246,205,0.95); color: #8d6c12; }
+        .status-indicator.status-available { background: rgba(215,239,191,0.95); color: #326622; }
+
+        .machine-card[data-maquina-id] {
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .machine-card[data-maquina-id]:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 30px rgba(0,0,0,0.08);
+        }
+
+        /* ── TABLAS ── */
+        .table-wrap {
+            overflow: auto; border-radius: 16px;
+            border: 1px solid rgba(40,28,22,0.08); background: white;
+        }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        th, td {
+            padding: 0.9rem 1rem;
+            border-bottom: 1px solid rgba(40,28,22,0.08);
+            text-align: left; vertical-align: middle;
+        }
+        th {
+            background: #faf4ef; font-size: 0.84rem; color: #6b5b52;
+            text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        tbody tr:hover { background: #fdfaf8; }
+
+        /* ── MANAGE USERS TABLE ── */
+        .manage-users-table { width: 100%; border-collapse: collapse; }
+        .manage-users-table thead { background: var(--accent); color: white; }
+        .manage-users-table th, .manage-users-table td {
+            padding: 0.9rem 1rem;
+            border-bottom: 1px solid rgba(40,28,22,0.08);
             text-align: left;
-            border-bottom: 1px solid #ddd;
         }
-
-        .manage-users-table tbody tr:hover {
-            background: #f9f9f9;
-        }
-
         .role-select {
-            padding: 0.5rem;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+            padding: 0.45rem 0.7rem;
+            border: 1px solid rgba(40,28,22,0.16);
+            border-radius: 8px;
+            background: #faf7f4;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
             cursor: pointer;
         }
-
         .btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 0.7rem 1.5rem;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.3s;
-            margin: 0.5rem;
+            background: var(--accent);
+            color: white; border: none;
+            padding: 0.5rem 1rem; border-radius: 8px;
+            cursor: pointer; font-family: 'Inter', sans-serif;
+            font-weight: 700; transition: background 0.2s;
         }
+        .btn:hover { background: var(--accent-strong); }
+        .btn-danger { background: #c0392b; }
+        .btn-danger:hover { background: #962d23; }
 
-        .btn:hover {
-            background: #764ba2;
-        }
-
-        .btn-danger {
-            background: #e74c3c;
-        }
-
-        .btn-danger:hover {
-            background: #c0392b;
-        }
-
+        /* ── MENSAJES ── */
         .message {
-            padding: 1rem;
-            border-radius: 5px;
-            margin-bottom: 1rem;
+            padding: 0.85rem 1rem; border-radius: 12px; margin-bottom: 0.75rem;
+            font-size: 0.95rem;
         }
-
-        .message.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .message.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
+        .message.success { background: #d7efbf; color: #2d5a12; border: 1px solid #b6dfa0; }
+        .message.error   { background: #fce8e8; color: #7a1f1f; border: 1px solid #f2b8b0; }
+        .message.info    { background: #f5e6c7; color: #5a3e18; border: 1px solid #e7ca91; }
+        .message.warning { background: var(--warning); color: #5a3e18; border: 1px solid #edc389; }
 
         .restricted-message {
-            background: #fff3cd;
-            padding: 1.5rem;
-            border-radius: 5px;
-            text-align: center;
-            color: #856404;
-            font-size: 1.1rem;
+            background: #fdf2d7; padding: 1.5rem; border-radius: 14px;
+            text-align: center; color: #5a3e18; font-size: 1rem;
+            border: 1px solid #e7ca91; margin-top: 1rem;
         }
 
-        @media (max-width: 768px) {
-            .container {
-                flex-direction: column;
-            }
+        /* ── PLACEHOLDER ── */
+        .placeholder-card {
+            padding: 1rem; min-height: 180px;
+            display: grid; place-items: center;
+            text-align: center; color: var(--muted);
+            background: linear-gradient(180deg,#fff,#fcfaf8);
+            border-radius: 12px;
+        }
 
-            .sidebar {
-                width: 100%;
-            }
+        /* ── MODAL ── */
+        .modal {
+            position: fixed; inset: 0; display: none;
+            align-items: center; justify-content: center;
+            padding: 1.25rem; z-index: 100;
+        }
+        .modal.visible { display: flex; }
+        .modal-backdrop {
+            position: absolute; inset: 0;
+            background: rgba(0,0,0,0.42); backdrop-filter: blur(2px);
+        }
+        .modal-card {
+            position: relative; max-width: 520px; width: 100%;
+            background: white; border-radius: 24px;
+            padding: 1.5rem; box-shadow: 0 24px 60px rgba(12,10,8,0.16); z-index: 1;
+        }
+        .modal-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+        .modal-icon {
+            display: grid; place-items: center;
+            width: 2.3rem; height: 2.3rem; border-radius: 50%;
+            background: #feece9; color: #b92232; font-size: 1.1rem;
+        }
+        .modal-title { font-size: 1.05rem; font-weight: 800; }
+        .modal-body  { color: #3e2f26; line-height: 1.6; margin-bottom: 1.25rem; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 0.75rem; }
+        .modal-button {
+            border: 0; border-radius: 999px; padding: 0.75rem 1rem;
+            font-weight: 700; cursor: pointer; transition: 0.2s ease;
+            font-family: 'Inter', sans-serif;
+        }
+        .modal-button.primary   { background: #d33d46; color: white; }
+        .modal-button.secondary { background: #f2f0ee; color: #3e2f26; }
+        .modal-button:hover { opacity: 0.9; }
+        .modal-status { font-weight: 700; color: #7a222e; }
+        .modal-reason { margin-top: 0.65rem; padding: 0.95rem 1rem; background: #fff3f1; border-left: 4px solid #e29f98; border-radius: 16px; color: #6d3933; }
+        .modal-note   { margin-top: 0.75rem; font-size: 0.88rem; color: #5f5048; }
+        .modal-error  { color: #9f2934; margin-top: 0.75rem; }
 
-            .navbar {
-                flex-direction: column;
-                gap: 1rem;
+        /* ── DETAIL PANEL ── */
+        .detail-panel {
+            background: var(--panel); border: 1px solid rgba(55,43,35,0.08);
+            border-radius: 18px; padding: 1.15rem; margin-top: 1rem;
+        }
+        .detail-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+        .detail-title    { font-size: 1rem; font-weight: 800; margin-bottom: 0.25rem; }
+        .detail-subtitle { color: var(--muted); font-size: 0.95rem; }
+        .detail-toolbar  { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+        .detail-table    { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        .detail-table th, .detail-table td {
+            padding: 0.85rem 0.9rem;
+            border-bottom: 1px solid rgba(40,28,22,0.08);
+            text-align: left; vertical-align: middle;
+        }
+        .detail-table th { font-size: 0.82rem; color: #6b5b52; text-transform: uppercase; letter-spacing: 0.04em; background: #faf4ef; }
+        .detail-empty    { padding: 1rem; border-radius: 14px; background: #f7f5f1; color: #5f5048; font-size: 0.95rem; margin-top: 0.75rem; }
+
+        /* ── INCIDENT FORM ── */
+        .incident-form   { display: grid; gap: 1rem; margin-top: 1rem; }
+        .incident-grid   { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 1rem; }
+        .incident-form label { display: grid; gap: 0.5rem; font-size: 0.93rem; color: #3a2d24; }
+        .incident-form input,
+        .incident-form select,
+        .incident-form textarea {
+            width: 100%; border: 1px solid rgba(40,28,22,0.16);
+            border-radius: 12px; padding: 0.9rem 1rem;
+            background: #faf7f4; color: #201915; font: inherit;
+        }
+        .incident-form textarea { min-height: 140px; resize: vertical; }
+        .incident-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+        .form-status      { font-size: 0.95rem; font-weight: 600; }
+
+        .section-stack { display: grid; gap: 1rem; }
+        .muted { color: var(--muted); }
+        .hidden { display: none !important; }
+
+        /* ── WELCOME INFO ── */
+        .welcome-block {
+            background: var(--panel); border-radius: 18px;
+            padding: 1.5rem; margin-bottom: 1rem;
+            border: 1px solid rgba(55,43,35,0.08);
+            box-shadow: 0 10px 28px rgba(43,30,24,0.06);
+        }
+        .welcome-block h2 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.5rem; }
+        .welcome-block p  { color: var(--muted); font-size: 0.95rem; }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 1180px) {
+            .hero-grid, .mini-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 900px) {
+            .shell { grid-template-columns: 1fr; }
+            .sidebar { position: sticky; top: 0; z-index: 30; }
+            .sidebar-nav {
+                display: grid; grid-template-columns: repeat(3, minmax(0,1fr));
+                gap: 0.2rem; padding: 0.4rem;
             }
+            .nav-group-title, .sidebar-footer { display: none; }
+            .brand { display: flex; align-items: center; gap: 0.8rem; }
+            .content { padding: 1rem; }
+            .hero-grid, .mini-grid { grid-template-columns: 1fr; }
+            .bar-row { grid-template-columns: 1fr; }
+            .topbar { padding: 0 1rem; }
         }
     </style>
 </head>
 <body>
-    <div class="navbar">
-        <h1>🔧 SRMM - Dashboard</h1>
-        <div class="user-info">
-            <div class="user-details">
-                <div id="userName" style="font-weight: bold;">Cargando...</div>
-                <div id="userRole" class="role-badge"></div>
+<div class="shell">
+
+    <!-- ═══════════════ SIDEBAR ═══════════════ -->
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="flex items-center">
+                <div class="brand-mark">SR</div>
+                <div class="brand-copy">
+                    <div class="text-xl font-extrabold leading-none">SRMM</div>
+                    <div class="text-xs font-semibold opacity-90">Hermosilla y García Ltda.</div>
+                </div>
             </div>
-            <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
+        </div>
+
+        <div class="nav-group-title">Dashboard</div>
+        <nav class="sidebar-nav" aria-label="Menú principal">
+            <button class="nav-link active" data-view="inicio"><span class="nav-icon">⌂</span>Inicio</button>
+
+            <!-- Maquinaria: Mecánico, Operador, Administrador -->
+            <button class="nav-link" data-view="inventario" data-role-required="Mecanico,Operador,Administrador">
+                <span class="nav-icon">▦</span>Maquinaria
+            </button>
+
+            <div class="nav-group-title">Operaciones</div>
+
+            <!-- Mantenimiento: Mecánico, Administrador -->
+            <button class="nav-link" data-view="mantenimiento" data-role-required="Mecanico,Administrador">
+                <span class="nav-icon">⚙</span>Mantenimiento
+            </button>
+
+            <!-- Arriendo: todos excepto Cliente -->
+            <button class="nav-link" data-view="arriendo" data-role-required="Mecanico,Operador,Administrador">
+                <span class="nav-icon">⟲</span>Arriendo
+            </button>
+
+            <!-- Logística: Operador, Administrador -->
+            <button class="nav-link" data-view="logistica" data-role-required="Operador,Administrador">
+                <span class="nav-icon">➜</span>Logística
+            </button>
+
+            <div class="nav-group-title">Sistema</div>
+
+            <!-- Usuarios: solo Administrador -->
+            <button class="nav-link" data-view="usuarios" data-role-required="Administrador">
+                <span class="nav-icon">◉</span>Usuarios
+            </button>
+
+            <!-- Reportes: Mecánico, Operador, Administrador -->
+            <button class="nav-link" data-view="reportes" data-role-required="Mecanico,Operador,Administrador">
+                <span class="nav-icon">▤</span>Reportes
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="avatar" id="sidebarAvatar">??</div>
+            <div>
+                <div class="font-bold leading-tight" id="sidebarName">Cargando…</div>
+                <div id="sidebarRoleBadge" class="role-badge" style="margin-top:0.2rem;"></div>
+                <button class="logout-btn" onclick="logout()">Cerrar sesión</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ═══════════════ MAIN ═══════════════ -->
+    <main class="main">
+        <header class="topbar">
+            <div>
+                <h1 id="pageTitle" class="text-[1.4rem] font-extrabold tracking-tight">Inicio</h1>
+            </div>
+            <div class="topbar-actions">
+                <button class="top-button secondary" id="topAlertsBtn">⚠ Alertas</button>
+                <button class="top-button primary"   id="topRegisterBtn">+ Registrar Máquina</button>
+            </div>
+        </header>
+
+        <div class="content">
+
+            <!-- ══ INICIO ══ -->
+            <section id="inicio" class="view active">
+                <div class="welcome-block">
+                    <h2 id="welcomeTitle">Bienvenido al Sistema SRMM</h2>
+                    <p id="welcomeDesc">Cargando información de usuario…</p>
+                </div>
+                <div id="welcomeMessages"></div>
+
+                <!-- Resumen general (visible para todos) -->
+                <div class="hero-grid">
+                    <article class="stat-card">
+                        <div class="stat-label">Total maquinaria</div>
+                        <div class="stat-value text-[#2b56d8]">13</div>
+                        <div class="stat-note">3 categorías</div>
+                    </article>
+                    <article class="stat-card">
+                        <div class="stat-label">Disponibles</div>
+                        <div class="stat-value text-[#1f9d49]">7</div>
+                        <div class="stat-note">Listas para uso</div>
+                    </article>
+                    <article class="stat-card">
+                        <div class="stat-label">En arriendo</div>
+                        <div class="stat-value text-[#f5a623]">3</div>
+                        <div class="stat-note">Activos hoy</div>
+                    </article>
+                    <article class="stat-card">
+                        <div class="stat-label">Mantenimiento urgente</div>
+                        <div class="stat-value text-[#d43c35]">3</div>
+                        <div class="stat-note">Acción requerida</div>
+                    </article>
+                </div>
+
+                <div class="grid-2">
+                    <section class="section-card">
+                        <div class="section-title">Alertas críticas</div>
+                        <div class="alert-list">
+                            <div class="alert-item alert-critical">
+                                <div>⚠</div>
+                                <div>
+                                    <strong>Excavadora CAT 320 — Mantenimiento vencido</strong>
+                                    <span>Horómetro: 2.840 hrs · Umbral superado en 340 hrs</span>
+                                </div>
+                            </div>
+                            <div class="alert-item alert-warning">
+                                <div>⚡</div>
+                                <div>
+                                    <strong>Grúa Liebherr LTM 1050 — Próximo mantenimiento</strong>
+                                    <span>Faltan 120 hrs para próxima revisión</span>
+                                </div>
+                            </div>
+                            <div class="alert-item alert-info">
+                                <div>⚡</div>
+                                <div>
+                                    <strong>Retroexcavadora JCB 3CX — Sin registro 48h</strong>
+                                    <span>No se ha actualizado el horómetro</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="section-card">
+                        <div class="section-title">Estado del parque</div>
+                        <div class="bar-row">
+                            <div>Disponibles</div>
+                            <div class="bar-track"><div class="bar-fill" style="width:58%"></div></div>
+                            <div class="text-right font-semibold">7 (58%)</div>
+                        </div>
+                        <div class="bar-row">
+                            <div>En arriendo</div>
+                            <div class="bar-track"><div class="bar-fill" style="width:25%"></div></div>
+                            <div class="text-right font-semibold">3 (25%)</div>
+                        </div>
+                        <div class="bar-row">
+                            <div>Mantenimiento</div>
+                            <div class="bar-track"><div class="bar-fill" style="width:17%"></div></div>
+                            <div class="text-right font-semibold">2 (17%)</div>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <!-- ══ INVENTARIO / MAQUINARIA ══ -->
+            <section id="inventario" class="view">
+                <div class="hero-grid">
+                    <article class="stat-card"><div class="stat-label">Total equipos</div><div class="stat-value">13</div><div class="stat-note">Inventario activo</div></article>
+                    <article class="stat-card"><div class="stat-label">Disponibles</div><div class="stat-value">7</div><div class="stat-note">Listas para arriendo</div></article>
+                    <article class="stat-card"><div class="stat-label">Bloqueadas</div><div class="stat-value">2</div><div class="stat-note">Requieren intervención</div></article>
+                    <article class="stat-card"><div class="stat-label">En revisión</div><div class="stat-value">3</div><div class="stat-note">Seguimiento operativo</div></article>
+                </div>
+                <div class="mini-grid">
+                    <article class="stat-card"><div class="stat-label">Excavadora CAT 320</div><div class="stat-note">Horómetro 2.840 hrs · Estado Bloqueada</div></article>
+                    <article class="stat-card"><div class="stat-label">Grúa Liebherr LTM 1050</div><div class="stat-note">Horómetro 1.380 hrs · Estado Disponible</div></article>
+                    <article class="stat-card"><div class="stat-label">Bobcat S570</div><div class="stat-note">Horómetro 890 hrs · Estado Disponible</div></article>
+                </div>
+            </section>
+
+            <!-- ══ MANTENIMIENTO ══ -->
+            <section id="mantenimiento" class="view">
+                <div class="section-stack">
+                    <section class="section-card">
+                        <div class="section-title">Mantenimiento</div>
+                        <div class="mini-grid">
+                            <article class="machine-card stat-card">
+                                <div class="stat-label">Pendientes (3)</div>
+                                <div class="stat-note">Tareas críticas y próximas</div>
+                            </article>
+                            <article class="machine-card stat-card">
+                                <div class="stat-label">Programados</div>
+                                <div class="stat-note">Órdenes asignadas</div>
+                            </article>
+                            <article class="machine-card stat-card">
+                                <div class="stat-label">Historial</div>
+                                <div class="stat-note">Mantenciones completadas</div>
+                            </article>
+                        </div>
+                    </section>
+
+                    <section class="mini-grid">
+                        <article class="section-card machine-card" data-maquina-id="101" data-nombre="Excavadora CAT 320" data-estado="Bloqueada" data-motivo="Falla hidráulica detectada y bloqueo de seguridad activo">
+                            <div class="machine-head">
+                                <div class="machine-head-info">
+                                    <span class="status-indicator status-locked" title="Bloqueada">🔒</span>
+                                    <div>
+                                        <div class="machine-name">Excavadora CAT 320 — Mantenimiento mayor</div>
+                                        <div class="machine-sub">Umbral superado · 2.840 / 2.500 hrs</div>
+                                    </div>
+                                </div>
+                                <span class="pill blocked">Urgente</span>
+                            </div>
+                            <div class="machine-body">
+                                <div><strong>Tipo</strong><span>Preventivo mayor</span></div>
+                                <div><strong>Días vencido</strong><span>12 días</span></div>
+                                <div><strong>Responsable</strong><span>Sin asignar</span></div>
+                                <div><strong>Impacto</strong><span>Máquina bloqueada</span></div>
+                            </div>
+                        </article>
+
+                        <article class="section-card machine-card" data-maquina-id="102" data-nombre="Grúa Liebherr LTM 1050" data-estado="Disponible" data-motivo="Máquina preparada y disponible para uso">
+                            <div class="machine-head">
+                                <div class="machine-head-info">
+                                    <span class="status-indicator status-available" title="Disponible">✔</span>
+                                    <div>
+                                        <div class="machine-name">Grúa Liebherr LTM 1050 — Revisión de aceite</div>
+                                        <div class="machine-sub">120 hrs para próximo umbral · 1.380 / 1.500 hrs</div>
+                                    </div>
+                                </div>
+                                <span class="pill available">Próximo</span>
+                            </div>
+                            <div class="machine-body">
+                                <div><strong>Tipo</strong><span>Preventivo</span></div>
+                                <div><strong>Días vencido</strong><span>0 días</span></div>
+                                <div><strong>Responsable</strong><span>Jorge Videla</span></div>
+                                <div><strong>Impacto</strong><span>Sin bloqueo</span></div>
+                            </div>
+                        </article>
+
+                        <article class="section-card machine-card" data-maquina-id="103" data-nombre="Retroexcavadora JCB 3CX" data-estado="No Operativa" data-motivo="Registro de horómetro pendiente y equipo marcado como no operativo">
+                            <div class="machine-head">
+                                <div class="machine-head-info">
+                                    <span class="status-indicator status-warning" title="No Operativa">⚠</span>
+                                    <div>
+                                        <div class="machine-name">Retroexcavadora JCB 3CX — Actualizar horómetro</div>
+                                        <div class="machine-sub">Sin registro de horas hace 48h · Serie #RE-003</div>
+                                    </div>
+                                </div>
+                                <span class="pill maintenance">No operativa</span>
+                            </div>
+                            <div class="machine-body">
+                                <div><strong>Tipo</strong><span>Correctivo</span></div>
+                                <div><strong>Estado</strong><span>No operativa</span></div>
+                                <div><strong>Responsable</strong><span>Operador</span></div>
+                                <div><strong>Prioridad</strong><span>Alta</span></div>
+                            </div>
+                        </article>
+                    </section>
+
+                    <section class="section-card">
+                        <div class="section-title">Registrar incidencia</div>
+                        <form id="incidentRegisterForm" class="incident-form">
+                            <div class="incident-grid">
+                                <label>Máquina<select id="incidentMachine" required><option value="">Cargando máquinas…</option></select></label>
+                                <label>Fecha<input id="incidentDate" type="date" required /></label>
+                                <label>Criticidad
+                                    <select id="incidentSeverity" required>
+                                        <option value="Alta">Alta</option>
+                                        <option value="Media" selected>Media</option>
+                                        <option value="Baja">Baja</option>
+                                    </select>
+                                </label>
+                                <label>Operador responsable<select id="incidentOperator" required><option value="">Cargando operadores…</option></select></label>
+                                <label>Orden de mantención (ID)<input id="incidentMaintenanceId" type="number" min="1" placeholder="Opcional" /></label>
+                            </div>
+                            <label>Descripción de la falla<textarea id="incidentDescription" required placeholder="Describir el evento, el lugar y el impacto"></textarea></label>
+                            <div class="incident-actions">
+                                <button type="submit" class="top-button primary">Registrar incidencia</button>
+                                <span id="incidentFormStatus" class="form-status"></span>
+                            </div>
+                        </form>
+                    </section>
+
+                    <section id="machineDetailPanel" class="detail-panel hidden">
+                        <div class="detail-header">
+                            <div>
+                                <div id="detailTitle" class="detail-title">Seleccione una máquina para ver fallas e incidencias</div>
+                                <div id="detailSubtitle" class="detail-subtitle">Verás fecha, criticidad y si cada incidencia fue vinculada a una mantención.</div>
+                            </div>
+                            <div class="detail-toolbar">
+                                <label><input id="detailFilterPending" type="checkbox" /> Solo no resueltas</label>
+                            </div>
+                        </div>
+                        <div id="detailMachineMotive" class="detail-subtitle"></div>
+                        <table class="detail-table">
+                            <thead>
+                                <tr><th>Fecha</th><th>Descripción</th><th>Criticidad</th><th>Operador</th><th>Vinculada</th><th>Estado</th></tr>
+                            </thead>
+                            <tbody id="detailIncidentRows">
+                                <tr><td colspan="6" class="detail-empty">Selecciona una máquina para cargar incidencias.</td></tr>
+                            </tbody>
+                        </table>
+                    </section>
+                </div>
+            </section>
+
+            <!-- ══ ARRIENDO ══ -->
+            <section id="arriendo" class="view">
+                <div class="grid-2">
+                    <section class="section-card">
+                        <div class="section-title">Arriendos activos</div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead><tr><th>Máquina</th><th>Cliente</th><th>Inicio</th><th>Fin</th><th>Estado</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Retroexcavadora JCB 3CX</td><td>Construcciones Andes S.A.</td><td>01 abr 2026</td><td>25 abr 2026</td><td><span class="pill success">En terreno</span></td></tr>
+                                    <tr><td>Komatsu PC200</td><td>Inmobiliaria Norte SpA</td><td>05 abr 2026</td><td>05 may 2026</td><td><span class="pill success">En terreno</span></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section class="section-card">
+                        <div class="section-title">Próximos arriendos</div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead><tr><th>Máquina</th><th>Cliente</th><th>Fecha</th><th>Estado</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Excavadora CAT 320</td><td>Constr. Andes</td><td>15 abr 2026</td><td><span class="pill blocked">Pendiente</span></td></tr>
+                                    <tr><td>Minicargadora Bobcat</td><td>Inmob. Norte</td><td>18 abr 2026</td><td><span class="pill success">Confirmado</span></td></tr>
+                                    <tr><td>Grúa Liebherr</td><td>Obras Públicas</td><td>22 abr 2026</td><td><span class="pill available">En revisión</span></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <!-- ══ LOGÍSTICA ══ -->
+            <section id="logistica" class="view">
+                <div class="grid-2">
+                    <section class="section-card">
+                        <div class="section-title">Logística de entrega</div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead><tr><th>Equipo</th><th>Ruta</th><th>Hora</th><th>Estado</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Komatsu PC200</td><td>Av. Providencia 1820</td><td>09:00 hrs</td><td><span class="pill available">Pendiente</span></td></tr>
+                                    <tr><td>Bobcat S570</td><td>Ruta 5 Norte Km 52</td><td>14:00 hrs</td><td><span class="pill success">Confirmado</span></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section class="section-card">
+                        <div class="section-title">Confirmar entrega / recepción</div>
+                        <div class="placeholder-card">Formulario de operación y registro de horómetro al momento de entregar o recibir maquinaria.</div>
+                    </section>
+                </div>
+            </section>
+
+            <!-- ══ USUARIOS (solo Admin) ══ -->
+            <section id="usuarios" class="view">
+                <div class="grid-2" style="margin-bottom:1rem;">
+                    <section class="section-card">
+                        <div class="section-title">Gestionar usuarios</div>
+                        <div id="usuarios-content"><p class="muted">Cargando usuarios…</p></div>
+                    </section>
+                    <section class="section-card">
+                        <div class="section-title">Permisos por rol</div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead><tr><th>Módulo</th><th>Admin</th><th>Mecánico</th><th>Operador</th><th>Cliente</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Maquinaria</td><td>✓ Total</td><td>✓ Lectura</td><td>✓ Lectura</td><td>✓ Catálogo</td></tr>
+                                    <tr><td>Mantenimiento</td><td>✓ Total</td><td>✓ Total</td><td>✕</td><td>✕</td></tr>
+                                    <tr><td>Arriendos</td><td>✓ Total</td><td>✓ Total</td><td>✓ Confirm.</td><td>✓ Reservas</td></tr>
+                                    <tr><td>Logística</td><td>✓ Total</td><td>✕</td><td>✓ Total</td><td>✕</td></tr>
+                                    <tr><td>Usuarios</td><td>✓ Total</td><td>✕</td><td>✕</td><td>✕</td></tr>
+                                    <tr><td>Reportes</td><td>✓ Total</td><td>✓ Total</td><td>✓ Total</td><td>✕</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <!-- ══ REPORTES ══ -->
+            <section id="reportes" class="view">
+                <div class="mini-grid">
+                    <article class="section-card">
+                        <div class="section-title">Reporte de uso</div>
+                        <div class="muted">Horas acumuladas por equipo, tendencias de uso y disponibilidad operativa.</div>
+                    </article>
+                    <article class="section-card">
+                        <div class="section-title">Reporte de mantenimiento</div>
+                        <div class="muted">Historial de intervenciones, fallas y análisis de patrones de desgaste.</div>
+                    </article>
+                    <article class="section-card">
+                        <div class="section-title">Reporte de ingresos</div>
+                        <div class="muted">Rentabilidad por equipo, ingresos por arriendo y análisis financiero.</div>
+                    </article>
+                </div>
+            </section>
+
+        </div><!-- /content -->
+    </main>
+</div><!-- /shell -->
+
+<!-- ═══════════════ MODAL ═══════════════ -->
+<div id="machineAlertModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-header">
+            <span class="modal-icon">⚠</span>
+            <div>
+                <div id="modalTitle" class="modal-title">Alerta de máquina crítica</div>
+                <div class="modal-note">El operador debe detener la acción hasta recibir autorización administrativa.</div>
+            </div>
+        </div>
+        <div id="modalContent" class="modal-body">
+            <p class="modal-status"></p>
+            <p class="modal-reason"></p>
+            <p class="modal-note">Registrar en log que el operador fue notificado antes de cualquier acción.</p>
+        </div>
+        <div class="modal-actions">
+            <button id="modalCloseButton" class="modal-button primary">Cerrar y notificar</button>
         </div>
     </div>
+</div>
 
-    <div class="container">
-        <div class="sidebar">
-            <h2>Menú</h2>
-            <a class="nav-item active" onclick="showSection('overview')">📊 Inicio</a>
-            <a class="nav-item" id="maquinaria-nav" onclick="showSection('maquinaria')" style="display: none;">🤖 Maquinaria</a>
-            <a class="nav-item" id="mantenimientos-nav" onclick="showSection('mantenimientos')" style="display: none;">🔧 Mantenimientos</a>
-            <a class="nav-item" id="usuarios-nav" onclick="showSection('usuarios')" style="display: none;">👥 Gestionar Usuarios</a>
-            <a class="nav-item" id="reportes-nav" onclick="showSection('reportes')" style="display: none;">📈 Reportes</a>
-        </div>
+<script>
+/* ═══════════════════════════════════════════════════
+   CONFIGURACIÓN DE ROLES Y ACCESO
+   ═══════════════════════════════════════════════════
+   Mapa de permisos: qué vistas puede ver cada rol.
+   ─────────────────────────────────────────────────── */
+const ROLE_PERMISSIONS = {
+    'Administrador': ['inicio', 'inventario', 'mantenimiento', 'arriendo', 'logistica', 'usuarios', 'reportes'],
+    'Mecanico':      ['inicio', 'inventario', 'mantenimiento', 'arriendo', 'reportes'],
+    'Operador':      ['inicio', 'inventario', 'arriendo', 'logistica', 'reportes'],
+    'Cliente':       ['inicio']
+};
 
-        <div class="main-content">
-            <!-- Overview/Inicio -->
-            <div id="overview" class="content-section active">
-                <h2 class="section-title">Bienvenido al Sistema SRMM</h2>
-                <p>Aquí puedes gestionar el sistema de mantenimiento de maquinaria.</p>
-                <div id="role-info"></div>
-            </div>
+const ROLE_WELCOME = {
+    'Administrador': { msg: '¡Bienvenido, administrador! Tienes acceso completo al sistema.', type: 'success' },
+    'Mecanico':      { msg: 'Bienvenido. Puedes gestionar mantenimientos y revisar la maquinaria.', type: 'info' },
+    'Operador':      { msg: 'Bienvenido. Puedes ver y gestionar la maquinaria y logística del sistema.', type: 'info' },
+    'Cliente':       { msg: 'Bienvenido. Tienes acceso de consulta al sistema. Contacta al administrador si necesitas permisos adicionales.', type: 'warning' }
+};
 
-            <!-- Maquinaria -->
-            <div id="maquinaria" class="content-section">
-                <h2 class="section-title">Gestión de Maquinaria</h2>
-                <p>Contenido disponible solo para Mecanico, Operador y Administrador.</p>
-                <div id="maquinaria-content"></div>
-            </div>
+const VIEW_LABELS = {
+    inicio:        'Inicio',
+    inventario:    'Maquinaria',
+    mantenimiento: 'Mantenimiento',
+    arriendo:      'Arriendo',
+    logistica:     'Logística de entrega',
+    usuarios:      'Gestión de usuarios',
+    reportes:      'Reportes'
+};
 
-            <!-- Mantenimientos -->
-            <div id="mantenimientos" class="content-section">
-                <h2 class="section-title">Mantenimientos</h2>
-                <p>Contenido disponible solo para Mecanico, Operador y Administrador.</p>
-                <div id="mantenimientos-content"></div>
-            </div>
+/* ═══════════════════════════════════════════════════
+   ESTADO GLOBAL
+   ═══════════════════════════════════════════════════ */
+const token       = localStorage.getItem('srmm_token');
+let currentUser   = null;
+let userRole      = null;
+let currentMachineId = null;
+let availableMachines = [];
 
-            <!-- Gestionar Usuarios (Solo Admin) -->
-            <div id="usuarios" class="content-section">
-                <h2 class="section-title">Gestionar Usuarios</h2>
-                <div id="usuarios-content"></div>
-            </div>
+/* ═══════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════ */
+if (!token) { location.replace('/login.html'); }
 
-            <!-- Reportes -->
-            <div id="reportes" class="content-section">
-                <h2 class="section-title">Reportes</h2>
-                <p>Contenido de reportes del sistema.</p>
-                <div id="reportes-content"></div>
-            </div>
-        </div>
-    </div>
+async function initDashboard() {
+    try {
+        const payload = token.split('.')[1];
+        if (!payload) throw new Error('Token inválido');
+        currentUser = JSON.parse(atob(payload));
+        userRole    = currentUser.rol_acceso;
+    } catch (e) {
+        // Token inválido → usar rol demo para previsualización
+        currentUser = { email: 'admin@srmm.cl', rol_acceso: 'Administrador', nombre: 'Admin Demo' };
+        userRole    = 'Administrador';
+    }
 
-    <script>
-        const token = localStorage.getItem('srmm_token');
-        let currentUser = null;
+    renderSidebarUser();
+    applyRolePermissions();
+    renderWelcome();
+    initNavigation();
+    initMachineCards();
+    initIncidentForm();
+}
 
-        if (!token) {
-            location.replace('/login.html');
-        }
+/* ─── Sidebar usuario ─── */
+function renderSidebarUser() {
+    const name   = currentUser.nombre || currentUser.email || 'Usuario';
+    const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    document.getElementById('sidebarAvatar').textContent = initials;
+    document.getElementById('sidebarName').textContent   = name;
+    const badge = document.getElementById('sidebarRoleBadge');
+    badge.textContent  = userRole;
+    badge.className    = `role-badge ${userRole.toLowerCase()}`;
+}
 
-        async function initDashboard() {
-            try {
-                // Verificar token y obtener datos del usuario
-                const payloadMatch = token.split('.')[1];
-                if (!payloadMatch) {
-                    throw new Error('Token inválido');
-                }
+/* ─── Aplicar permisos: mostrar/ocultar ítems del menú ─── */
+function applyRolePermissions() {
+    const allowed = ROLE_PERMISSIONS[userRole] || ['inicio'];
 
-                const decoded = JSON.parse(atob(payloadMatch));
-                currentUser = decoded;
+    // Mostrar solo los botones de menú permitidos
+    document.querySelectorAll('.nav-link[data-role-required]').forEach(btn => {
+        const required = btn.dataset.roleRequired.split(',');
+        btn.style.display = required.includes(userRole) ? '' : 'none';
+    });
 
-                // Actualizar información del usuario
-                document.getElementById('userName').textContent = `Usuario: ${currentUser.email}`;
-                const roleElement = document.getElementById('userRole');
-                roleElement.textContent = currentUser.rol_acceso;
-                roleElement.className = `role-badge ${currentUser.rol_acceso.toLowerCase()}`;
+    // Ocultar botones del topbar que no aplican a este rol
+    if (!allowed.includes('inventario')) {
+        document.getElementById('topRegisterBtn').style.display = 'none';
+    }
+}
 
-                // Mostrar mensajes de bienvenida según rol
-                const roleInfo = document.getElementById('role-info');
-                roleInfo.innerHTML = `
-                    <div class="message success">
-                        <strong>Tu rol actual:</strong> ${currentUser.rol_acceso}
-                    </div>
-                    ${getRoleWelcomeMessage(currentUser.rol_acceso)}
-                `;
+/* ─── Mensaje de bienvenida en vista Inicio ─── */
+function renderWelcome() {
+    document.getElementById('welcomeTitle').textContent =
+        `Bienvenido al Sistema SRMM`;
 
-                // Mostrar/ocultar opciones de menú según rol
-                showMenuByRole(currentUser.rol_acceso);
-            } catch (error) {
-                console.error('Error al inicializar dashboard:', error);
-                localStorage.removeItem('srmm_token');
-                location.replace('/login.html');
-            }
-        }
+    document.getElementById('welcomeDesc').textContent =
+        `Sesión activa como: ${currentUser.email || currentUser.nombre}`;
 
-        function getRoleWelcomeMessage(role) {
-            const messages = {
-                'Cliente': `
-                    <div class="message">
-                        Como cliente, tienes acceso limitado al sistema. 
-                        Si necesitas acceder a funcionalidades adicionales, contacta con el administrador.
-                    </div>
-                `,
-                'Mecanico': `
-                    <div class="message">
-                        Como mecánico, puedes gestionar mantenimientos y revisar la maquinaria.
-                    </div>
-                `,
-                'Operador': `
-                    <div class="message">
-                        Como operador, puedes ver y gestionar la maquinaria del sistema.
-                    </div>
-                `,
-                'Administrador': `
-                    <div class="message success">
-                        ¡Bienvenido administrador! Tienes acceso completo al sistema, incluyendo la gestión de usuarios y roles.
-                    </div>
-                `
+    const info = ROLE_WELCOME[userRole] || { msg: 'Rol no reconocido.', type: 'info' };
+    document.getElementById('welcomeMessages').innerHTML =
+        `<div class="message ${info.type}">${info.msg}</div>`;
+
+    if (userRole === 'Cliente') {
+        document.getElementById('welcomeMessages').innerHTML +=
+            `<div class="restricted-message">
+                Tu acceso está limitado a la vista de cliente.<br>
+                Si necesitas otros permisos, solicítalo al administrador.
+            </div>`;
+    }
+}
+
+/* ═══════════════════════════════════════════════════
+   NAVEGACIÓN
+   ═══════════════════════════════════════════════════ */
+const viewButtons = Array.from(document.querySelectorAll('[data-view]'));
+const views       = Array.from(document.querySelectorAll('.view'));
+const pageTitle   = document.getElementById('pageTitle');
+
+function showView(viewName, push = true) {
+    const allowed = ROLE_PERMISSIONS[userRole] || ['inicio'];
+    const target  = allowed.includes(viewName) ? viewName : 'inicio';
+
+    views.forEach(v => v.classList.toggle('active', v.id === target));
+    viewButtons.forEach(b => b.classList.toggle('active', b.dataset.view === target));
+    pageTitle.textContent = VIEW_LABELS[target] || 'Dashboard';
+
+    if (push) history.replaceState(null, '', `#${target}`);
+
+    // Cargar usuarios cuando Admin entra a esa sección
+    if (target === 'usuarios' && userRole === 'Administrador') {
+        loadUsersList();
+    }
+}
+
+function initNavigation() {
+    viewButtons.forEach(btn => {
+        btn.addEventListener('click', () => showView(btn.dataset.view));
+    });
+    window.addEventListener('hashchange', () => {
+        showView(location.hash.replace('#', '') || 'inicio', false);
+    });
+    showView(location.hash.replace('#', '') || 'inicio', false);
+}
+
+/* ═══════════════════════════════════════════════════
+   GESTIÓN DE USUARIOS (Admin)
+   ═══════════════════════════════════════════════════ */
+async function loadUsersList() {
+    const container = document.getElementById('usuarios-content');
+    container.innerHTML = '<p class="muted">Cargando usuarios…</p>';
+    try {
+        const res = await fetch('/api/usuarios', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error(res.statusText);
+        const users = await res.json();
+        renderUsersList(users);
+    } catch (err) {
+        container.innerHTML = `<div class="message error">Error al cargar usuarios: ${err.message}</div>`;
+    }
+}
+
+function renderUsersList(users) {
+    const container = document.getElementById('usuarios-content');
+    const roles = ['Cliente', 'Mecanico', 'Operador', 'Administrador'];
+    let html = `<div class="table-wrap"><table class="manage-users-table">
+        <thead><tr><th>ID</th><th>Nombre</th><th>Email</th><th>Rol actual</th><th>Nuevo rol</th><th>Acción</th></tr></thead>
+        <tbody>`;
+    users.forEach(u => {
+        html += `<tr>
+            <td>${u.id_usuario}</td>
+            <td>${u.nombre_completo}</td>
+            <td>${u.email}</td>
+            <td><span class="role-badge ${u.rol_acceso.toLowerCase()}">${u.rol_acceso}</span></td>
+            <td>
+                <select class="role-select" id="role-select-${u.id_usuario}">
+                    ${roles.map(r => `<option value="${r}" ${u.rol_acceso===r?'selected':''}>${r}</option>`).join('')}
+                </select>
+            </td>
+            <td><button class="btn" onclick="changeUserRole(${u.id_usuario})">Cambiar rol</button></td>
+        </tr>`;
+    });
+    html += `</tbody></table></div>`;
+    container.innerHTML = html;
+}
+
+async function changeUserRole(userId) {
+    const select  = document.getElementById(`role-select-${userId}`);
+    const newRole = select.value;
+    try {
+        const res = await fetch(`/api/usuarios/${userId}/role`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ rol_acceso: newRole })
+        });
+        if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
+        alert(`✅ Rol actualizado a: ${newRole}`);
+        loadUsersList();
+    } catch (err) {
+        alert(`❌ Error: ${err.message}`);
+    }
+}
+
+/* ═══════════════════════════════════════════════════
+   MACHINE CARDS + MODAL
+   ═══════════════════════════════════════════════════ */
+function initMachineCards() {
+    const machineAlertModal  = document.getElementById('machineAlertModal');
+    const modalTitle         = document.getElementById('modalTitle');
+    const modalStatus        = document.querySelector('.modal-status');
+    const modalReason        = document.querySelector('.modal-reason');
+    const modalCloseButton   = document.getElementById('modalCloseButton');
+    const modalBackdrop      = document.querySelector('.modal-backdrop');
+    const machineDetailPanel = document.getElementById('machineDetailPanel');
+    const detailTitle        = document.getElementById('detailTitle');
+    const detailSubtitle     = document.getElementById('detailSubtitle');
+    const detailMachineMotive= document.getElementById('detailMachineMotive');
+    const detailFilterPending= document.getElementById('detailFilterPending');
+    const detailIncidentRows = document.getElementById('detailIncidentRows');
+
+    function isCritical(state) { return ['Bloqueada','No Operativa'].includes(state); }
+
+    function openModal({ name, state, reason }) {
+        modalTitle.textContent  = `Advertencia: ${name}`;
+        modalStatus.textContent = `Estado crítico: ${state}. Se requiere autorización del administrador.`;
+        modalReason.textContent = reason;
+        machineAlertModal.classList.add('visible');
+        machineAlertModal.setAttribute('aria-hidden','false');
+    }
+
+    function closeModal() {
+        machineAlertModal.classList.remove('visible');
+        machineAlertModal.setAttribute('aria-hidden','true');
+    }
+
+    function showDetailPanel({ id, name, state, motive }) {
+        currentMachineId = id;
+        detailTitle.textContent    = `${name} — Fallas e Incidencias`;
+        detailSubtitle.textContent = `Estado: ${state}`;
+        detailMachineMotive.textContent = motive;
+        machineDetailPanel.classList.remove('hidden');
+        loadMachineIncidencias(detailIncidentRows, detailFilterPending);
+    }
+
+    document.querySelectorAll('.machine-card[data-maquina-id]').forEach(card => {
+        card.addEventListener('click', () => {
+            const data = {
+                id:     card.dataset.maquinaId,
+                name:   card.dataset.nombre  || 'Máquina',
+                state:  card.dataset.estado  || 'Desconocido',
+                motive: card.dataset.motivo  || 'Sin descripción disponible.'
             };
-            return messages[role] || '<div class="message">Rol no reconocido</div>';
+            showDetailPanel(data);
+            if (isCritical(data.state)) openModal(data);
+        });
+    });
+
+    modalCloseButton.addEventListener('click', closeModal);
+    modalBackdrop.addEventListener('click', closeModal);
+
+    detailFilterPending.addEventListener('change', () => {
+        if (currentMachineId) loadMachineIncidencias(detailIncidentRows, detailFilterPending);
+    });
+}
+
+async function loadMachineIncidencias(rows, filter) {
+    if (!currentMachineId) return;
+    rows.innerHTML = '<tr><td colspan="6" class="detail-empty">Cargando incidencias…</td></tr>';
+    const solo = filter.checked ? 'true' : 'false';
+    try {
+        const res = await fetch(`/api/maquinaria/${currentMachineId}/incidencias?solo_no_resueltas=${solo}`);
+        if (!res.ok) throw new Error('No se pudo cargar el listado.');
+        const data = await res.json();
+        renderIncidencias(data, rows);
+    } catch (err) {
+        rows.innerHTML = `<tr><td colspan="6" class="detail-empty">Error: ${err.message}</td></tr>`;
+    }
+}
+
+function renderIncidencias(items, rows) {
+    if (!items || !items.length) {
+        rows.innerHTML = '<tr><td colspan="6" class="detail-empty">No hay incidencias registradas.</td></tr>';
+        return;
+    }
+    rows.innerHTML = items.map(i => {
+        const c = i.criticidad || 'Media';
+        return `<tr>
+            <td>${new Date(i.fecha).toLocaleDateString('es-CL')}</td>
+            <td>${i.descripcion}</td>
+            <td><span class="pill tag ${c.toLowerCase()}">${c}</span></td>
+            <td>${i.operador_nombre || `#${i.operador_id}`}</td>
+            <td>${i.vinculada_mantenimiento ? 'Sí' : 'No'}</td>
+            <td>${i.estado || 'Pendiente'}</td>
+        </tr>`;
+    }).join('');
+}
+
+/* ═══════════════════════════════════════════════════
+   INCIDENT FORM
+   ═══════════════════════════════════════════════════ */
+function initIncidentForm() {
+    const machineSelect  = document.getElementById('incidentMachine');
+    const dateInput      = document.getElementById('incidentDate');
+    const operatorSelect = document.getElementById('incidentOperator');
+    const form           = document.getElementById('incidentRegisterForm');
+    const formStatus     = document.getElementById('incidentFormStatus');
+
+    // Fecha de hoy
+    const today = new Date();
+    dateInput.value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+    // Cargar opciones
+    (async () => {
+        try {
+            const [mr, ur] = await Promise.all([fetch('/api/maquinaria'), fetch('/api/usuarios')]);
+            if (!mr.ok || !ur.ok) throw new Error('Error cargando datos');
+            const [machines, users] = await Promise.all([mr.json(), ur.json()]);
+            availableMachines = machines;
+            machineSelect.innerHTML  = '<option value="">Selecciona una máquina</option>' +
+                machines.map(m => `<option value="${m.id_maquina}">${m.modelo_equipo} — ${m.estado}</option>`).join('');
+            const ops = users.filter(u => u.rol_acceso === 'Operador');
+            operatorSelect.innerHTML = ops.length
+                ? '<option value="">Selecciona un operador</option>' + ops.map(o => `<option value="${o.id_usuario}">${o.nombre_completo}</option>`).join('')
+                : '<option value="">Sin operadores disponibles</option>';
+        } catch {
+            machineSelect.innerHTML  = '<option value="">No se pudieron cargar máquinas</option>';
+            operatorSelect.innerHTML = '<option value="">No se pudieron cargar operadores</option>';
+        }
+    })();
+
+    form.addEventListener('submit', async e => {
+        e.preventDefault();
+        formStatus.textContent = '';
+        const maquinaId  = machineSelect.value;
+        const operadorId = operatorSelect.value;
+        const fecha      = dateInput.value;
+        const criticidad = document.getElementById('incidentSeverity').value;
+        const descripcion= document.getElementById('incidentDescription').value.trim();
+        const mantId     = document.getElementById('incidentMaintenanceId').value.trim();
+
+        if (!maquinaId || !operadorId || !fecha || !descripcion) {
+            formStatus.textContent = 'Completa todos los campos obligatorios.';
+            formStatus.style.color = '#9f2934';
+            return;
         }
 
-        function showMenuByRole(role) {
-            // Mostrar siempre el menú de Inicio
-            
-            // Mostrar opciones según rol
-            if (role === 'Administrador') {
-                show('maquinaria-nav');
-                show('mantenimientos-nav');
-                show('usuarios-nav');
-                show('reportes-nav');
-            } else if (role === 'Mecanico' || role === 'Operador') {
-                show('maquinaria-nav');
-                show('mantenimientos-nav');
-                show('reportes-nav');
-            } else if (role === 'Cliente') {
-                // Cliente solo ve Inicio
-                document.getElementById('role-info').innerHTML += `
-                    <div class="restricted-message">
-                        Tu acceso está limitado a la vista de cliente. 
-                        Si necesitas otros permisos, solicítalo al administrador.
-                    </div>
-                `;
-            }
-        }
-
-        function show(elementId) {
-            document.getElementById(elementId).style.display = 'block';
-        }
-
-        function hide(elementId) {
-            document.getElementById(elementId).style.display = 'none';
-        }
-
-        function showSection(sectionId) {
-            // Ocultar todas las secciones
-            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
-            // Mostrar sección seleccionada
-            document.getElementById(sectionId).classList.add('active');
-
-            // Actualizar estado del menú
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            event.target.classList.add('active');
-
-            // Cargar contenido si es necesario
-            if (sectionId === 'usuarios' && currentUser.rol_acceso === 'Administrador') {
-                loadUsersList();
-            }
-        }
-
-        async function loadUsersList() {
-            const container = document.getElementById('usuarios-content');
-            container.innerHTML = '<p>Cargando usuarios...</p>';
-
-            try {
-                const response = await fetch('/api/usuarios', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Error al cargar usuarios: ${response.statusText}`);
-                }
-
-                const users = await response.json();
-                renderUsersList(users);
-            } catch (error) {
-                console.error('Error:', error);
-                container.innerHTML = `<div class="message error">Error al cargar usuarios: ${error.message}</div>`;
-            }
-        }
-
-        function renderUsersList(users) {
-            const container = document.getElementById('usuarios-content');
-            
-            let html = `
-                <table class="manage-users-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Nombre</th>
-                            <th>Email</th>
-                            <th>Rol Actual</th>
-                            <th>Nuevo Rol</th>
-                            <th>Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            users.forEach(user => {
-                html += `
-                    <tr>
-                        <td>${user.id_usuario}</td>
-                        <td>${user.nombre_completo}</td>
-                        <td>${user.email}</td>
-                        <td><span class="role-badge ${user.rol_acceso.toLowerCase()}">${user.rol_acceso}</span></td>
-                        <td>
-                            <select class="role-select" id="role-select-${user.id_usuario}">
-                                <option value="Cliente" ${user.rol_acceso === 'Cliente' ? 'selected' : ''}>Cliente</option>
-                                <option value="Mecanico" ${user.rol_acceso === 'Mecanico' ? 'selected' : ''}>Mecánico</option>
-                                <option value="Operador" ${user.rol_acceso === 'Operador' ? 'selected' : ''}>Operador</option>
-                                <option value="Administrador" ${user.rol_acceso === 'Administrador' ? 'selected' : ''}>Administrador</option>
-                            </select>
-                        </td>
-                        <td>
-                            <button class="btn" onclick="changeUserRole(${user.id_usuario})">Cambiar Rol</button>
-                        </td>
-                    </tr>
-                `;
+        try {
+            const res = await fetch(`/api/maquinaria/${maquinaId}/incidencias`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    operador_id: Number(operadorId), fecha, criticidad, descripcion,
+                    mantenimiento_id: mantId ? Number(mantId) : null
+                })
             });
-
-            html += `
-                    </tbody>
-                </table>
-            `;
-
-            container.innerHTML = html;
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.message || 'Error al registrar');
+            formStatus.textContent = '✅ Incidencia registrada con estado Pendiente.';
+            formStatus.style.color = '#1f9d49';
+            document.getElementById('incidentDescription').value = '';
+            document.getElementById('incidentMaintenanceId').value = '';
+        } catch (err) {
+            formStatus.textContent = `❌ Error: ${err.message}`;
+            formStatus.style.color = '#9f2934';
         }
+    });
+}
 
-        async function changeUserRole(userId) {
-            const select = document.getElementById(`role-select-${userId}`);
-            const newRole = select.value;
+/* ─── Logout ─── */
+function logout() {
+    localStorage.removeItem('srmm_token');
+    location.replace('/login.html');
+}
 
-            try {
-                const response = await fetch(`/api/usuarios/${userId}/role`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ rol_acceso: newRole })
-                });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.message || 'Error al cambiar el rol');
-                }
-
-                const result = await response.json();
-                alert(`✅ Rol actualizado correctamente a: ${newRole}`);
-                loadUsersList(); // Recargar lista
-            } catch (error) {
-                console.error('Error:', error);
-                alert(`❌ Error: ${error.message}`);
-            }
-        }
-
-        function logout() {
-            localStorage.removeItem('srmm_token');
-            location.replace('/login.html');
-        }
-
-        // Inicializar dashboard cuando se carga la página
-        initDashboard();
-    </script>
+/* ─── Arrancar ─── */
+initDashboard();
+</script>
 </body>
 </html>
