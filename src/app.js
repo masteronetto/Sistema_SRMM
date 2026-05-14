@@ -82,11 +82,16 @@ app.get(['/favicon.ico', '/favicon.png'], (_req, res) => {
 });
 
 app.get('/', (_req, res) => {
+  // Priorizar página de login si existe
+  if (staticFileExists('login.html')) {
+    return res.sendFile(staticFilePath('login.html'));
+  }
+
   if (!staticFileExists('index.html')) {
     return res.status(500).json({ message: 'index.html no encontrado en frontend estático' });
   }
 
-  res.sendFile(staticFilePath('index.html'));
+  return res.sendFile(staticFilePath('index.html'));
 });
 
 app.get('/health', (_req, res) => {
@@ -151,6 +156,11 @@ app.use((err, _req, res, _next) => {
 // Fallback: cualquier ruta no encontrada que no sea API, servir index.html
 app.use((_req, res) => {
   if (!_req.path.startsWith('/api')) {
+    // Priorizar login como fallback público
+    if (staticFileExists('login.html')) {
+      return res.status(200).sendFile(staticFilePath('login.html'));
+    }
+
     if (!staticFileExists('index.html')) {
       return res.status(500).json({ message: 'index.html no encontrado en frontend estático' });
     }
