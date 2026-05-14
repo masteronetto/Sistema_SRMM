@@ -242,6 +242,120 @@ El sistema expone endpoints para:
 - **Registro de fallas por máquina con operador responsable**
 - **Alertas automáticas para máquinas críticas**
 
+## Flujo de Prueba de Roles
+
+El registro público crea usuarios con rol `Cliente`. Luego, un `Administrador` puede cambiar el rol de cualquier usuario usando `PUT /api/usuarios/:id/role`.
+
+### Secuencia recomendada para pruebas
+Si estás en un Codespace de GitHub, entra a `Terminal > Puertos > Dirección de reenvío` y usa esa URL como base para las pruebas en Postman.
+
+1. Registrar un nuevo usuario desde `POST /api/auth/register`.
+2. Iniciar sesión con `POST /api/auth/login`.
+3. Confirmar que el token JWT contiene `rol_acceso`.
+4. Iniciar sesión con un usuario `Administrador`.
+5. Cambiar el rol del usuario de prueba con `PUT /api/usuarios/:id/role`.
+6. Volver a iniciar sesión y verificar que el token refleje el nuevo rol. 
+
+### Usuarios de prueba sugeridos
+
+```json
+[
+  {
+    "nombre_completo": "Admin Inicial",
+    "email": "admin@srmm.cl",
+    "contrasena": "Admin123456",
+    "rol_acceso": "Administrador"
+  },
+  {
+    "nombre_completo": "Juan Cliente",
+    "email": "juan.cliente@srmm.cl",
+    "contrasena": "Juan123456",
+    "rol_acceso": "Cliente"
+  },
+  {
+    "nombre_completo": "Maria Operadora",
+    "email": "maria.operadora@srmm.cl",
+    "contrasena": "Maria123456",
+    "rol_acceso": "Operador"
+  },
+  {
+    "nombre_completo": "Pedro Mecánico",
+    "email": "pedro.mecanico@srmm.cl",
+    "contrasena": "Pedro123456",
+    "rol_acceso": "Mecanico"
+  }
+]
+```
+
+### Qué debería ver cada rol
+
+- `Cliente`: solo vista básica de bienvenida y opciones limitadas.
+- `Operador`: acceso a maquinaria, mantenimientos y reportes.
+- `Mecanico`: acceso a maquinaria, mantenimientos y reportes.
+- `Administrador`: acceso total, incluyendo gestión de usuarios y cambio de roles.
+
+## Flujo de Prueba de Roles
+
+El registro público crea usuarios con rol `Cliente`. Luego, un `Administrador` puede cambiar el rol de cualquier usuario usando `PUT /api/usuarios/:id/role`.
+
+### Secuencia recomendada para pruebas
+
+1. Registrar un nuevo usuario desde `/api/auth/register`.
+2. Iniciar sesión con `/api/auth/login`.
+3. Confirmar que el token JWT contiene `rol_acceso`.
+4. Iniciar sesión con un usuario `Administrador`.
+5. Cambiar el rol del usuario de prueba con `PUT /api/usuarios/:id/role`.
+6. Volver a iniciar sesión y verificar que el token refleje el nuevo rol.
+
+### Usuarios de prueba sugeridos
+
+```json
+[
+  {
+    "nombre_completo": "Admin Inicial",
+    "email": "admin@srmm.cl",
+    "contrasena": "Admin123456",
+    "rol_acceso": "Administrador"
+  },
+  {
+    "nombre_completo": "Juan Cliente",
+    "email": "juan.cliente@srmm.cl",
+    "contrasena": "Juan123456",
+    "rol_acceso": "Cliente"
+  },
+  {
+    "nombre_completo": "Maria Operadora",
+    "email": "maria.operadora@srmm.cl",
+    "contrasena": "Maria123456",
+    "rol_acceso": "Operador"
+  },
+  {
+    "nombre_completo": "Pedro Mecánico",
+    "email": "pedro.mecanico@srmm.cl",
+    "contrasena": "Pedro123456",
+    "rol_acceso": "Mecanico"
+  }
+]
+```
+### Usuarios existentes para pruebas
+
+| Nombre | Email | Contraseña | Rol |
+| --- | --- | --- | --- |
+| Admin Inicial | admin@srmm.cl | Admin123456 | Administrador |
+| Juan Cliente | juan.cliente@srmm.cl | Juan123456 | Cliente |
+| Ana Cliente | ana.cliente@srmm.cl | Ana123456 | Cliente |
+| Maria Operadora | maria.operadora@srmm.cl | Maria123456 | Operador |
+| Carlos Operador | carlos.operador@srmm.cl | Carlos123456 | Operador |
+| Pedro Mecánico | pedro.mecanico@srmm.cl | Pedro123456 | Mecanico |
+| Sofia Mecánica | sofia.mecanica@srmm.cl | Sofia123456 | Mecanico |
+
+### Qué debería ver cada rol
+
+- `Cliente`: solo vista básica de bienvenida y opciones limitadas.
+- `Operador`: acceso a maquinaria, mantenimientos y reportes.
+- `Mecanico`: acceso a maquinaria, mantenimientos y reportes.
+- `Administrador`: acceso total, incluyendo gestión de usuarios y cambio de roles.
+
 ## Endpoints principales
 
 ### Health

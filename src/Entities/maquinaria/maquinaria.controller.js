@@ -478,6 +478,7 @@ module.exports = {
   create,
   update,
   markAsNotOperative,
+  notifyOperator,
   blockCritical,
   getBloqueo,
   unblock,
