@@ -56,7 +56,17 @@ async function listMaquinaria() {
         WHEN (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + p.intervalo_horas - m.horometro_actual) <= 0 THEN 'Alta'
         WHEN (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + p.intervalo_horas - m.horometro_actual) <= (p.intervalo_horas * 0.3) THEN 'Media'
         ELSE 'Baja'
-      END AS prioridad
+      END AS prioridad,
+      
+      CASE 
+        WHEN p.intervalo_horas IS NULL OR p.intervalo_horas = 0 THEN 0
+        ELSE ROUND(
+          ((m.horometro_actual - COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0)) / p.intervalo_horas) * 100
+        , 2)
+      END AS porcentaje_uso,
+      
+      (CURRENT_DATE - COALESCE(uh.ultima_fecha_registro, m.created_at::date)) AS dias_sin_registro
+      
     FROM maquinaria m
     LEFT JOIN planes_mantencion p ON p.id_plan = m.planes_mantencion_id_plan
     LEFT JOIN LATERAL (
@@ -67,7 +77,7 @@ async function listMaquinaria() {
       LIMIT 1
     ) um ON TRUE
     LEFT JOIN LATERAL (
-      SELECT valor_horas AS ultimo_valor_registrado
+      SELECT valor_horas AS ultimo_valor_registrado, fecha_registro AS ultima_fecha_registro
       FROM historial_horometro hh
       WHERE hh.maquinaria_id_maquina = m.id_maquina
       ORDER BY fecha_registro DESC, id_registro DESC
@@ -86,8 +96,6 @@ async function listMaquinaria() {
 }
 
 async function listMaquinasConMantenimientoUrgente(umbralHoras = 0, limit = null, offset = null) {
-  // umbralHoras: devuelve máquinas con horas_restantes <= umbralHoras
-  // Calcula referencia_horometro: último mantenimiento.horometro_registro o último historial.valor_horas
   const query = `
     SELECT
       m.id_maquina,
@@ -101,7 +109,15 @@ async function listMaquinasConMantenimientoUrgente(umbralHoras = 0, limit = null
         WHEN (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + COALESCE(p.intervalo_horas, 0) - m.horometro_actual) <= 0 THEN 'Alta'
         WHEN (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + COALESCE(p.intervalo_horas, 0) - m.horometro_actual) <= COALESCE(p.intervalo_horas, 0) * 0.3 THEN 'Media'
         ELSE 'Baja'
-      END AS prioridad
+      END AS prioridad,
+      
+      CASE
+        WHEN p.intervalo_horas IS NULL OR p.intervalo_horas = 0 THEN 0
+        ELSE ROUND(
+          ((m.horometro_actual - COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0)) / p.intervalo_horas) * 100
+        , 2)
+      END AS porcentaje_uso
+      
     FROM maquinaria m
     LEFT JOIN planes_mantencion p ON p.id_plan = m.planes_mantencion_id_plan
     LEFT JOIN LATERAL (
@@ -122,19 +138,12 @@ async function listMaquinasConMantenimientoUrgente(umbralHoras = 0, limit = null
       AND (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + COALESCE(p.intervalo_horas, 0) - m.horometro_actual) <= $1
     ORDER BY horas_restantes ASC
   `;
-
   const params = [umbralHoras];
   const { rows } = await pool.query(query, params);
-
-  // apply limit/offset in JS if provided (keeps SQL simple and portable)
+  
   let result = rows;
-  if (offset !== null) {
-    result = result.slice(offset);
-  }
-  if (limit !== null) {
-    result = result.slice(0, limit);
-  }
-
+  if (offset !== null) { result = result.slice(offset); }
+  if (limit !== null) { result = result.slice(0, limit); }
   return result;
 }
 

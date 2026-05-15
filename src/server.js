@@ -12,7 +12,7 @@ const io = setupSocketIO(httpServer);
 // Hacer io accesible en la app
 app.set('io', io);
 
-const intervaloVerificacionRetrasos = Number(process.env.RETRASOS_CHECK_INTERVAL_MS || 60000);
+const pool = require('./db/pool'); 
 
 async function ejecutarChequeoRetrasos() {
   if (!hasDatabaseConfig) {
@@ -25,6 +25,45 @@ async function ejecutarChequeoRetrasos() {
   } catch (error) {
     console.error('[Scheduler] Error verificando retrasos de mantenimiento:', error);
   }
+} 
+
+async function verificarFaltasDeRegistro() {
+  console.log('[Scheduler] Buscando máquinas sin registro de horómetro en las últimas 24 hrs...');
+  try {
+    const query = `
+      SELECT m.id_maquina, m.modelo_equipo, 
+             COALESCE(MAX(h.fecha_registro), m.created_at::date) as ultima_fecha
+      FROM maquinaria m
+      LEFT JOIN historial_horometro h ON m.id_maquina = h.maquinaria_id_maquina
+      WHERE m.estado NOT IN ('Mantencion', 'Bloqueada', 'No Operativa')
+      GROUP BY m.id_maquina, m.modelo_equipo, m.created_at
+      HAVING COALESCE(MAX(h.fecha_registro), m.created_at::date) < CURRENT_DATE - INTERVAL '1 day'
+    `;
+    
+    const { rows } = await pool.query(query);
+
+    for (const maq of rows) {
+      await pool.query(`
+        INSERT INTO alertas_criticas (maquinaria_id_maquina, tipo_alerta, estado_alerta, porcentaje_umbral, horometro_critico, requiere_mantenimiento)
+        VALUES ($1, 'Advertencia', 'Pendiente', 0, 0, FALSE)
+      `, [maq.id_maquina]);
+      
+      console.log(`[ALERTA INTERNA] Máquina ID: ${maq.id_maquina} (${maq.modelo_equipo}) sin registro de horómetro desde ${maq.ultima_fecha}. Operador será notificado.`);
+      
+      if (typeof io !== 'undefined') {
+        io.emit('alerta:nueva', {
+          tipo: 'Advertencia',
+          mensaje: `La máquina ${maq.modelo_equipo} lleva más de 24 hrs sin registro.`
+        });
+      }
+    }
+  } catch (error) {
+    console.error('[Scheduler] Error al verificar registros:', error);
+  }
+}
+
+if (hasDatabaseConfig) {
+  setInterval(verificarFaltasDeRegistro, 86400000);
 }
 
 if (hasDatabaseConfig) {

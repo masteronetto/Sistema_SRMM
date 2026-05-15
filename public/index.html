@@ -888,11 +888,25 @@
                         <article class="stat-card"><div class="stat-label">Bloqueadas</div><div class="stat-value">2</div><div class="stat-note">Requieren intervención</div></article>
                         <article class="stat-card"><div class="stat-label">En revisión</div><div class="stat-value">3</div><div class="stat-note">Seguimiento operativo</div></article>
                     </div>
-                    <div class="mini-grid">
-                        <article class="stat-card"><div class="stat-label">Excavadora CAT 320</div><div class="stat-note">Horómetro 2.840 hrs · Estado Bloqueada</div></article>
-                        <article class="stat-card"><div class="stat-label">Grúa Liebherr LTM 1050</div><div class="stat-note">Horómetro 1.380 hrs · Estado Disponible</div></article>
-                        <article class="stat-card"><div class="stat-label">Bobcat S570</div><div class="stat-note">Horómetro 890 hrs · Estado Disponible</div></article>
-                    </div>
+
+                    <section class="section-card">
+                        <div class="section-title">Listado de Maquinaria</div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Máquina</th>
+                                        <th>Horómetro</th>
+                                        <th>Prioridad</th>
+                                        <th>Estado</th>
+                                        <th>Uso (%)</th> 
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-maquinaria">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </section>
                 </section>
 
                 <section id="mantenimiento" class="view">
@@ -1323,6 +1337,7 @@
 
                 const [machines, users] = await Promise.all([machinesResponse.json(), usersResponse.json()]);
                 availableMachines = machines;
+                renderMaquinaria(machines);
                 incidentMachineSelect.innerHTML = `<option value="">Selecciona una máquina</option>` + machines.map((machine) => `
                     <option value="${machine.id_maquina}">${machine.modelo_equipo} — ${machine.estado}</option>
                 `).join('');
@@ -1546,6 +1561,47 @@
         modalCloseButton.addEventListener('click', closeMachineAlert);
         modalBackdrop.addEventListener('click', closeMachineAlert);
         initializeIncidentForm();
+
+        function renderMaquinaria(data) {
+            const tbody = document.getElementById('tabla-maquinaria');
+            if (!tbody) return;
+
+            const sortedData = [...data].sort((a, b) => (b.porcentaje_uso || 0) - (a.porcentaje_uso || 0));
+
+            tbody.innerHTML = sortedData.map(maquina => {
+                let bgClass = '';
+                if (maquina.porcentaje_uso > 90) {
+                    bgClass = 'background-color: #fce8e8;';
+                } else if (maquina.porcentaje_uso > 70) {
+                    bgClass = 'background-color: #fff6cd;';
+                }
+
+                const priorityColors = { 'Alta': 'high', 'Media': 'medium', 'Baja': 'low' };
+                const badgeClass = priorityColors[maquina.prioridad] || 'low';
+
+                let advertenciaHTML = '';
+                if (maquina.dias_sin_registro >= 1 && !['Mantencion', 'Bloqueada', 'No Operativa'].includes(maquina.estado)) {
+                    advertenciaHTML = `<span title="⚠ Sin registro de horómetro hace ${maquina.dias_sin_registro} día(s)" style="color: #b92232; font-size: 1.1rem; margin-left: 5px; cursor: help;">⚠</span>`;
+                }
+
+                return `
+                    <tr style="${bgClass}">
+                        <td>
+                            <div style="font-weight: 800; display:flex; align-items:center;">
+                                ${maquina.modelo_equipo} ${advertenciaHTML}
+                            </div>
+                            <div style="font-size: 0.8rem; color: #7a6c62;">ID: ${maquina.id_maquina}</div>
+                        </td>
+                        <td>${maquina.horometro_actual} hrs</td>
+                        <td>
+                            <span class="pill tag ${badgeClass}">${maquina.prioridad || 'Baja'}</span>
+                        </td>
+                        <td>${maquina.estado}</td>
+                        <td style="font-weight: 800;">${maquina.porcentaje_uso || 0}%</td>
+                    </tr>
+                `;
+            }).join('');
+        }
     </script>
 </body>
 </html>
