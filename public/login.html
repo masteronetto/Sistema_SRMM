@@ -29,6 +29,10 @@
     <form id="loginForm">
       <input type="email" id="email" name="email" placeholder="Correo electrónico" required>
       <input type="password" id="password" name="password" placeholder="Contraseña" required>
+      <label class="small" style="display:flex;gap:8px;align-items:center;cursor:pointer;user-select:none;">
+        <input type="checkbox" id="rememberSession" style="width:auto;margin:0;">
+        Mantener sesión iniciada
+      </label>
       <button type="submit">Entrar</button>
     </form>
     <p class="small">¿No tienes cuenta? <a class="link" href="/register.html">Regístrate</a></p>
@@ -39,17 +43,37 @@
   <script>
     const form = document.getElementById('loginForm');
     const msg = document.getElementById('msg');
+
+    function setAuthToken(token, rememberSession) {
+      if (rememberSession) {
+        localStorage.setItem('srmm_token', token);
+        sessionStorage.removeItem('srmm_token');
+        return;
+      }
+
+      sessionStorage.setItem('srmm_token', token);
+      localStorage.removeItem('srmm_token');
+    }
+
+    function getAuthToken() {
+      return sessionStorage.getItem('srmm_token') || localStorage.getItem('srmm_token');
+    }
+
+    if (getAuthToken()) {
+      window.location.replace('/dashboard.html');
+    }
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       msg.textContent='';
       const email = document.getElementById('email').value;
       const contrasena = document.getElementById('password').value;
+      const rememberSession = document.getElementById('rememberSession').checked;
       try{
         const res = await fetch('/api/auth/login', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,contrasena})});
         const data = await res.json();
         if(!res.ok){ msg.textContent = data.message || 'Error'; return; }
-        // store token
-        localStorage.setItem('srmm_token', data.token);
+        setAuthToken(data.token, rememberSession);
         window.location.href = '/dashboard.html';
       }catch(err){ msg.textContent = 'Error de conexión' }
     });

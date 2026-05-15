@@ -5,7 +5,8 @@
     <script>
         (function(){
             try{
-                if (!localStorage.getItem('srmm_token') && !location.pathname.endsWith('/login.html')){
+                const token = sessionStorage.getItem('srmm_token') || localStorage.getItem('srmm_token');
+                if (!token && !location.pathname.endsWith('/login.html')){
                     location.replace('/login.html');
                 }
             }catch(e){}
@@ -1052,6 +1053,21 @@ const ROLE_WELCOME = {
     'Usuario':       { msg: 'Bienvenido. Tienes acceso de consulta al sistema. Contacta al administrador si necesitas permisos adicionales.', type: 'warning' }
 };
 
+function getAuthToken() {
+    try {
+        return sessionStorage.getItem('srmm_token') || localStorage.getItem('srmm_token');
+    } catch (e) {
+        return null;
+    }
+}
+
+function clearAuthToken() {
+    try {
+        sessionStorage.removeItem('srmm_token');
+        localStorage.removeItem('srmm_token');
+    } catch (e) {}
+}
+
 const VIEW_LABELS = {
     inicio:        'Inicio',
     inventario:    'Maquinaria',
@@ -1065,7 +1081,7 @@ const VIEW_LABELS = {
 /* ═══════════════════════════════════════════════════
    ESTADO GLOBAL
    ═══════════════════════════════════════════════════ */
-const token       = localStorage.getItem('srmm_token');
+const token       = getAuthToken();
 let currentUser   = null;
 let userRole      = null;
 let currentMachineId = null;
@@ -1083,9 +1099,9 @@ async function initDashboard() {
         currentUser = JSON.parse(atob(payload));
         userRole    = currentUser.rol_acceso;
     } catch (e) {
-        // Token inválido → usar rol demo para previsualización
-        currentUser = { email: 'admin@srmm.cl', rol_acceso: 'Administrador', nombre: 'Admin Demo' };
-        userRole    = 'Administrador';
+        clearAuthToken();
+        location.replace('/login.html');
+        return;
     }
 
     renderSidebarUser();
@@ -1552,7 +1568,7 @@ function initIncidentForm() {
 
 /* ─── Logout ─── */
 function logout() {
-    localStorage.removeItem('srmm_token');
+    clearAuthToken();
     location.replace('/login.html');
 }
 
