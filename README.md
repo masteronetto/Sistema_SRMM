@@ -347,24 +347,7 @@ El registro público crea usuarios con rol `Usuario`. Luego, un `Administrador` 
     "contrasena": "Admin123456",
     "rol_acceso": "Administrador"
   },
-  {
-    "nombre_completo": "Juan Usuario",
-    "email": "juan.usuario@srmm.cl",
-    "contrasena": "Juan123456",
-    "rol_acceso": "Usuario"
-  },
-  {
-    "nombre_completo": "Maria Operadora",
-    "email": "maria.operadora@srmm.cl",
-    "contrasena": "Maria123456",
-    "rol_acceso": "Operador"
-  },
-  {
-    "nombre_completo": "Pedro Mecánico",
-    "email": "pedro.mecanico@srmm.cl",
-    "contrasena": "Pedro123456",
-    "rol_acceso": "Mecanico"
-  }
+ 
 ]
 ```
 ### Usuarios existentes para pruebas
@@ -372,12 +355,7 @@ El registro público crea usuarios con rol `Usuario`. Luego, un `Administrador` 
 | Nombre | Email | Contraseña | Rol |
 | --- | --- | --- | --- |
 | Admin Inicial | admin@srmm.cl | Admin123456 | Administrador |
-| Danny mecanico | Danny@test.com | 123456 | Mecanico |
-| Juan Usuario | juan.usuario@srmm.cl | Juan123456 | Usuario |
-| Ana Usuario | ana.usuario@srmm.cl | Ana123456 | Usuario |
-| Maria Operadora | maria.operadora@srmm.cl | Maria123456 | Operador |
-| Carlos Operador | carlos.operador@srmm.cl | Carlos123456 | Operador |
-| Pedro Mecánico | pedro.mecanico@srmm.cl | Pedro123456 | Mecanico |
+| Daniel onetto | onettodaniel15@gmail.com | Daniel15 | Mecanico |
 
 ### Qué debería ver cada rol
 
