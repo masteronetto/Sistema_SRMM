@@ -126,6 +126,7 @@ if (hasDatabaseConfig || hasDatabaseUrl) {
   const planesMantencionRoutes = require('./Entities/planes_mantencion/planes_mantencion.routes');
   const arriendosRoutes = require('./Entities/arriendos/arriendos.routes');
   const authRoutes = require('./Entities/auth/auth.routes');
+  const roleRequestsRoutes = require('./Entities/role_requests/role_requests.routes');
 
   app.use('/api/usuarios', usuariosRoutes);
   app.use('/api/maquinaria', maquinariaRoutes);
@@ -137,6 +138,7 @@ if (hasDatabaseConfig || hasDatabaseUrl) {
   app.use('/api/planes-mantencion', planesMantencionRoutes);
   app.use('/api/arriendos', arriendosRoutes);
   app.use('/api/auth', authRoutes);
+  app.use('/api/role-requests', roleRequestsRoutes);
 } else {
   app.use('/api', (_req, res) => {
     res.status(503).json({

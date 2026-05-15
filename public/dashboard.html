@@ -1154,18 +1154,21 @@ function renderWelcome() {
 }
 
 function requestRoleChange() {
-    const subject = encodeURIComponent('Solicitud de cambio de rol a Usuario');
-    const body = encodeURIComponent(
-        `Hola administrador,\n\n` +
-        `Solicito revisar mi acceso en SRMM.\n\n` +
-        `Usuario: ${currentUser.nombre || currentUser.email || 'N/D'}\n` +
-        `Email: ${currentUser.email || 'N/D'}\n` +
-        `Rol actual: ${userRole || 'N/D'}\n\n` +
-        `Quedo atento a tu confirmación.\n`
-    );
+    const mensaje = `Solicito revisión de rol. Usuario: ${currentUser.nombre || currentUser.email || 'N/D'}\nEmail: ${currentUser.email || 'N/D'}\nRol actual: ${userRole || 'N/D'}\n`;
 
-    const recipient = 'admin@srmm.cl';
-    window.location.href = `mailto:${recipient}?subject=${subject}&body=${body}`;
+    fetch('/api/role-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ mensaje })
+    })
+    .then(async (r) => {
+        if (!r.ok) throw new Error((await r.json()).message || 'Error');
+        alert('Solicitud enviada correctamente. El administrador será notificado.');
+    })
+    .catch((err) => {
+        console.error(err);
+        alert('No se pudo enviar la solicitud. Intenta nuevamente más tarde.');
+    });
 }
 
 /* ═══════════════════════════════════════════════════
