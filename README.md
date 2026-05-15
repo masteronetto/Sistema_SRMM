@@ -52,6 +52,20 @@ DATABASE_URL=postgresql://postgres:TU_PASSWORD_REAL@db.zwsdcardcfxtjngxvsqw.supa
 DB_SSL=true
 ```
 
+### Recuperación de contraseña por correo
+
+Para habilitar el envío real de correos desde `POST /api/auth/recover`, configura al menos estas variables en el hosting:
+
+```env
+SMTP_USER=tu_cuenta@gmail.com
+SMTP_PASS=tu_app_password_de_gmail
+SMTP_FROM=tu_cuenta@gmail.com
+SMTP_GMAIL=true
+FRONTEND_URL=https://tu-dominio
+```
+
+Si usas Gmail, necesitas una **App Password** con verificación en dos pasos activada.
+
 La opción `DB_SSL=true` activa SSL para conexiones gestionadas. Si usas el entorno local, puedes seguir usando `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASSWORD`.
 
 ### 3. Iniciar la base de datos con Docker

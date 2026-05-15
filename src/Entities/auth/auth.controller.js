@@ -71,10 +71,12 @@ function createTransporterIfConfigured() {
     });
   }
 
-  // Soporte rápido para Gmail mediante SMTP app password
-  if (process.env.SMTP_GMAIL === 'true' && process.env.SMTP_USER && process.env.SMTP_PASS) {
+  // Soporte Gmail: basta con usuario + app password, aunque falte el flag.
+  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
     return nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
     });
   }
@@ -96,7 +98,7 @@ async function recover(req, res, next) {
 
     const transporter = createTransporterIfConfigured();
     if (transporter) {
-      const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@sistema-srmm';
+      const fromAddress = process.env.SMTP_USER || process.env.SMTP_FROM || 'no-reply@sistema-srmm';
 
       try {
         await transporter.sendMail({
@@ -109,9 +111,18 @@ async function recover(req, res, next) {
       } catch (mailError) {
         console.warn('No se pudo enviar el email de recuperación:', mailError.message || mailError);
         console.warn('Reset link generado:', resetLink);
+        return res.status(502).json({
+          message: 'No se pudo enviar el correo de recuperación',
+          error: mailError.message || 'SMTP error'
+        });
       }
     } else {
       console.log('PASSWORD RESET LINK:', resetLink);
+      return res.status(503).json({
+        message: 'No hay configuración SMTP válida en este entorno',
+        hint: 'Define SMTP_USER y SMTP_PASS (app password de Gmail) o SMTP_HOST para poder enviar correos.',
+        resetLink
+      });
     }
 
     return res.status(200).json({ message: 'Si el correo existe, se enviará un email con instrucciones.' });

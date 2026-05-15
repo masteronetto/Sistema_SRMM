@@ -35,7 +35,11 @@
       try{
         const res = await fetch('/api/auth/recover', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
         const data = await res.json();
+        msg.style.color = res.ok ? 'green' : '#9f2934';
         msg.textContent = data.message || 'Si el correo existe, se enviará un email.';
+        if (!res.ok && data.error) {
+          msg.textContent += ` (${data.error})`;
+        }
       }catch(err){ msg.textContent='Error de conexión' }
     });
   </script>
