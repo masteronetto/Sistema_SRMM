@@ -639,8 +639,8 @@
                 <span class="nav-icon">⚙</span>Mantenimiento
             </button>
 
-            <!-- Arriendo: todos excepto Usuario -->
-            <button class="nav-link" data-view="arriendo" data-role-required="Mecanico,Operador,Administrador">
+            <!-- Arriendo: solo Administrador -->
+            <button class="nav-link" data-view="arriendo" data-role-required="Administrador">
                 <span class="nav-icon">⟲</span>Arriendo
             </button>
 
@@ -979,7 +979,7 @@
                                 <tbody>
                                     <tr><td>Maquinaria</td><td>✓ Total</td><td>✓ Lectura</td><td>✓ Lectura</td><td>✓ Catálogo</td></tr>
                                     <tr><td>Mantenimiento</td><td>✓ Total</td><td>✓ Total</td><td>✕</td><td>✕</td></tr>
-                                    <tr><td>Arriendos</td><td>✓ Total</td><td>✓ Total</td><td>✓ Confirm.</td><td>✓ Reservas</td></tr>
+                                    <tr><td>Arriendos</td><td>✓ Total</td><td>✕</td><td>✕</td><td>✕</td></tr>
                                     <tr><td>Logística</td><td>✓ Total</td><td>✕</td><td>✓ Total</td><td>✕</td></tr>
                                     <tr><td>Usuarios</td><td>✓ Total</td><td>✕</td><td>✕</td><td>✕</td></tr>
                                     <tr><td>Reportes</td><td>✓ Total</td><td>✓ Total</td><td>✓ Total</td><td>✕</td></tr>
@@ -1042,8 +1042,8 @@
    ─────────────────────────────────────────────────── */
 const ROLE_PERMISSIONS = {
     'Administrador': ['inicio', 'inventario', 'mantenimiento', 'arriendo', 'logistica', 'usuarios', 'reportes'],
-    'Mecanico':      ['inicio', 'inventario', 'mantenimiento', 'arriendo', 'reportes'],
-    'Operador':      ['inicio', 'inventario', 'arriendo', 'logistica', 'reportes'],
+    'Mecanico':      ['inicio', 'inventario', 'mantenimiento', 'reportes'],
+    'Operador':      ['inicio', 'inventario', 'logistica', 'reportes'],
     'Usuario':       ['inicio']
 };
 
