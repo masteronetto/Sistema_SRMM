@@ -348,7 +348,6 @@ El registro público crea usuarios con rol `Cliente`. Luego, un `Administrador` 
 | Maria Operadora | maria.operadora@srmm.cl | Maria123456 | Operador |
 | Carlos Operador | carlos.operador@srmm.cl | Carlos123456 | Operador |
 | Pedro Mecánico | pedro.mecanico@srmm.cl | Pedro123456 | Mecanico |
-| Sofia Mecánica | sofia.mecanica@srmm.cl | Sofia123456 | Mecanico |
 
 ### Qué debería ver cada rol
 
