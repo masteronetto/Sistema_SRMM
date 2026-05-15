@@ -39,7 +39,7 @@
         const res = await fetch('/api/auth/reset', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,newPassword})});
         const data = await res.json();
         if(!res.ok){ msg.style.color='#9f2934'; msg.textContent = data.message || 'Error'; return; }
-        msg.style.color='green'; msg.textContent = data.message || 'Contraseña restablecida.';
+        msg.style.color='green'; msg.textContent = (data.message || 'Contraseña restablecida.') + ' Volviendo al inicio de sesión...';
         setTimeout(()=> window.location.href='/login.html',1200);
       }catch(err){ msg.textContent='Error de conexión' }
     });
