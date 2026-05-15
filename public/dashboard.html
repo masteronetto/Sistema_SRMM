@@ -398,6 +398,72 @@
             border: 1px solid #e7ca91; margin-top: 1rem;
         }
 
+        .user-access-panel {
+            display: grid;
+            gap: 1rem;
+            justify-items: center;
+            text-align: center;
+            padding: 1.5rem 1.25rem;
+            border-radius: 18px;
+            background: linear-gradient(180deg, #fff8e9 0%, #fdf3dd 100%);
+            border: 1px solid #edcd95;
+            box-shadow: 0 10px 24px rgba(120, 86, 40, 0.08);
+        }
+
+        .user-access-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 999px;
+            display: grid;
+            place-items: center;
+            background: radial-gradient(circle at 30% 30%, #fff 0%, #f7dca8 48%, #e8b86a 100%);
+            color: #6d4b12;
+            font-size: 1.8rem;
+            box-shadow: 0 10px 20px rgba(126, 91, 28, 0.15);
+        }
+
+        .user-access-copy {
+            max-width: 520px;
+            color: #5a3e18;
+            line-height: 1.6;
+        }
+
+        .role-request-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+            border: 0;
+            border-radius: 999px;
+            padding: 0.8rem 1.15rem;
+            background: linear-gradient(135deg, #6d5141, #4d372d);
+            color: #fff;
+            font-weight: 800;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+            box-shadow: 0 10px 22px rgba(77, 55, 45, 0.16);
+        }
+
+        .role-request-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 26px rgba(77, 55, 45, 0.2);
+        }
+
+        .user-view .topbar-actions,
+        .user-view #inicio .hero-grid,
+        .user-view #inicio .grid-2 {
+            display: none;
+        }
+
+        .user-view #inicio .welcome-block {
+            margin-bottom: 1rem;
+        }
+
+        .user-view #welcomeMessages {
+            display: grid;
+            gap: 0.75rem;
+        }
+
         /* ── PLACEHOLDER ── */
         .placeholder-card {
             padding: 1rem; min-height: 180px;
@@ -1017,6 +1083,8 @@ function renderSidebarUser() {
 function applyRolePermissions() {
     const allowed = ROLE_PERMISSIONS[userRole] || ['inicio'];
 
+    document.body.classList.toggle('user-view', userRole === 'Usuario');
+
     // Mostrar solo los botones de menú permitidos
     document.querySelectorAll('.nav-link[data-role-required]').forEach(btn => {
         const required = btn.dataset.roleRequired.split(',');
@@ -1025,6 +1093,11 @@ function applyRolePermissions() {
 
     // Ocultar botones del topbar que no aplican a este rol
     if (!allowed.includes('inventario')) {
+        document.getElementById('topRegisterBtn').style.display = 'none';
+    }
+
+    if (userRole === 'Usuario') {
+        document.getElementById('topAlertsBtn').style.display = 'none';
         document.getElementById('topRegisterBtn').style.display = 'none';
     }
 }
@@ -1038,16 +1111,42 @@ function renderWelcome() {
         `Sesión activa como: ${currentUser.email || currentUser.nombre}`;
 
     const info = ROLE_WELCOME[userRole] || { msg: 'Rol no reconocido.', type: 'info' };
-    document.getElementById('welcomeMessages').innerHTML =
-        `<div class="message ${info.type}">${info.msg}</div>`;
 
     if (userRole === 'Usuario') {
-        document.getElementById('welcomeMessages').innerHTML +=
-            `<div class="restricted-message">
-                Tu acceso está limitado a la vista de usuario.<br>
-                Si necesitas otros permisos, solicítalo al administrador.
+        document.getElementById('welcomeMessages').innerHTML = `
+            <div class="user-access-panel">
+                <div class="user-access-icon" aria-hidden="true">◌</div>
+                <div class="message ${info.type}" style="margin-bottom:0; width:100%;">
+                    Tu acceso está limitado a la vista de usuario.<br>
+                    Si necesitas otros permisos, solicítalo al administrador.
+                </div>
+                <p class="user-access-copy">
+                    Desde esta cuenta solo puedes revisar información básica. Si necesitas más acceso, envía una solicitud para que el administrador evalúe tu perfil.
+                </p>
+                <button type="button" class="role-request-btn" onclick="requestRoleChange()">
+                    ✉ Solicitar cambio de rol
+                </button>
             </div>`;
+        return;
     }
+
+    document.getElementById('welcomeMessages').innerHTML =
+        `<div class="message ${info.type}">${info.msg}</div>`;
+}
+
+function requestRoleChange() {
+    const subject = encodeURIComponent('Solicitud de cambio de rol a Usuario');
+    const body = encodeURIComponent(
+        `Hola administrador,\n\n` +
+        `Solicito revisar mi acceso en SRMM.\n\n` +
+        `Usuario: ${currentUser.nombre || currentUser.email || 'N/D'}\n` +
+        `Email: ${currentUser.email || 'N/D'}\n` +
+        `Rol actual: ${userRole || 'N/D'}\n\n` +
+        `Quedo atento a tu confirmación.\n`
+    );
+
+    const recipient = 'admin@srmm.cl';
+    window.location.href = `mailto:${recipient}?subject=${subject}&body=${body}`;
 }
 
 /* ═══════════════════════════════════════════════════
