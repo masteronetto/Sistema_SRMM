@@ -151,7 +151,7 @@
         .role-badge.administrador { background: rgba(39,174,96,0.25); color: #27ae60; }
         .role-badge.mecanico      { background: rgba(231,76,60,0.2);  color: #e74c3c; }
         .role-badge.operador      { background: rgba(243,156,18,0.2); color: #e67e22; }
-        .role-badge.cliente       { background: rgba(52,152,219,0.2); color: #2980b9; }
+        .role-badge.usuario       { background: rgba(52,152,219,0.2); color: #2980b9; }
 
         .logout-btn {
             background: rgba(231,76,60,0.15);
@@ -545,7 +545,7 @@
                 <span class="nav-icon">⚙</span>Mantenimiento
             </button>
 
-            <!-- Arriendo: todos excepto Cliente -->
+            <!-- Arriendo: todos excepto Usuario -->
             <button class="nav-link" data-view="arriendo" data-role-required="Mecanico,Operador,Administrador">
                 <span class="nav-icon">⟲</span>Arriendo
             </button>
@@ -879,7 +879,7 @@
                         <div class="section-title">Permisos por rol</div>
                         <div class="table-wrap">
                             <table>
-                                <thead><tr><th>Módulo</th><th>Admin</th><th>Mecánico</th><th>Operador</th><th>Cliente</th></tr></thead>
+                                <thead><tr><th>Módulo</th><th>Admin</th><th>Mecánico</th><th>Operador</th><th>Usuario</th></tr></thead>
                                 <tbody>
                                     <tr><td>Maquinaria</td><td>✓ Total</td><td>✓ Lectura</td><td>✓ Lectura</td><td>✓ Catálogo</td></tr>
                                     <tr><td>Mantenimiento</td><td>✓ Total</td><td>✓ Total</td><td>✕</td><td>✕</td></tr>
@@ -948,14 +948,14 @@ const ROLE_PERMISSIONS = {
     'Administrador': ['inicio', 'inventario', 'mantenimiento', 'arriendo', 'logistica', 'usuarios', 'reportes'],
     'Mecanico':      ['inicio', 'inventario', 'mantenimiento', 'arriendo', 'reportes'],
     'Operador':      ['inicio', 'inventario', 'arriendo', 'logistica', 'reportes'],
-    'Cliente':       ['inicio']
+    'Usuario':       ['inicio']
 };
 
 const ROLE_WELCOME = {
     'Administrador': { msg: '¡Bienvenido, administrador! Tienes acceso completo al sistema.', type: 'success' },
     'Mecanico':      { msg: 'Bienvenido. Puedes gestionar mantenimientos y revisar la maquinaria.', type: 'info' },
     'Operador':      { msg: 'Bienvenido. Puedes ver y gestionar la maquinaria y logística del sistema.', type: 'info' },
-    'Cliente':       { msg: 'Bienvenido. Tienes acceso de consulta al sistema. Contacta al administrador si necesitas permisos adicionales.', type: 'warning' }
+    'Usuario':       { msg: 'Bienvenido. Tienes acceso de consulta al sistema. Contacta al administrador si necesitas permisos adicionales.', type: 'warning' }
 };
 
 const VIEW_LABELS = {
@@ -1041,10 +1041,10 @@ function renderWelcome() {
     document.getElementById('welcomeMessages').innerHTML =
         `<div class="message ${info.type}">${info.msg}</div>`;
 
-    if (userRole === 'Cliente') {
+    if (userRole === 'Usuario') {
         document.getElementById('welcomeMessages').innerHTML +=
             `<div class="restricted-message">
-                Tu acceso está limitado a la vista de cliente.<br>
+                Tu acceso está limitado a la vista de usuario.<br>
                 Si necesitas otros permisos, solicítalo al administrador.
             </div>`;
     }
@@ -1103,7 +1103,7 @@ async function loadUsersList() {
 
 function renderUsersList(users) {
     const container = document.getElementById('usuarios-content');
-    const roles = ['Cliente', 'Mecanico', 'Operador', 'Administrador'];
+    const roles = ['Usuario', 'Mecanico', 'Operador', 'Administrador'];
     let html = `<div class="table-wrap"><table class="manage-users-table">
         <thead><tr><th>ID</th><th>Nombre</th><th>Email</th><th>Rol actual</th><th>Nuevo rol</th><th>Acción</th></tr></thead>
         <tbody>`;

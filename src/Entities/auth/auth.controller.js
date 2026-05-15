@@ -20,8 +20,8 @@ async function register(req, res, next) {
     }
 
     const hashed = await bcrypt.hash(contrasena, 10);
-    // Todos los nuevos usuarios se registran como "Cliente"
-    const user = await usuariosRepo.createUsuario({ nombre_completo, email, contrasena: hashed, rol_acceso: 'Cliente' });
+    // Todos los nuevos usuarios se registran como "Usuario"
+    const user = await usuariosRepo.createUsuario({ nombre_completo, email, contrasena: hashed, rol_acceso: 'Usuario' });
 
     return res.status(201).json(user);
   } catch (error) {

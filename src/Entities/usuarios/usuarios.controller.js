@@ -1,6 +1,6 @@
 const usuariosRepo = require('./usuarios.repository');
 
-const rolesPermitidos = new Set(['Administrador', 'Mecanico', 'Operador', 'Cliente']);
+const rolesPermitidos = new Set(['Administrador', 'Mecanico', 'Operador', 'Usuario']);
 
 function validateUsuarioPayload(payload) {
   const { nombre_completo, email, contrasena, rol_acceso } = payload;
@@ -10,7 +10,7 @@ function validateUsuarioPayload(payload) {
   }
 
   if (!rolesPermitidos.has(rol_acceso)) {
-    return 'rol_acceso invalido. Valores permitidos: Administrador, Mecanico, Operador, Cliente';
+    return 'rol_acceso invalido. Valores permitidos: Administrador, Mecanico, Operador, Usuario';
   }
 
   return null;
@@ -104,7 +104,7 @@ async function changeRole(req, res, next) {
     }
 
     if (!rolesPermitidos.has(rol_acceso)) {
-      return res.status(400).json({ message: 'rol_acceso inválido. Valores permitidos: Administrador, Mecanico, Operador, Cliente' });
+      return res.status(400).json({ message: 'rol_acceso inválido. Valores permitidos: Administrador, Mecanico, Operador, Usuario' });
     }
 
     // No permite cambiar el rol del usuario actual a sí mismo

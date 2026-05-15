@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_rol_acceso
-        CHECK (rol_acceso IN ('Administrador', 'Mecanico', 'Operador', 'Cliente'))
+        CHECK (rol_acceso IN ('Administrador', 'Mecanico', 'Operador', 'Usuario'))
 );
 
 -- SIS-13: Tabla de planes de mantenimiento

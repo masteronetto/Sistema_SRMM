@@ -244,7 +244,7 @@ El sistema expone endpoints para:
 
 ## Flujo de Prueba de Roles
 
-El registro público crea usuarios con rol `Cliente`. Luego, un `Administrador` puede cambiar el rol de cualquier usuario usando `PUT /api/usuarios/:id/role`.
+El registro público crea usuarios con rol `Usuario`. Luego, un `Administrador` puede cambiar el rol de cualquier usuario usando `PUT /api/usuarios/:id/role`.
 
 ### Secuencia recomendada para pruebas
 Si estás en un Codespace de GitHub, entra a `Terminal > Puertos > Dirección de reenvío` y usa esa URL como base para las pruebas en Postman.
@@ -267,10 +267,10 @@ Si estás en un Codespace de GitHub, entra a `Terminal > Puertos > Dirección de
     "rol_acceso": "Administrador"
   },
   {
-    "nombre_completo": "Juan Cliente",
-    "email": "juan.cliente@srmm.cl",
+    "nombre_completo": "Juan Usuario",
+    "email": "juan.usuario@srmm.cl",
     "contrasena": "Juan123456",
-    "rol_acceso": "Cliente"
+    "rol_acceso": "Usuario"
   },
   {
     "nombre_completo": "Maria Operadora",
@@ -289,14 +289,14 @@ Si estás en un Codespace de GitHub, entra a `Terminal > Puertos > Dirección de
 
 ### Qué debería ver cada rol
 
-- `Cliente`: solo vista básica de bienvenida y opciones limitadas.
+- `Usuario`: solo vista básica de bienvenida y opciones limitadas.
 - `Operador`: acceso a maquinaria, mantenimientos y reportes.
 - `Mecanico`: acceso a maquinaria, mantenimientos y reportes.
 - `Administrador`: acceso total, incluyendo gestión de usuarios y cambio de roles.
 
 ## Flujo de Prueba de Roles
 
-El registro público crea usuarios con rol `Cliente`. Luego, un `Administrador` puede cambiar el rol de cualquier usuario usando `PUT /api/usuarios/:id/role`.
+El registro público crea usuarios con rol `Usuario`. Luego, un `Administrador` puede cambiar el rol de cualquier usuario usando `PUT /api/usuarios/:id/role`.
 
 ### Secuencia recomendada para pruebas
 
@@ -318,10 +318,10 @@ El registro público crea usuarios con rol `Cliente`. Luego, un `Administrador` 
     "rol_acceso": "Administrador"
   },
   {
-    "nombre_completo": "Juan Cliente",
-    "email": "juan.cliente@srmm.cl",
+    "nombre_completo": "Juan Usuario",
+    "email": "juan.usuario@srmm.cl",
     "contrasena": "Juan123456",
-    "rol_acceso": "Cliente"
+    "rol_acceso": "Usuario"
   },
   {
     "nombre_completo": "Maria Operadora",
@@ -343,15 +343,15 @@ El registro público crea usuarios con rol `Cliente`. Luego, un `Administrador` 
 | --- | --- | --- | --- |
 | Admin Inicial | admin@srmm.cl | Admin123456 | Administrador |
 | Danny mecanico | Danny@test.com | 123456 | Mecanico |
-| Juan Cliente | juan.cliente@srmm.cl | Juan123456 | Cliente |
-| Ana Cliente | ana.cliente@srmm.cl | Ana123456 | Cliente |
+| Juan Usuario | juan.usuario@srmm.cl | Juan123456 | Usuario |
+| Ana Usuario | ana.usuario@srmm.cl | Ana123456 | Usuario |
 | Maria Operadora | maria.operadora@srmm.cl | Maria123456 | Operador |
 | Carlos Operador | carlos.operador@srmm.cl | Carlos123456 | Operador |
 | Pedro Mecánico | pedro.mecanico@srmm.cl | Pedro123456 | Mecanico |
 
 ### Qué debería ver cada rol
 
-- `Cliente`: solo vista básica de bienvenida y opciones limitadas.
+- `Usuario`: solo vista básica de bienvenida y opciones limitadas.
 - `Operador`: acceso a maquinaria, mantenimientos y reportes.
 - `Mecanico`: acceso a maquinaria, mantenimientos y reportes.
 - `Administrador`: acceso total, incluyendo gestión de usuarios y cambio de roles.
