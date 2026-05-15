@@ -342,6 +342,7 @@ El registro público crea usuarios con rol `Cliente`. Luego, un `Administrador` 
 | Nombre | Email | Contraseña | Rol |
 | --- | --- | --- | --- |
 | Admin Inicial | admin@srmm.cl | Admin123456 | Administrador |
+| Danny mecanico | Danny@test.com | 123456 | Mecanico |
 | Juan Cliente | juan.cliente@srmm.cl | Juan123456 | Cliente |
 | Ana Cliente | ana.cliente@srmm.cl | Ana123456 | Cliente |
 | Maria Operadora | maria.operadora@srmm.cl | Maria123456 | Operador |
