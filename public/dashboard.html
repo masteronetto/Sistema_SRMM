@@ -88,6 +88,10 @@
             padding: 0.9rem 1rem 0.4rem;
         }
 
+        .nav-group-title.is-hidden {
+            display: none;
+        }
+
         .nav-link {
             display: flex;
             align-items: center;
@@ -123,9 +127,32 @@
             margin-top: auto;
             padding: 1rem;
             border-top: 1px solid rgba(255,255,255,0.16);
-            display: flex;
-            align-items: center;
+            display: grid;
+            grid-template-columns: 44px minmax(0, 1fr);
             gap: 0.75rem;
+            align-items: start;
+            width: 100%;
+        }
+
+        .sidebar-user-meta {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .sidebar-user-name {
+            font-weight: 700;
+            line-height: 1.15;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .sidebar-user-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            align-items: center;
         }
 
         .avatar {
@@ -157,14 +184,15 @@
             background: rgba(231,76,60,0.15);
             color: #e74c3c;
             border: 1px solid rgba(231,76,60,0.3);
-            padding: 0.4rem 0.8rem;
+            padding: 0.4rem 0.75rem;
             border-radius: 8px;
             cursor: pointer;
             font-size: 0.82rem;
             font-weight: 700;
             font-family: 'Inter', sans-serif;
             transition: background 0.2s;
-            margin-top: 0.35rem;
+            margin-top: 0;
+            max-width: 100%;
         }
         .logout-btn:hover { background: rgba(231,76,60,0.28); }
 
@@ -604,7 +632,7 @@
                 <span class="nav-icon">▦</span>Maquinaria
             </button>
 
-            <div class="nav-group-title">Operaciones</div>
+            <div class="nav-group-title is-hidden">Operaciones</div>
 
             <!-- Mantenimiento: Mecánico, Administrador -->
             <button class="nav-link" data-view="mantenimiento" data-role-required="Mecanico,Administrador">
@@ -621,7 +649,7 @@
                 <span class="nav-icon">➜</span>Logística
             </button>
 
-            <div class="nav-group-title">Sistema</div>
+            <div class="nav-group-title is-hidden">Sistema</div>
 
             <!-- Usuarios: solo Administrador -->
             <button class="nav-link" data-view="usuarios" data-role-required="Administrador">
@@ -636,10 +664,12 @@
 
         <div class="sidebar-footer">
             <div class="avatar" id="sidebarAvatar">??</div>
-            <div>
-                <div class="font-bold leading-tight" id="sidebarName">Cargando…</div>
-                <div id="sidebarRoleBadge" class="role-badge" style="margin-top:0.2rem;"></div>
-                <button class="logout-btn" onclick="logout()">Cerrar sesión</button>
+            <div class="sidebar-user-meta">
+                <div class="sidebar-user-name" id="sidebarName">Cargando…</div>
+                <div class="sidebar-user-actions">
+                    <div id="sidebarRoleBadge" class="role-badge"></div>
+                    <button class="logout-btn" onclick="logout()">Cerrar sesión</button>
+                </div>
             </div>
         </div>
     </aside>
