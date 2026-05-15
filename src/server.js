@@ -2,6 +2,7 @@ const http = require('http');
 const app = require('./app');
 const { setupSocketIO } = require('./config/socketio');
 const { port, hasDatabaseConfig } = require('./config/env');
+const intervaloVerificacionRetrasos = Number(process.env.INTERVALO_VERIFICACION_RETRASOS || 86400000);
 
 // Crear servidor HTTP para soportar WebSocket
 const httpServer = http.createServer(app);
@@ -73,8 +74,14 @@ if (hasDatabaseConfig) {
   console.log('Modo frontend activo: la API y el scheduler de BD están deshabilitados hasta configurar PostgreSQL.');
 }
 
-httpServer.listen(port, () => {
-  console.log(`SRMM API escuchando en puerto ${port}`);
-  console.log(`WebSocket (Socket.IO) disponible en puerto ${port}`);
-  console.log(`Chequeo automático de retrasos cada ${intervaloVerificacionRetrasos} ms`);
-});
+const isStandaloneProcess = require.main === module && !process.env.VERCEL;
+
+if (isStandaloneProcess) {
+  httpServer.listen(port, () => {
+    console.log(`SRMM API escuchando en puerto ${port}`);
+    console.log(`WebSocket (Socket.IO) disponible en puerto ${port}`);
+    console.log(`Chequeo automático de retrasos cada ${intervaloVerificacionRetrasos} ms`);
+  });
+}
+
+module.exports = app;
