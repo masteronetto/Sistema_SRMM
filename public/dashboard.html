@@ -968,24 +968,13 @@
             <section id="usuarios" class="view">
                 <div class="grid-2" style="margin-bottom:1rem;">
                     <section class="section-card">
-                        <div class="section-title">Gestionar usuarios</div>
-                        <div id="usuarios-content"><p class="muted">Cargando usuarios…</p></div>
-                    </section>
-                    <section class="section-card">
-                        <div class="section-title">Permisos por rol</div>
-                        <div class="table-wrap">
-                            <table>
-                                <thead><tr><th>Módulo</th><th>Admin</th><th>Mecánico</th><th>Operador</th><th>Usuario</th></tr></thead>
-                                <tbody>
-                                    <tr><td>Maquinaria</td><td>✓ Total</td><td>✓ Lectura</td><td>✓ Lectura</td><td>✓ Catálogo</td></tr>
-                                    <tr><td>Mantenimiento</td><td>✓ Total</td><td>✓ Total</td><td>✕</td><td>✕</td></tr>
-                                    <tr><td>Arriendos</td><td>✓ Total</td><td>✕</td><td>✕</td><td>✕</td></tr>
-                                    <tr><td>Logística</td><td>✓ Total</td><td>✕</td><td>✓ Total</td><td>✕</td></tr>
-                                    <tr><td>Usuarios</td><td>✓ Total</td><td>✕</td><td>✕</td><td>✕</td></tr>
-                                    <tr><td>Reportes</td><td>✓ Total</td><td>✓ Total</td><td>✓ Total</td><td>✕</td></tr>
-                                </tbody>
-                            </table>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;">
+                            <div class="section-title">Gestionar usuarios</div>
+                            <div>
+                                <button class="btn" onclick="showAddUserForm()">+ Agregar usuario</button>
+                            </div>
                         </div>
+                        <div id="usuarios-content"><p class="muted">Cargando usuarios…</p></div>
                     </section>
                 </div>
             </section>
@@ -1247,7 +1236,10 @@ function renderUsersList(users) {
                     ${roles.map(r => `<option value="${r}" ${u.rol_acceso===r?'selected':''}>${r}</option>`).join('')}
                 </select>
             </td>
-            <td><button class="btn" onclick="changeUserRole(${u.id_usuario})">Cambiar rol</button></td>
+            <td style="display:flex;gap:0.5rem;">
+                <button class="btn" onclick="changeUserRole(${u.id_usuario})">Cambiar rol</button>
+                <button class="btn btn-danger" onclick="deleteUser(${u.id_usuario})">Eliminar</button>
+            </td>
         </tr>`;
     });
     html += `</tbody></table></div>`;
@@ -1269,6 +1261,78 @@ async function changeUserRole(userId) {
     } catch (err) {
         alert(`❌ Error: ${err.message}`);
     }
+}
+
+async function deleteUser(userId) {
+    if (!confirm('¿Eliminar usuario? Esta acción es irreversible.')) return;
+    try {
+        const res = await fetch(`/api/usuarios/${userId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) {
+            const e = await res.json().catch(()=>({message:res.statusText}));
+            throw new Error(e.message || 'Error eliminando usuario');
+        }
+        alert('✅ Usuario eliminado');
+        loadUsersList();
+    } catch (err) {
+        alert(`❌ Error: ${err.message}`);
+    }
+}
+
+function showAddUserForm() {
+    const container = document.getElementById('usuarios-content');
+    container.innerHTML = `
+        <div class="table-wrap" style="padding:1rem;">
+            <form id="addUserForm">
+                <div style="display:grid;gap:0.6rem;">
+                    <input name="nombre_completo" placeholder="Nombre completo" required />
+                    <input name="email" type="email" placeholder="Email" required />
+                    <input name="contrasena" type="password" placeholder="Contraseña" required />
+                    <select name="rol_acceso">
+                        <option value="Usuario">Usuario</option>
+                        <option value="Operador">Operador</option>
+                        <option value="Mecanico">Mecanico</option>
+                        <option value="Administrador">Administrador</option>
+                    </select>
+                    <div style="display:flex;gap:0.6rem;">
+                        <button class="btn" type="submit">Crear usuario</button>
+                        <button class="btn btn-danger" type="button" onclick="loadUsersList()">Cancelar</button>
+                    </div>
+                    <div id="addUserStatus" class="muted"></div>
+                </div>
+            </form>
+        </div>`;
+
+    const form = document.getElementById('addUserForm');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(form);
+        const payload = {
+            nombre_completo: fd.get('nombre_completo'),
+            email: fd.get('email'),
+            contrasena: fd.get('contrasena'),
+            rol_acceso: fd.get('rol_acceso')
+        };
+        const statusEl = document.getElementById('addUserStatus');
+        try {
+            statusEl.textContent = 'Creando...';
+            const res = await fetch('/api/usuarios', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) {
+                const e = await res.json().catch(()=>({message:res.statusText}));
+                throw new Error(e.message || 'Error creando usuario');
+            }
+            statusEl.textContent = '✅ Usuario creado';
+            setTimeout(()=>loadUsersList(), 700);
+        } catch (err) {
+            statusEl.textContent = `❌ ${err.message}`;
+        }
+    });
 }
 
 /* ═══════════════════════════════════════════════════
