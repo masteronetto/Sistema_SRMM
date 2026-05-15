@@ -22,13 +22,22 @@
     <form id="recoverForm">
       <input type="email" id="email" placeholder="Correo electrónico" required>
       <div style="height:10px"></div>
-      <button type="submit">Enviar enlace</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button type="submit">Enviar enlace</button>
+        <button type="button" id="cancelBtn" style="background:#ddd8d3;color:#26201c;">Cancelar</button>
+      </div>
     </form>
     <div id="msg" style="margin-top:10px;color:#3d6f19;font-weight:700"></div>
   </main>
   <script>
     const form = document.getElementById('recoverForm');
     const msg = document.getElementById('msg');
+    const cancelBtn = document.getElementById('cancelBtn');
+
+    cancelBtn.addEventListener('click', () => {
+      window.location.href = '/login.html';
+    });
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault(); msg.textContent='';
       const email = document.getElementById('email').value;
