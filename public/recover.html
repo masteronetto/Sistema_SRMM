@@ -40,6 +40,9 @@
         if (!res.ok && data.error) {
           msg.textContent += ` (${data.error})`;
         }
+        if (!res.ok && data.hint) {
+          msg.textContent += ` ${data.hint}`;
+        }
       }catch(err){ msg.textContent='Error de conexión' }
     });
   </script>

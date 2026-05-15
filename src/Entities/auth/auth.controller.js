@@ -93,8 +93,13 @@ async function recover(req, res, next) {
     if (!user) return res.status(200).json({ message: 'Si el correo existe, se enviará un email con instrucciones.' });
 
     const token = jwt.sign({ id_usuario: user.id_usuario, type: 'pw-reset' }, JWT_SECRET, { expiresIn: '1h' });
-    const frontendUrl = process.env.FRONTEND_URL || `http://localhost:${port}`;
-    const resetLink = `${frontendUrl.replace(/\/$/, '')}/reset.html?token=${token}`;
+    const frontendUrl = (
+      process.env.FRONTEND_URL
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+      || req.headers.origin
+      || `http://localhost:${port}`
+    ).replace(/\/$/, '');
+    const resetLink = `${frontendUrl}/reset.html?token=${token}`;
 
     const transporter = createTransporterIfConfigured();
     if (transporter) {
@@ -111,9 +116,13 @@ async function recover(req, res, next) {
       } catch (mailError) {
         console.warn('No se pudo enviar el email de recuperación:', mailError.message || mailError);
         console.warn('Reset link generado:', resetLink);
+        const smtpHint = mailError?.responseCode === 535 || /BadCredentials|Invalid login/i.test(mailError?.message || '')
+          ? 'Gmail rechazó el acceso: usa una App Password con 2FA activada y verifica SMTP_USER / SMTP_PASS.'
+          : 'Revisa la configuración SMTP y que el remitente pertenezca a la cuenta autorizada.';
         return res.status(502).json({
           message: 'No se pudo enviar el correo de recuperación',
-          error: mailError.message || 'SMTP error'
+          error: mailError.message || 'SMTP error',
+          hint: smtpHint
         });
       }
     } else {

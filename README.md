@@ -66,6 +66,22 @@ FRONTEND_URL=https://tu-dominio
 
 Si usas Gmail, necesitas una **App Password** con verificación en dos pasos activada.
 
+Si ves `535-5.7.8 Username and Password not accepted`, no es un fallo de la API: Gmail está rechazando las credenciales. Debes usar la App Password, no tu contraseña normal.
+
+Resumen de comandos usados para dejarlo funcionando:
+
+```bash
+npm install
+vercel env add SMTP_GMAIL production
+vercel env add SMTP_USER production
+vercel env add SMTP_PASS production
+vercel env add SMTP_FROM production
+vercel env add FRONTEND_URL production
+vercel --prod
+```
+
+Si prefieres hacerlo por API, los valores deben ser equivalentes a los anteriores y `FRONTEND_URL` debe apuntar a tu dominio real de producción.
+
 La opción `DB_SSL=true` activa SSL para conexiones gestionadas. Si usas el entorno local, puedes seguir usando `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASSWORD`.
 
 ### 3. Iniciar la base de datos con Docker
