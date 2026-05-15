@@ -96,13 +96,20 @@ async function recover(req, res, next) {
 
     const transporter = createTransporterIfConfigured();
     if (transporter) {
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || 'no-reply@sistema-srmm',
-        to: email,
-        subject: 'Recuperación de contraseña - SRMM',
-        text: `Para restablecer tu contraseña, visita: ${resetLink}`,
-        html: `<p>Para restablecer tu contraseña, haz clic <a href="${resetLink}">aquí</a>.</p>`
-      });
+      const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@sistema-srmm';
+
+      try {
+        await transporter.sendMail({
+          from: fromAddress,
+          to: email,
+          subject: 'Recuperación de contraseña - SRMM',
+          text: `Para restablecer tu contraseña, visita: ${resetLink}`,
+          html: `<p>Para restablecer tu contraseña, haz clic <a href="${resetLink}">aquí</a>.</p>`
+        });
+      } catch (mailError) {
+        console.warn('No se pudo enviar el email de recuperación:', mailError.message || mailError);
+        console.warn('Reset link generado:', resetLink);
+      }
     } else {
       console.log('PASSWORD RESET LINK:', resetLink);
     }

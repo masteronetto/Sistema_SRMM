@@ -976,6 +976,15 @@
                         </div>
                         <div id="usuarios-content"><p class="muted">Cargando usuarios…</p></div>
                     </section>
+                    <section class="section-card">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;">
+                            <div class="section-title">Solicitudes de rol</div>
+                            <div>
+                                <button class="btn" onclick="loadRoleRequests()">Refrescar</button>
+                            </div>
+                        </div>
+                        <div id="role-requests-content"><p class="muted">Cargando solicitudes…</p></div>
+                    </section>
                 </div>
             </section>
 
@@ -1191,6 +1200,7 @@ function showView(viewName, push = true) {
     // Cargar usuarios cuando Admin entra a esa sección
     if (target === 'usuarios' && userRole === 'Administrador') {
         loadUsersList();
+        loadRoleRequests();
     }
 }
 
@@ -1219,6 +1229,43 @@ async function loadUsersList() {
         renderUsersList(users);
     } catch (err) {
         container.innerHTML = `<div class="message error">Error al cargar usuarios: ${err.message}</div>`;
+    }
+}
+
+async function loadRoleRequests() {
+    const container = document.getElementById('role-requests-content');
+    container.innerHTML = '<p class="muted">Cargando solicitudes…</p>';
+    try {
+        const res = await fetch('/api/role-requests', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ message: res.statusText }));
+            throw new Error(err.message || 'Error cargando solicitudes');
+        }
+        const requests = await res.json();
+        if (!requests.length) {
+            container.innerHTML = '<p class="muted">No hay solicitudes de rol pendientes.</p>';
+            return;
+        }
+
+        let html = `<div class="table-wrap"><table class="manage-users-table">
+            <thead><tr><th>ID</th><th>Usuario</th><th>Email</th><th>Mensaje</th><th>Estado</th><th>Fecha</th></tr></thead>
+            <tbody>`;
+        requests.forEach(req => {
+            html += `<tr>
+                <td>${req.id_request}</td>
+                <td>${req.nombre_usuario || 'N/D'}</td>
+                <td>${req.email_usuario}</td>
+                <td>${req.mensaje || ''}</td>
+                <td><span class="role-badge usuario">${req.estado}</span></td>
+                <td>${new Date(req.created_at).toLocaleString()}</td>
+            </tr>`;
+        });
+        html += `</tbody></table></div>`;
+        container.innerHTML = html;
+    } catch (err) {
+        container.innerHTML = `<div class="message error">Error al cargar solicitudes: ${err.message}</div>`;
     }
 }
 
