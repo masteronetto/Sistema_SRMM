@@ -78,7 +78,26 @@ async function listRequests(req, res, next) {
   }
 }
 
+async function deleteRequest(req, res, next) {
+  try {
+    const idRequest = Number(req.params.id);
+    if (!Number.isFinite(idRequest)) {
+      return res.status(400).json({ message: 'ID de solicitud inválido' });
+    }
+
+    const deleted = await roleRequestsRepo.deleteRoleRequest(idRequest);
+    if (!deleted) {
+      return res.status(404).json({ message: 'Solicitud no encontrada' });
+    }
+
+    return res.json({ message: 'Solicitud eliminada' });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   createRequest,
   listRequests,
+  deleteRequest,
 };

@@ -32,7 +32,22 @@ async function listRoleRequests({ limit = 50, offset = 0 } = {}) {
   }
 }
 
+async function deleteRoleRequest(idRequest) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'DELETE FROM role_requests WHERE id_request = $1 RETURNING id_request;',
+      [idRequest]
+    );
+
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   createRoleRequest,
   listRoleRequests,
+  deleteRoleRequest,
 };
