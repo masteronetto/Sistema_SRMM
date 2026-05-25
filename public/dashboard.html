@@ -410,6 +410,13 @@
             font-weight: 700; transition: background 0.2s;
         }
         .btn:hover { background: var(--accent-strong); }
+        .btn-secondary {
+            background: #f2f0ee;
+            color: #3e2f26;
+        }
+        .btn-secondary:hover {
+            background: #e8e1da;
+        }
         .btn-danger { background: #c0392b; }
         .btn-danger:hover { background: #962d23; }
 
@@ -630,9 +637,9 @@
         <nav class="sidebar-nav" aria-label="Menú principal">
             <button class="nav-link active" data-view="inicio"><span class="nav-icon">⌂</span>Inicio</button>
 
-            <!-- Vista React de maquinaria: Mecánico, Operador, Administrador -->
-            <button class="nav-link" data-url="/maquinaria.html" data-role-required="Mecanico,Operador,Administrador">
-                <span class="nav-icon">🛠</span>Maquinaria 
+            <!-- Maquinaria: Mecánico, Operador, Administrador -->
+            <button class="nav-link" data-view="inventario" data-role-required="Mecanico,Operador,Administrador">
+                <span class="nav-icon">🛠</span>Maquinaria
             </button>
 
             <div class="nav-group-title is-hidden">Operaciones</div>
@@ -774,27 +781,51 @@
 
             <!-- ══ INVENTARIO / MAQUINARIA ══ -->
             <section id="inventario" class="view">
-                <div class="hero-grid">
+                <section class="section-card">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+                        <div>
+                            <div class="section-title">Maquinaria</div>
+                            <div class="muted">Gestiona el inventario, tarifas y registros desde la misma vista del dashboard.</div>
+                        </div>
+                        <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+                            <button type="button" id="adminMaquinariaRefreshBtn" class="btn">Refrescar listado</button>
+                            <button type="button" id="adminMaquinariaNewBtn" class="btn btn-secondary">Nueva maquinaria</button>
+                            <button type="button" id="adminMaquinariaShowFormBtn" class="btn btn-secondary">Mostrar formulario</button>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="hero-grid" style="margin-top:1rem;">
                     <article class="stat-card"><div class="stat-label">Total equipos</div><div class="stat-value">13</div><div class="stat-note">Inventario activo</div></article>
                     <article class="stat-card"><div class="stat-label">Disponibles</div><div class="stat-value">7</div><div class="stat-note">Listas para arriendo</div></article>
                     <article class="stat-card"><div class="stat-label">Bloqueadas</div><div class="stat-value">2</div><div class="stat-note">Requieren intervención</div></article>
                     <article class="stat-card"><div class="stat-label">En revisión</div><div class="stat-value">3</div><div class="stat-note">Seguimiento operativo</div></article>
                 </div>
-                <div class="mini-grid">
-                    <article class="stat-card"><div class="stat-label">Excavadora CAT 320</div><div class="stat-note">Horómetro 2.840 hrs · Estado Bloqueada</div></article>
-                    <article class="stat-card"><div class="stat-label">Grúa Liebherr LTM 1050</div><div class="stat-note">Horómetro 1.380 hrs · Estado Disponible</div></article>
-                    <article class="stat-card"><div class="stat-label">Bobcat S570</div><div class="stat-note">Horómetro 890 hrs · Estado Disponible</div></article>
-                </div>
 
-                <section id="adminMaquinariaPanel" class="section-card" style="margin-top:1rem; display:none;">
+                <section id="adminMaquinariaPanel" class="section-card" style="margin-top:1rem;">
                     <div style="display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
                         <div>
                             <div class="section-title" style="margin-bottom:0.25rem;">Administrar maquinaria</div>
                             <div class="muted text-sm">Crear y editar maquinaria con su tarifa diaria para calcular ingresos por arriendo.</div>
                         </div>
-                        <button type="button" id="adminMaquinariaRefreshBtn" class="top-button secondary">Refrescar listado</button>
+                        <span id="adminMaquinariaStatus" class="form-status"></span>
                     </div>
-                    <form id="adminMaquinariaForm" class="section-stack" style="margin-bottom:1rem;">
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr><th>ID</th><th>Modelo</th><th>Estado</th><th>Horómetro</th><th>Tarifa diaria</th><th>Plan</th><th>Acciones</th></tr>
+                            </thead>
+                            <tbody id="adminMaquinariaRows">
+                                <tr><td colspan="7" class="detail-empty">Cargando maquinaria…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="adminMaquinariaFormPanel" class="section-card" style="margin-top:1rem; display:none;">
+                    <div class="section-title" style="margin-bottom:0.25rem;">Formulario de maquinaria</div>
+                    <div class="muted text-sm" style="margin-bottom:1rem;">Usa este formulario para crear o editar maquinaria y ajustar su tarifa diaria.</div>
+                    <form id="adminMaquinariaForm" class="section-stack">
                         <input id="adminMaquinaId" type="hidden">
                         <div class="incident-grid">
                             <label>Modelo<input id="adminMaquinaModelo" type="text" required placeholder="Ej. Excavadora CAT 320"></label>
@@ -815,19 +846,8 @@
                         <div class="incident-actions">
                             <button type="submit" class="top-button primary">Guardar maquinaria</button>
                             <button type="button" id="adminMaquinariaResetBtn" class="top-button secondary">Limpiar</button>
-                            <span id="adminMaquinariaStatus" class="form-status"></span>
                         </div>
                     </form>
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr><th>ID</th><th>Modelo</th><th>Estado</th><th>Horómetro</th><th>Tarifa diaria</th><th>Plan</th><th>Acciones</th></tr>
-                            </thead>
-                            <tbody id="adminMaquinariaRows">
-                                <tr><td colspan="7" class="detail-empty">Cargando maquinaria…</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
                 </section>
             </section>
 
@@ -1175,14 +1195,257 @@ function initAdminMaquinariaPanel() {
     const form = document.getElementById('adminMaquinariaForm');
     const resetBtn = document.getElementById('adminMaquinariaResetBtn');
     const refreshBtn = document.getElementById('adminMaquinariaRefreshBtn');
+    const newBtn = document.getElementById('adminMaquinariaNewBtn');
+    const showFormBtn = document.getElementById('adminMaquinariaShowFormBtn');
+    const formPanel = document.getElementById('adminMaquinariaFormPanel');
 
-    if (!form || !resetBtn || !refreshBtn) return;
+    if (!refreshBtn) return;
 
     adminMaquinariaInitialized = true;
-    form.addEventListener('submit', saveAdminMaquinaria);
-    resetBtn.addEventListener('click', resetAdminMaquinariaForm);
+
+    if (form) {
+        form.addEventListener('submit', saveAdminMaquinaria);
+    }
+    if (resetBtn) {
+        resetBtn.addEventListener('click', resetAdminMaquinariaForm);
+    }
     refreshBtn.addEventListener('click', loadAdminMaquinaria);
-    resetAdminMaquinariaForm();
+
+    if (newBtn) {
+        newBtn.addEventListener('click', () => {
+            resetAdminMaquinariaForm();
+            showMaquinariaForm(true);
+        });
+    }
+
+    if (showFormBtn) {
+        showFormBtn.addEventListener('click', () => {
+            showMaquinariaForm();
+        });
+    }
+
+    if (userRole !== 'Administrador' && formPanel) {
+        formPanel.style.display = 'none';
+        if (showFormBtn) showFormBtn.style.display = 'none';
+        if (newBtn) newBtn.style.display = 'none';
+    }
+
+    loadAdminMaquinaria();
+}
+
+function showMaquinariaForm(forceVisible = false) {
+    const formPanel = document.getElementById('adminMaquinariaFormPanel');
+    if (!formPanel) return;
+
+    const shouldShow = forceVisible || formPanel.style.display === 'none' || getComputedStyle(formPanel).display === 'none';
+    formPanel.style.display = shouldShow ? 'block' : 'none';
+    if (shouldShow) {
+        formPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function getMaquinariaValue(item, keys, fallback = '') {
+    for (const key of keys) {
+        if (item[key] !== undefined && item[key] !== null && item[key] !== '') return item[key];
+    }
+    return fallback;
+}
+
+function mapMaquinariaItem(item) {
+    return {
+        id: getMaquinariaValue(item, ['id_maquina', 'id']),
+        modelo: getMaquinariaValue(item, ['modelo_equipo', 'modelo']),
+        estado: getMaquinariaValue(item, ['estado']),
+        horometro: getMaquinariaValue(item, ['horometro_actual', 'horometro']),
+        tarifa_diaria: getMaquinariaValue(item, ['tarifa_diaria', 'tarifa']),
+        plan_mantenimiento_id: getMaquinariaValue(item, ['plan_mantenimiento_id', 'id_plan_mantencion']),
+        especificaciones: getMaquinariaValue(item, ['especificaciones', 'descripcion'])
+    };
+}
+
+function setMaquinariaStatus(message, type = 'info') {
+    const statusEl = document.getElementById('adminMaquinariaStatus');
+    if (!statusEl) return;
+
+    const colors = {
+        info: '#2980b9',
+        success: '#27ae60',
+        warning: '#d97706',
+        error: '#c0392b'
+    };
+
+    statusEl.textContent = message;
+    statusEl.style.color = colors[type] || colors.info;
+}
+
+function renderAdminMaquinaria(rows) {
+    const container = document.getElementById('adminMaquinariaRows');
+    if (!container) return;
+
+    if (!rows.length) {
+        container.innerHTML = '<tr><td colspan="7" class="detail-empty">No hay maquinaria registrada.</td></tr>';
+        return;
+    }
+
+    container.innerHTML = rows.map((item) => {
+        const maquina = mapMaquinariaItem(item);
+        return `<tr>
+            <td>${maquina.id ?? '—'}</td>
+            <td>${maquina.modelo || '—'}</td>
+            <td>${maquina.estado || '—'}</td>
+            <td>${maquina.horometro ?? '—'}</td>
+            <td>${formatCurrency(maquina.tarifa_diaria || 0)}</td>
+            <td>${maquina.plan_mantenimiento_id || '—'}</td>
+            <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <button class="btn" onclick="editMaquinariaById(${JSON.stringify(maquina.id ?? null)})">Editar</button>
+                <button class="btn btn-secondary" onclick="focusMaquinariaIncidenciasById(${JSON.stringify(maquina.id ?? null)})">Incidencias</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+async function loadAdminMaquinaria() {
+    const container = document.getElementById('adminMaquinariaRows');
+    if (!container) return;
+
+    container.innerHTML = '<tr><td colspan="7" class="detail-empty">Cargando maquinaria…</td></tr>';
+    setMaquinariaStatus('Cargando maquinaria...', 'info');
+
+    try {
+        const res = await fetch('/api/maquinaria', { headers: getAuthHeaders() });
+        if (!res.ok) {
+            throw new Error('No se pudo cargar la maquinaria');
+        }
+
+        const items = await res.json();
+        availableMachines = Array.isArray(items) ? items : [];
+        renderAdminMaquinaria(availableMachines);
+        setMaquinariaStatus('Maquinaria actualizada', 'success');
+    } catch (err) {
+        container.innerHTML = `<tr><td colspan="7" class="detail-empty">Error: ${err.message}</td></tr>`;
+        setMaquinariaStatus(`Error: ${err.message}`, 'error');
+    }
+}
+
+function resetAdminMaquinariaForm() {
+    const idInput = document.getElementById('adminMaquinaId');
+    const modeloInput = document.getElementById('adminMaquinaModelo');
+    const horometroInput = document.getElementById('adminMaquinaHorometro');
+    const estadoInput = document.getElementById('adminMaquinaEstado');
+    const tarifaInput = document.getElementById('adminMaquinaTarifa');
+    const planInput = document.getElementById('adminMaquinaPlan');
+    const specsInput = document.getElementById('adminMaquinaSpecs');
+
+    if (idInput) idInput.value = '';
+    if (modeloInput) modeloInput.value = '';
+    if (horometroInput) horometroInput.value = '';
+    if (estadoInput) estadoInput.value = 'Disponible';
+    if (tarifaInput) tarifaInput.value = '';
+    if (planInput) planInput.value = '';
+    if (specsInput) specsInput.value = '';
+
+    setMaquinariaStatus('Formulario listo para crear una máquina', 'info');
+}
+
+function editMaquinariaById(maquinaId) {
+    const maquina = availableMachines.map(mapMaquinariaItem).find((item) => String(item.id) === String(maquinaId));
+    if (!maquina) {
+        setMaquinariaStatus('No se encontró la máquina seleccionada.', 'warning');
+        return;
+    }
+
+    const idInput = document.getElementById('adminMaquinaId');
+    const modeloInput = document.getElementById('adminMaquinaModelo');
+    const horometroInput = document.getElementById('adminMaquinaHorometro');
+    const estadoInput = document.getElementById('adminMaquinaEstado');
+    const tarifaInput = document.getElementById('adminMaquinaTarifa');
+    const planInput = document.getElementById('adminMaquinaPlan');
+    const specsInput = document.getElementById('adminMaquinaSpecs');
+
+    if (idInput) idInput.value = maquina.id ?? '';
+    if (modeloInput) modeloInput.value = maquina.modelo || '';
+    if (horometroInput) horometroInput.value = maquina.horometro ?? '';
+    if (estadoInput) estadoInput.value = maquina.estado || 'Disponible';
+    if (tarifaInput) tarifaInput.value = maquina.tarifa_diaria ?? '';
+    if (planInput) planInput.value = maquina.plan_mantenimiento_id ?? '';
+    if (specsInput) specsInput.value = maquina.especificaciones || '';
+
+    setMaquinariaStatus(`Editando maquinaria #${maquina.id}`, 'warning');
+    showMaquinariaForm(true);
+}
+
+function focusMaquinariaIncidenciasById(maquinaId) {
+    const maquina = availableMachines.map(mapMaquinariaItem).find((item) => String(item.id) === String(maquinaId));
+    if (!maquina) {
+        setMaquinariaStatus('No se encontró la máquina seleccionada.', 'warning');
+        return;
+    }
+
+    showView('mantenimiento');
+    const machineSelect = document.getElementById('incidentMachine');
+    if (machineSelect && maquina.id !== undefined && maquina.id !== null) {
+        machineSelect.value = String(maquina.id);
+    }
+    const detailPanel = document.getElementById('machineDetailPanel');
+    if (detailPanel) {
+        detailPanel.classList.remove('hidden');
+        currentMachineId = String(maquina.id);
+        const detailTitle = document.getElementById('detailTitle');
+        const detailSubtitle = document.getElementById('detailSubtitle');
+        const detailMachineMotive = document.getElementById('detailMachineMotive');
+        if (detailTitle) detailTitle.textContent = `${maquina.modelo || 'Máquina'} — Fallas e Incidencias`;
+        if (detailSubtitle) detailSubtitle.textContent = `Estado: ${maquina.estado || 'Desconocido'}`;
+        if (detailMachineMotive) detailMachineMotive.textContent = maquina.especificaciones || 'Sin especificaciones registradas.';
+    }
+}
+
+async function saveAdminMaquinaria(event) {
+    event.preventDefault();
+
+    const idInput = document.getElementById('adminMaquinaId');
+    const modeloInput = document.getElementById('adminMaquinaModelo');
+    const horometroInput = document.getElementById('adminMaquinaHorometro');
+    const estadoInput = document.getElementById('adminMaquinaEstado');
+    const tarifaInput = document.getElementById('adminMaquinaTarifa');
+    const planInput = document.getElementById('adminMaquinaPlan');
+    const specsInput = document.getElementById('adminMaquinaSpecs');
+
+    const payload = {
+        modelo_equipo: modeloInput?.value.trim(),
+        horometro_actual: Number(horometroInput?.value || 0),
+        estado: estadoInput?.value,
+        tarifa_diaria: tarifaInput?.value === '' ? null : Number(tarifaInput.value),
+        plan_mantenimiento_id: planInput?.value === '' ? null : Number(planInput.value),
+        especificaciones: specsInput?.value.trim() || null
+    };
+
+    if (!payload.modelo_equipo || !Number.isFinite(payload.horometro_actual)) {
+        setMaquinariaStatus('Completa modelo y horómetro.', 'warning');
+        return;
+    }
+
+    try {
+        const isEdit = Boolean(idInput?.value);
+        const url = isEdit ? `/api/maquinaria/${idInput.value}` : '/api/maquinaria';
+        const method = isEdit ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(result.message || 'No se pudo guardar la maquinaria');
+        }
+
+        setMaquinariaStatus(isEdit ? 'Maquinaria actualizada' : 'Maquinaria creada', 'success');
+        resetAdminMaquinariaForm();
+        await loadAdminMaquinaria();
+    } catch (err) {
+        setMaquinariaStatus(`Error: ${err.message}`, 'error');
+    }
 }
 
 function clearAuthToken() {
@@ -1240,6 +1503,16 @@ async function initDashboard() {
     initMachineCards();
     initIncidentForm();
     initAdminMaquinariaPanel();
+
+    const topRegisterBtn = document.getElementById('topRegisterBtn');
+    if (topRegisterBtn) {
+        topRegisterBtn.textContent = 'Nueva maquinaria';
+        topRegisterBtn.addEventListener('click', () => {
+            showView('inventario');
+            resetAdminMaquinariaForm();
+            showMaquinariaForm(true);
+        });
+    }
 }
 
 /* ─── Sidebar usuario ─── */
