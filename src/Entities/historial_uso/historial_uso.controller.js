@@ -342,5 +342,6 @@ async function search(req, res, next) {
 
 module.exports = {
   create,
-  listByMaquina
+  listByMaquina,
+  search
 };
