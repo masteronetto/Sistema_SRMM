@@ -1004,22 +1004,22 @@
                             <div id="reportesStatus" class="role-badge" style="background:rgba(52,152,219,0.14);color:#2980b9;">Listo</div>
                         </div>
 
-                        <div id="reportesFilters" style="display:grid;grid-template-columns:minmax(220px,1fr) 150px 150px auto auto auto;gap:0.75rem;margin-top:1rem;align-items:end;">
+                        <div id="reportesFilters" style="display:grid;grid-template-columns:minmax(220px,1fr) 130px 130px auto auto auto;gap:0.5rem;margin-top:1rem;align-items:end;column-gap:0.75rem;">
                             <label style="display:grid;gap:0.35rem;">
                                 <span class="small muted">Máquina</span>
                                 <select id="reportMachineSelect" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
                             </label>
                             <label style="display:grid;gap:0.35rem;">
                                 <span class="small muted">Fecha inicio</span>
-                                <input id="reportStartDate" type="date" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input id="reportStartDate" type="date" style="max-width:130px;box-sizing:border-box;" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             </label>
                             <label style="display:grid;gap:0.35rem;">
                                 <span class="small muted">Fecha fin</span>
-                                <input id="reportEndDate" type="date" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input id="reportEndDate" type="date" style="max-width:130px;box-sizing:border-box;" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             </label>
-                            <button id="reportRefreshBtn" class="btn" style="height:48px;">Actualizar reporte</button>
-                            <button id="reportExportBtn" class="btn btn-secondary" style="height:48px;">Generar CSV</button>
-                            <button id="reportPdfBtn" class="btn btn-secondary" style="height:48px;">Generar PDF</button>
+                            <button id="reportRefreshBtn" class="btn" style="height:48px;white-space:nowrap;">Actualizar reporte</button>
+                            <button id="reportExportBtn" class="btn btn-secondary" style="height:48px;white-space:nowrap;">Generar CSV</button>
+                            <button id="reportPdfBtn" class="btn btn-secondary" style="height:48px;white-space:nowrap;">Generar PDF</button>
                         </div>
                     </section>
 
