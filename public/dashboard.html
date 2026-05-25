@@ -1698,6 +1698,42 @@ function formatCurrency(value) {
     return n.toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 }
 
+function showIncidentFormFeedback(message, type = 'info') {
+    const formStatus = document.getElementById('incidentFormStatus');
+    if (!formStatus) return;
+
+    const colors = {
+        info: '#2980b9',
+        success: '#1f9d49',
+        warning: '#d97706',
+        error: '#9f2934'
+    };
+
+    formStatus.textContent = message;
+    formStatus.style.color = colors[type] || colors.info;
+}
+
+function validateIncidentFormFields({ maquinaId, operadorId, fecha, descripcion }) {
+    if (!maquinaId) return 'Selecciona una máquina.';
+    if (!operadorId) return 'Selecciona un operador responsable.';
+    if (!fecha) return 'Selecciona una fecha.';
+    if (!descripcion) return 'Escribe la descripción de la falla.';
+    return null;
+}
+
+async function refreshIncidentDetailPanelIfNeeded(maquinaId) {
+    if (!currentMachineId || String(currentMachineId) !== String(maquinaId)) {
+        return;
+    }
+
+    const detailPanel = document.getElementById('machineDetailPanel');
+    const detailRows = document.getElementById('detailIncidentRows');
+    const detailFilterPending = document.getElementById('detailFilterPending');
+    if (detailPanel && !detailPanel.classList.contains('hidden') && detailRows && detailFilterPending) {
+        await loadMachineIncidencias(detailRows, detailFilterPending);
+    }
+}
+
 async function loadAvailableMachines() {
     if (availableMachines.length > 0) {
         return availableMachines;
@@ -2583,7 +2619,6 @@ function initIncidentForm() {
 
     form.addEventListener('submit', async e => {
         e.preventDefault();
-        formStatus.textContent = '';
         const maquinaId  = machineSelect.value;
         const operadorId = operatorSelect.value;
         const fecha      = dateInput.value;
@@ -2591,16 +2626,17 @@ function initIncidentForm() {
         const descripcion= document.getElementById('incidentDescription').value.trim();
         const mantId     = document.getElementById('incidentMaintenanceId').value.trim();
 
-        if (!maquinaId || !operadorId || !fecha || !descripcion) {
-            formStatus.textContent = 'Completa todos los campos obligatorios.';
-            formStatus.style.color = '#9f2934';
+        const validationMessage = validateIncidentFormFields({ maquinaId, operadorId, fecha, descripcion });
+        if (validationMessage) {
+            showIncidentFormFeedback(validationMessage, 'warning');
             return;
         }
 
         try {
+            showIncidentFormFeedback('Guardando incidencia...', 'info');
             const res = await fetch(`/api/maquinaria/${maquinaId}/incidencias`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                 body: JSON.stringify({
                     operador_id: Number(operadorId), fecha, criticidad, descripcion,
                     mantenimiento_id: mantId ? Number(mantId) : null
@@ -2608,13 +2644,12 @@ function initIncidentForm() {
             });
             const result = await res.json();
             if (!res.ok) throw new Error(result.message || 'Error al registrar');
-            formStatus.textContent = '✅ Incidencia registrada con estado Pendiente.';
-            formStatus.style.color = '#1f9d49';
+            showIncidentFormFeedback('✅ Incidencia registrada con estado Pendiente.', 'success');
             document.getElementById('incidentDescription').value = '';
             document.getElementById('incidentMaintenanceId').value = '';
+            await refreshIncidentDetailPanelIfNeeded(maquinaId);
         } catch (err) {
-            formStatus.textContent = `❌ Error: ${err.message}`;
-            formStatus.style.color = '#9f2934';
+            showIncidentFormFeedback(`❌ Error: ${err.message}`, 'error');
         }
     });
 }
