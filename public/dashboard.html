@@ -82,6 +82,12 @@
             margin-right: 0.8rem;
         }
 
+        .machine-card.highlight {
+            box-shadow: 0 0 0 4px rgba(59,130,246,0.18);
+            transform: translateY(-3px);
+            transition: box-shadow 180ms ease, transform 180ms ease;
+        }
+
         .nav-group-title {
             color: rgba(255,255,255,0.72);
             font-size: 0.78rem;
@@ -856,6 +862,7 @@
                 <div class="section-stack">
                     <section class="section-card">
                         <div class="section-title">Mantenimiento</div>
+                        <div id="maintenanceOrderDetail" class="muted" style="margin-top:0.5rem;"></div>
                         <div class="mini-grid">
                             <article class="machine-card stat-card">
                                 <div class="stat-label">Pendientes (3)</div>
@@ -2410,15 +2417,73 @@ function renderIncidencias(items, rows) {
     }
     rows.innerHTML = items.map(i => {
         const c = i.criticidad || 'Media';
+        const vinc = (i.vinculada_mantenimiento && i.mantenimiento_id)
+            ? `<a href="#" onclick="openMaintenanceById(${i.mantenimiento_id});return false;">#${i.mantenimiento_id}</a>`
+            : (i.vinculada_mantenimiento ? 'Sí' : 'No');
         return `<tr>
             <td>${new Date(i.fecha).toLocaleDateString('es-CL')}</td>
             <td>${i.descripcion}</td>
             <td><span class="pill tag ${c.toLowerCase()}">${c}</span></td>
             <td>${i.operador_nombre || `#${i.operador_id}`}</td>
-            <td>${i.vinculada_mantenimiento ? 'Sí' : 'No'}</td>
+            <td>${vinc}</td>
             <td>${i.estado || 'Pendiente'}</td>
         </tr>`;
     }).join('');
+}
+
+async function openMaintenanceById(idOrden) {
+    try {
+        showView('mantenimiento');
+        const detailEl = document.getElementById('maintenanceOrderDetail');
+        if (detailEl) detailEl.textContent = 'Cargando orden de mantenimiento…';
+
+        // Intentar obtener la orden desde el backend usando las órdenes de la máquina actual
+        if (!currentMachineId) {
+            if (detailEl) detailEl.textContent = `Orden #${idOrden} — abrir mantenimiento (no se conoce máquina actual)`;
+            return;
+        }
+
+        const res = await fetch(`/api/mantenimientos/ordenes/maquina/${currentMachineId}`, { headers: getAuthHeaders() });
+        if (!res.ok) throw new Error('No se pudo obtener las órdenes de la máquina');
+        const ordenes = await res.json();
+        const orden = Array.isArray(ordenes) ? ordenes.find(o => Number(o.id_orden) === Number(idOrden)) : null;
+        if (!orden) {
+            if (detailEl) detailEl.textContent = `Orden #${idOrden} no encontrada entre las órdenes de la máquina.`;
+            return;
+        }
+
+        if (detailEl) {
+            detailEl.innerHTML = `<div style="padding:0.6rem;background:#fff;border:1px solid #e2e8f0;border-radius:6px;">
+                <strong>Orden #${orden.id_orden}</strong> — ${orden.tipo_servicio || 'Sin tipo'}<br>
+                <small>Fecha programada: ${orden.fecha_programada || '—'}</small><br>
+                <div class="muted" style="margin-top:0.35rem;">${orden.detalle_tecnico || ''}</div>
+                <div style="margin-top:0.5rem;">
+                    <a class="btn btn-secondary" href="/mantenimientos/ordenes/${orden.id_orden}" target="_blank" rel="noopener">Ver orden completa</a>
+                </div>
+            </div>`;
+        }
+        // Intentar encontrar y destacar la tarjeta de la máquina asociada
+        const maquinaId = orden.maquinaria_id_maquina || orden.maquinaria_id_maquina;
+        try {
+            const card = document.querySelector(`.machine-card[data-maquina-id="${maquinaId}"]`);
+            if (card) {
+                // Simular click para abrir detalle y cargar orden/incidencias
+                card.classList.add('highlight');
+                setTimeout(() => card.classList.remove('highlight'), 3000);
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.click();
+            }
+        } catch (e) {
+            // no crítico
+        }
+    } catch (err) {
+        const detailEl = document.getElementById('maintenanceOrderDetail');
+        if (detailEl) {
+            detailEl.textContent = `Error cargando orden: ${err.message}`;
+        } else {
+            console.error('Error cargando orden:', err);
+        }
+    }
 }
 
 /* ═══════════════════════════════════════════════════
