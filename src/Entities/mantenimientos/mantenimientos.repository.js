@@ -5,15 +5,52 @@ const baseSelect = `
   FROM mantenimiento
 `;
 
-function buildHistorialMantencionesQuery(maquinaria_id_maquina, filtros = {}) {
+function buildHistorialMantencionesFilters(maquinaria_id_maquina, filtros = {}) {
   const {
     fecha_inicio = null,
     fecha_fin = null,
     tipo_servicio = null,
+    order = 'desc'
+  } = filtros;
+
+  const conditions = ['m.maquinaria_id_maquina = $1'];
+  const values = [maquinaria_id_maquina];
+  let paramIndex = 1;
+
+  if (fecha_inicio) {
+    paramIndex += 1;
+    conditions.push(`m.fecha_servicio >= $${paramIndex}`);
+    values.push(fecha_inicio);
+  }
+
+  if (fecha_fin) {
+    paramIndex += 1;
+    conditions.push(`m.fecha_servicio <= $${paramIndex}`);
+    values.push(fecha_fin);
+  }
+
+  if (tipo_servicio) {
+    paramIndex += 1;
+    conditions.push(`m.tipo_servicio ILIKE $${paramIndex}`);
+    values.push(`%${tipo_servicio}%`);
+  }
+
+  const orderDirection = typeof order === 'string' && order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+  return {
+    whereClause: `WHERE ${conditions.join(' AND ')}`,
+    values,
+    orderDirection
+  };
+}
+
+function buildHistorialMantencionesQuery(maquinaria_id_maquina, filtros = {}) {
+  const {
     limit = null,
     offset = null
   } = filtros;
 
+  const { whereClause, values, orderDirection } = buildHistorialMantencionesFilters(maquinaria_id_maquina, filtros);
   let query = `
     SELECT
       m.id_mantencion,
@@ -29,31 +66,11 @@ function buildHistorialMantencionesQuery(maquinaria_id_maquina, filtros = {}) {
     FROM mantenimiento m
     INNER JOIN usuarios u ON u.id_usuario = m.usuarios_id_usuario
     INNER JOIN maquinaria maq ON maq.id_maquina = m.maquinaria_id_maquina
-    WHERE m.maquinaria_id_maquina = $1
+    ${whereClause}
+    ORDER BY m.fecha_servicio ${orderDirection}, m.id_mantencion ${orderDirection}
   `;
 
-  const values = [maquinaria_id_maquina];
-  let paramIndex = 1;
-
-  if (fecha_inicio) {
-    paramIndex += 1;
-    query += ` AND m.fecha_servicio >= $${paramIndex}`;
-    values.push(fecha_inicio);
-  }
-
-  if (fecha_fin) {
-    paramIndex += 1;
-    query += ` AND m.fecha_servicio <= $${paramIndex}`;
-    values.push(fecha_fin);
-  }
-
-  if (tipo_servicio) {
-    paramIndex += 1;
-    query += ` AND m.tipo_servicio ILIKE $${paramIndex}`;
-    values.push(`%${tipo_servicio}%`);
-  }
-
-  query += ` ORDER BY m.fecha_servicio DESC, m.id_mantencion DESC`;
+  let paramIndex = values.length;
 
   if (limit !== null) {
     paramIndex += 1;
@@ -71,7 +88,7 @@ function buildHistorialMantencionesQuery(maquinaria_id_maquina, filtros = {}) {
     values.push(offset);
   }
 
-  return { query, values };
+  return { query, values, whereClause, orderDirection };
 }
 
 async function getMantenimientoById(id_mantencion) {
@@ -87,9 +104,38 @@ async function listMantenimientosByMaquina(maquinaria_id_maquina) {
 }
 
 async function listHistorialMantencionesByMaquina(maquinaria_id_maquina, filtros = {}) {
-  const { query, values } = buildHistorialMantencionesQuery(maquinaria_id_maquina, filtros);
-  const { rows } = await pool.query(query, values);
-  return rows;
+  const { query, values, whereClause, orderDirection } = buildHistorialMantencionesQuery(maquinaria_id_maquina, filtros);
+  const countQuery = `
+    SELECT COUNT(1) AS total
+    FROM mantenimiento m
+    INNER JOIN usuarios u ON u.id_usuario = m.usuarios_id_usuario
+    INNER JOIN maquinaria maq ON maq.id_maquina = m.maquinaria_id_maquina
+    ${whereClause}
+  `;
+
+  const countValues = values.slice(0, values.length - ((filtros.limit !== null && filtros.limit !== undefined) ? (filtros.offset !== null && filtros.offset !== undefined ? 2 : 1) : 0));
+
+  const [dataResult, countResult] = await Promise.all([
+    pool.query(query, values),
+    pool.query(countQuery, countValues)
+  ]);
+
+  return {
+    rows: dataResult.rows,
+    total: Number(countResult.rows[0]?.total || 0)
+  };
+}
+
+async function listTiposServicio() {
+  const query = `
+    SELECT DISTINCT tipo_servicio
+    FROM mantenimiento
+    WHERE tipo_servicio IS NOT NULL AND TRIM(tipo_servicio) <> ''
+    ORDER BY tipo_servicio ASC
+  `;
+
+  const { rows } = await pool.query(query);
+  return rows.map((row) => row.tipo_servicio);
 }
 
 async function createMantenimiento({ tipo_servicio, horometro_registro, detalle_tecnico, fecha_servicio, maquinaria_id_maquina, usuarios_id_usuario }) {
@@ -261,6 +307,7 @@ module.exports = {
   getMantenimientoById,
   listMantenimientosByMaquina,
   listHistorialMantencionesByMaquina,
+  listTiposServicio,
   createMantenimiento,
   programarMantenimiento,
   getOrdenTrabajoById,

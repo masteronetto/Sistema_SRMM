@@ -7,6 +7,7 @@ const router = Router();
 router.post('/', controller.create);
 router.get('/maquina/:maquinaria_id_maquina', controller.listByMaquina);
 router.get('/maquina/:maquinaria_id_maquina/historial', controller.historialByMaquina);
+router.get('/tipos-servicio', controller.tiposServicio);
 
 // Órdenes de trabajo (SIS-15: Programar mantenimientos preventivos)
 router.post('/programar', controller.programar);

@@ -40,6 +40,46 @@ function normalizeDateInput(value) {
   return trimmedValue;
 }
 
+function escapeCsvValue(value) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return String(value).replace(/"/g, '""');
+}
+
+function buildHistorialCsv(rows) {
+  const header = [
+    'id_mantencion',
+    'fecha_servicio',
+    'tipo_servicio',
+    'maquinaria_id_maquina',
+    'modelo_equipo',
+    'horometro_registro',
+    'usuarios_id_usuario',
+    'usuario_responsable',
+    'detalle_tecnico'
+  ];
+
+  const lines = [header.join(',')];
+
+  rows.forEach((row) => {
+    lines.push([
+      row.id_mantencion,
+      row.fecha_servicio,
+      row.tipo_servicio,
+      row.maquinaria_id_maquina,
+      row.modelo_equipo,
+      row.horometro_registro,
+      row.usuarios_id_usuario,
+      row.usuario_responsable,
+      row.detalle_tecnico
+    ].map((value) => `"${escapeCsvValue(value)}"`).join(','));
+  });
+
+  return lines.join('\n');
+}
+
 function validatePayload(payload) {
   const tipo_servicio = payload.tipo_servicio;
   const horometro_registro = toNumberOrNull(payload.horometro_registro);
@@ -127,6 +167,15 @@ async function historialByMaquina(req, res, next) {
     const tipo_servicio = typeof req.query.tipo_servicio === 'string' && req.query.tipo_servicio.trim() !== ''
       ? req.query.tipo_servicio.trim()
       : null;
+    const order = typeof req.query.order === 'string' && req.query.order.trim() !== ''
+      ? req.query.order.trim().toLowerCase()
+      : 'desc';
+    const page = req.query.page === undefined || req.query.page === null || req.query.page === ''
+      ? null
+      : toNumberOrNull(req.query.page);
+    const perPage = req.query.per_page === undefined || req.query.per_page === null || req.query.per_page === ''
+      ? null
+      : toNumberOrNull(req.query.per_page);
     const limit = req.query.limit === undefined || req.query.limit === null || req.query.limit === ''
       ? null
       : toNumberOrNull(req.query.limit);
@@ -134,24 +183,49 @@ async function historialByMaquina(req, res, next) {
       ? null
       : toNumberOrNull(req.query.offset);
 
+    const effectiveLimit = limit !== null ? limit : (perPage !== null ? perPage : null);
+    const effectiveOffset = offset !== null ? offset : (page !== null && perPage !== null ? (Math.max(1, page) - 1) * perPage : null);
+
     if (
       (req.query.fecha_inicio && fecha_inicio === null) ||
       (req.query.fecha_fin && fecha_fin === null) ||
+      (req.query.page !== undefined && req.query.page !== null && req.query.page !== '' && page === null) ||
+      (req.query.per_page !== undefined && req.query.per_page !== null && req.query.per_page !== '' && perPage === null) ||
       (req.query.limit !== undefined && req.query.limit !== null && req.query.limit !== '' && limit === null) ||
       (req.query.offset !== undefined && req.query.offset !== null && req.query.offset !== '' && offset === null)
     ) {
       return res.status(400).json({
-        message: 'fecha_inicio y fecha_fin deben usar formato YYYY-MM-DD; limit y offset deben ser numericos'
+        message: 'fecha_inicio y fecha_fin deben usar formato YYYY-MM-DD; page, per_page, limit y offset deben ser numericos'
       });
     }
 
-    const historial = await mantenimientosRepo.listHistorialMantencionesByMaquina(maquinaria_id_maquina, {
+    const dataFiltros = {
       fecha_inicio,
       fecha_fin,
       tipo_servicio,
-      limit,
-      offset
-    });
+      order,
+      limit: effectiveLimit,
+      offset: effectiveOffset
+    };
+
+    const historialResult = await mantenimientosRepo.listHistorialMantencionesByMaquina(maquinaria_id_maquina, dataFiltros);
+
+    if (typeof req.query.format === 'string' && req.query.format.toLowerCase() === 'csv') {
+      const csvResult = await mantenimientosRepo.listHistorialMantencionesByMaquina(maquinaria_id_maquina, {
+        fecha_inicio,
+        fecha_fin,
+        tipo_servicio,
+        order,
+        limit: null,
+        offset: null
+      });
+      const csv = buildHistorialCsv(csvResult.rows);
+      const fileName = `historial_mantenciones_maquina_${maquinaria_id_maquina}.csv`;
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      return res.status(200).send(`\uFEFF${csv}`);
+    }
 
     return res.json({
       maquinaria_id_maquina,
@@ -159,12 +233,25 @@ async function historialByMaquina(req, res, next) {
         fecha_inicio,
         fecha_fin,
         tipo_servicio,
-        limit,
-        offset
+        order,
+        page,
+        per_page: perPage,
+        limit: effectiveLimit,
+        offset: effectiveOffset
       },
-      cantidad: historial.length,
-      historial
+      cantidad: historialResult.rows.length,
+      total: historialResult.total,
+      historial: historialResult.rows
     });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function tiposServicio(req, res, next) {
+  try {
+    const tipos = await mantenimientosRepo.listTiposServicio();
+    return res.json({ data: tipos });
   } catch (error) {
     return next(error);
   }
@@ -382,6 +469,7 @@ module.exports = {
   create,
   listByMaquina,
   historialByMaquina,
+  tiposServicio,
   programar,
   listOrdenesMaquina,
   listOrdenesMecanico,

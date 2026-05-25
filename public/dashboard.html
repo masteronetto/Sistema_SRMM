@@ -21,6 +21,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root {
@@ -1017,6 +1018,8 @@
                                 <input id="reportEndDate" type="date" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             </label>
                             <button id="reportRefreshBtn" class="btn" style="height:48px;">Actualizar reporte</button>
+                            <button id="reportExportBtn" class="btn btn-secondary" style="height:48px;">Generar CSV</button>
+                            <button id="reportPdfBtn" class="btn btn-secondary" style="height:48px;">Generar PDF</button>
                         </div>
                     </section>
 
@@ -1509,6 +1512,7 @@ async function loadSelectedMachineReport(machineId, fechaInicio, fechaFin) {
     const totalFallas = rows.filter((item) => String(item.tipo_evento || '').includes('Falla')).length;
 
     window.__srmmReporteState = {
+        rows,
         totalHoras,
         totalMantenciones,
         totalFallas,
@@ -1610,8 +1614,10 @@ function initReportesDashboard() {
     const startDateInput = document.getElementById('reportStartDate');
     const endDateInput = document.getElementById('reportEndDate');
     const refreshBtn = document.getElementById('reportRefreshBtn');
+    const exportBtn = document.getElementById('reportExportBtn');
+    const pdfBtn = document.getElementById('reportPdfBtn');
 
-    if (!machineSelect || !startDateInput || !endDateInput || !refreshBtn) return;
+    if (!machineSelect || !startDateInput || !endDateInput || !refreshBtn || !exportBtn || !pdfBtn) return;
 
     if (!reportsInitialized) {
         reportsInitialized = true;
@@ -1635,6 +1641,94 @@ function initReportesDashboard() {
                 console.error(error);
                 setReportStatus('No se pudo refrescar el reporte', 'error');
             }
+        });
+
+        exportBtn.addEventListener('click', () => {
+            const reportState = window.__srmmReporteState || {};
+            const rows = Array.isArray(reportState.rows) ? reportState.rows : [];
+
+            if (!rows.length) {
+                setReportStatus('No hay datos para exportar', 'error');
+                return;
+            }
+
+            const header = ['fecha_evento', 'tipo_evento', 'horometro', 'detalle'];
+            const csvLines = [header.join(',')];
+            rows.forEach((row) => {
+                csvLines.push([
+                    row.fecha_evento,
+                    row.tipo_evento,
+                    row.horometro,
+                    row.detalle
+                ].map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`).join(','));
+            });
+
+            const blob = new Blob(['\uFEFF' + csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `reporte_maquina_${machineSelect.value || 'sin_seleccion'}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+            setReportStatus('CSV generado correctamente', 'success');
+        });
+
+        pdfBtn.addEventListener('click', () => {
+            const reportState = window.__srmmReporteState || {};
+            const rows = Array.isArray(reportState.rows) ? reportState.rows : [];
+            const jsPDF = window.jspdf && window.jspdf.jsPDF;
+
+            if (!jsPDF) {
+                setReportStatus('No se pudo cargar jsPDF', 'error');
+                return;
+            }
+
+            if (!rows.length) {
+                setReportStatus('No hay datos para exportar', 'error');
+                return;
+            }
+
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+            const title = 'Reporte histórico SRMM';
+            const machineLabel = document.getElementById('reportSelectedMachineLabel')?.textContent || 'Sin máquina seleccionada';
+            const startDate = document.getElementById('reportStartDate')?.value || 'inicio';
+            const endDate = document.getElementById('reportEndDate')?.value || 'hoy';
+            const summary = reportState.detalle || '';
+
+            doc.setFontSize(16);
+            doc.text(title, 40, 40);
+            doc.setFontSize(10);
+            doc.text(`Máquina: ${machineLabel}`, 40, 60);
+            doc.text(`Rango: ${startDate} - ${endDate}`, 40, 76);
+            doc.text(`Resumen: ${summary}`, 40, 92);
+
+            const headers = ['Fecha', 'Tipo', 'Horómetro', 'Detalle'];
+            const tableRows = rows.slice(0, 40).map((row) => ([
+                row.fecha_evento || '-',
+                row.tipo_evento || '-',
+                row.horometro ?? '-',
+                row.detalle || '-'
+            ]));
+
+            let y = 120;
+            doc.setFontSize(11);
+            doc.text(headers.join(' | '), 40, y);
+            y += 18;
+
+            tableRows.forEach((row) => {
+                const line = row.map((value) => String(value).slice(0, 30)).join(' | ');
+                if (y > 520) {
+                    doc.addPage();
+                    y = 40;
+                }
+                doc.text(line, 40, y);
+                y += 16;
+            });
+
+            doc.save(`reporte_maquina_${machineSelect.value || 'sin_seleccion'}.pdf`);
+            setReportStatus('PDF generado correctamente', 'success');
         });
 
         const reloadSelected = async () => {
