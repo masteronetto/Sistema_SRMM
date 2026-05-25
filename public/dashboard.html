@@ -2437,25 +2437,21 @@ async function openMaintenanceById(idOrden) {
         const detailEl = document.getElementById('maintenanceOrderDetail');
         if (detailEl) detailEl.textContent = 'Cargando orden de mantenimiento…';
 
-        // Intentar obtener la orden desde el backend usando las órdenes de la máquina actual
-        if (!currentMachineId) {
-            if (detailEl) detailEl.textContent = `Orden #${idOrden} — abrir mantenimiento (no se conoce máquina actual)`;
-            return;
+        // Usar endpoint directo para obtener la orden por ID
+        const res = await fetch(`/api/mantenimientos/ordenes/${idOrden}`, { headers: getAuthHeaders() });
+        if (!res.ok) {
+            if (res.status === 404) {
+                if (detailEl) detailEl.textContent = `Orden #${idOrden} no encontrada.`;
+                return;
+            }
+            throw new Error('No se pudo cargar la orden');
         }
-
-        const res = await fetch(`/api/mantenimientos/ordenes/maquina/${currentMachineId}`, { headers: getAuthHeaders() });
-        if (!res.ok) throw new Error('No se pudo obtener las órdenes de la máquina');
-        const ordenes = await res.json();
-        const orden = Array.isArray(ordenes) ? ordenes.find(o => Number(o.id_orden) === Number(idOrden)) : null;
-        if (!orden) {
-            if (detailEl) detailEl.textContent = `Orden #${idOrden} no encontrada entre las órdenes de la máquina.`;
-            return;
-        }
+        const orden = await res.json();
 
         if (detailEl) {
             detailEl.innerHTML = `<div style="padding:0.6rem;background:#fff;border:1px solid #e2e8f0;border-radius:6px;">
                 <strong>Orden #${orden.id_orden}</strong> — ${orden.tipo_servicio || 'Sin tipo'}<br>
-                <small>Fecha programada: ${orden.fecha_programada || '—'}</small><br>
+                <small>Fecha programada: ${orden.fecha_programada || orden.fecha_servicio || '—'}</small><br>
                 <div class="muted" style="margin-top:0.35rem;">${orden.detalle_tecnico || ''}</div>
                 <div style="margin-top:0.5rem;">
                     <a class="btn btn-secondary" href="/mantenimientos/ordenes/${orden.id_orden}" target="_blank" rel="noopener">Ver orden completa</a>

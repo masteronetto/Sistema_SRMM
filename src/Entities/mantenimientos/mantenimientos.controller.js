@@ -406,6 +406,28 @@ async function verificarRetrasos(req, res, next) {
   }
 }
 
+/**
+ * GET /api/mantenimientos/ordenes/:id_orden
+ * Obtener una orden de trabajo por su ID
+ */
+async function getOrdenById(req, res, next) {
+  try {
+    const id_orden = toNumberOrNull(req.params.id_orden);
+    if (id_orden === null) {
+      return res.status(400).json({ message: 'id_orden debe ser numérico' });
+    }
+
+    const orden = await mantenimientosRepo.getOrdenTrabajoById(id_orden);
+    if (!orden) {
+      return res.status(404).json({ message: 'Orden de trabajo no encontrada' });
+    }
+
+    return res.json(orden);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function procesarRetrasos(io) {
   const ordenes = await mantenimientosRepo.listOrdenesAtrasadas();
   const adminId = 1;
@@ -474,6 +496,7 @@ module.exports = {
   listOrdenesMaquina,
   listOrdenesMecanico,
   iniciar,
+  getOrdenById,
   listOrdenesAtrasadas,
   verificarRetrasos,
   procesarRetrasos
