@@ -588,6 +588,53 @@
         .incident-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
         .form-status      { font-size: 0.95rem; font-weight: 600; }
 
+        .maquinaria-form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .maquinaria-form-grid .incident-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .maquinaria-form-block label {
+            display: grid;
+            gap: 0.45rem;
+        }
+
+        .maquinaria-form-block input,
+        .maquinaria-form-block select,
+        .maquinaria-form-block textarea {
+            width: 100%;
+        }
+
+        .maquinaria-form-block {
+            padding: 1rem;
+            border: 1px solid rgba(40,28,22,0.08);
+            border-radius: 16px;
+            background: #fcfaf7;
+        }
+
+        .maquinaria-form-block .block-title {
+            font-size: 0.9rem;
+            font-weight: 800;
+            color: #5f5048;
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .maquinaria-form-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+            margin-top: 0.25rem;
+        }
+
+        .span-2 { grid-column: 1 / -1; }
+
         .section-stack { display: grid; gap: 1rem; }
         .muted { color: var(--muted); }
         .hidden { display: none !important; }
@@ -619,6 +666,7 @@
             .brand { display: flex; align-items: center; gap: 0.8rem; }
             .content { padding: 1rem; }
             .hero-grid, .mini-grid { grid-template-columns: 1fr; }
+            .maquinaria-form-grid { grid-template-columns: 1fr; }
             .bar-row { grid-template-columns: 1fr; }
             .topbar { padding: 0 1rem; }
         }
@@ -698,7 +746,6 @@
             </div>
             <div class="topbar-actions">
                 <button class="top-button secondary" id="topAlertsBtn">⚠ Alertas</button>
-                <button class="top-button primary"   id="topRegisterBtn">+ Registrar Máquina</button>
             </div>
         </header>
 
@@ -833,23 +880,43 @@
                     <div class="muted text-sm" style="margin-bottom:1rem;">Usa este formulario para crear o editar maquinaria y ajustar su tarifa diaria.</div>
                     <form id="adminMaquinariaForm" class="section-stack">
                         <input id="adminMaquinaId" type="hidden">
-                        <div class="incident-grid">
-                            <label>Modelo<input id="adminMaquinaModelo" type="text" required placeholder="Ej. Excavadora CAT 320"></label>
-                            <label>Horómetro actual<input id="adminMaquinaHorometro" type="number" min="0" step="0.01" required></label>
-                            <label>Estado
-                                <select id="adminMaquinaEstado" required>
-                                    <option value="Disponible">Disponible</option>
-                                    <option value="Arrendada">Arrendada</option>
-                                    <option value="Mantencion">Mantención</option>
-                                    <option value="Bloqueada">Bloqueada</option>
-                                    <option value="No Operativa">No Operativa</option>
-                                </select>
-                            </label>
-                            <label>Tarifa diaria (CLP)<input id="adminMaquinaTarifa" type="number" min="0" step="0.01" placeholder="100000"></label>
-                            <label>Plan mantención ID<input id="adminMaquinaPlan" type="number" min="0" step="1" placeholder="Opcional"></label>
+                        <div class="maquinaria-form-grid">
+                            <div class="maquinaria-form-block span-2">
+                                <div class="block-title">Datos básicos</div>
+                                <div class="incident-grid">
+                                    <label>Modelo<input id="adminMaquinaModelo" type="text" required placeholder="Ej. Excavadora CAT 320"></label>
+                                    <label>Estado
+                                        <select id="adminMaquinaEstado" required>
+                                            <option value="Disponible">Disponible</option>
+                                            <option value="Arrendada">Arrendada</option>
+                                            <option value="Mantencion">Mantención</option>
+                                            <option value="Bloqueada">Bloqueada</option>
+                                            <option value="No Operativa">No Operativa</option>
+                                        </select>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="maquinaria-form-block">
+                                <div class="block-title">Operación</div>
+                                <div class="incident-grid">
+                                    <label>Horómetro actual<input id="adminMaquinaHorometro" type="number" min="0" step="0.01" required></label>
+                                    <label>Tarifa diaria (CLP)<input id="adminMaquinaTarifa" type="number" min="0" step="0.01" placeholder="100000"></label>
+                                </div>
+                            </div>
+                            <div class="maquinaria-form-block">
+                                <div class="block-title">Mantenimiento</div>
+                                <label>Plan mantención
+                                    <select id="adminMaquinaPlan">
+                                        <option value="">Cargando planes…</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="maquinaria-form-block span-2">
+                                <div class="block-title">Especificaciones</div>
+                                <label>Especificaciones<textarea id="adminMaquinaSpecs" placeholder="Especificaciones técnicas, marca, serie, accesorios"></textarea></label>
+                            </div>
                         </div>
-                        <label>Especificaciones<textarea id="adminMaquinaSpecs" placeholder="Especificaciones técnicas, marca, serie, accesorios"></textarea></label>
-                        <div class="incident-actions">
+                        <div class="maquinaria-form-actions">
                             <button type="submit" class="top-button primary">Guardar maquinaria</button>
                             <button type="button" id="adminMaquinariaResetBtn" class="top-button secondary">Limpiar</button>
                         </div>
@@ -1231,6 +1298,8 @@ function initAdminMaquinariaPanel() {
         });
     }
 
+    loadMaintenancePlans();
+
     if (userRole !== 'Administrador' && formPanel) {
         formPanel.style.display = 'none';
         if (showFormBtn) showFormBtn.style.display = 'none';
@@ -1340,7 +1409,6 @@ function resetAdminMaquinariaForm() {
     const horometroInput = document.getElementById('adminMaquinaHorometro');
     const estadoInput = document.getElementById('adminMaquinaEstado');
     const tarifaInput = document.getElementById('adminMaquinaTarifa');
-    const planInput = document.getElementById('adminMaquinaPlan');
     const specsInput = document.getElementById('adminMaquinaSpecs');
 
     if (idInput) idInput.value = '';
@@ -1350,6 +1418,8 @@ function resetAdminMaquinariaForm() {
     if (tarifaInput) tarifaInput.value = '';
     if (planInput) planInput.value = '';
     if (specsInput) specsInput.value = '';
+
+    renderMaintenancePlanOptions('');
 
     setMaquinariaStatus('Formulario listo para crear una máquina', 'info');
 }
@@ -1374,7 +1444,7 @@ function editMaquinariaById(maquinaId) {
     if (horometroInput) horometroInput.value = maquina.horometro ?? '';
     if (estadoInput) estadoInput.value = maquina.estado || 'Disponible';
     if (tarifaInput) tarifaInput.value = maquina.tarifa_diaria ?? '';
-    if (planInput) planInput.value = maquina.plan_mantenimiento_id ?? '';
+    renderMaintenancePlanOptions(maquina.plan_mantenimiento_id ?? '');
     if (specsInput) specsInput.value = maquina.especificaciones || '';
 
     setMaquinariaStatus(`Editando maquinaria #${maquina.id}`, 'warning');
@@ -1480,6 +1550,7 @@ let currentUser   = null;
 let userRole      = null;
 let currentMachineId = null;
 let availableMachines = [];
+let availableMaintenancePlans = [];
 let reportsInitialized = false;
 let adminMaquinariaInitialized = false;
 let reportTopChart = null;
@@ -1510,16 +1581,6 @@ async function initDashboard() {
     initMachineCards();
     initIncidentForm();
     initAdminMaquinariaPanel();
-
-    const topRegisterBtn = document.getElementById('topRegisterBtn');
-    if (topRegisterBtn) {
-        topRegisterBtn.textContent = 'Nueva maquinaria';
-        topRegisterBtn.addEventListener('click', () => {
-            showView('inventario');
-            resetAdminMaquinariaForm();
-            showMaquinariaForm(true);
-        });
-    }
 }
 
 /* ─── Sidebar usuario ─── */
@@ -1545,14 +1606,8 @@ function applyRolePermissions() {
         btn.style.display = required.includes(userRole) ? 'flex' : 'none';
     });
 
-    // Ocultar botones del topbar que no aplican a este rol
-    if (!allowed.includes('inventario')) {
-        document.getElementById('topRegisterBtn').style.display = 'none';
-    }
-
     if (userRole === 'Usuario') {
         document.getElementById('topAlertsBtn').style.display = 'none';
-        document.getElementById('topRegisterBtn').style.display = 'none';
     }
 }
 
@@ -1696,6 +1751,63 @@ function formatCurrency(value) {
     const n = Number(value || 0);
     if (!Number.isFinite(n)) return '0';
     return n.toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function mapMaintenancePlan(plan) {
+    return {
+        id: plan.id_plan ?? plan.id ?? plan.plan_id,
+        nombre: plan.nombre_plan ?? plan.nombre ?? `Plan #${plan.id_plan ?? plan.id ?? plan.plan_id}`,
+        intervalo_horas: plan.intervalo_horas ?? plan.intervalo ?? null,
+        descripcion: plan.descripcion ?? ''
+    };
+}
+
+function renderMaintenancePlanOptions(selectedId = '') {
+    const planSelect = document.getElementById('adminMaquinaPlan');
+    if (!planSelect) return;
+
+    if (!availableMaintenancePlans.length) {
+        planSelect.innerHTML = '<option value="">Sin planes disponibles</option>';
+        return;
+    }
+
+    const options = ['<option value="">Sin plan asignado</option>'];
+    availableMaintenancePlans.forEach((plan) => {
+        const intervalText = plan.intervalo_horas ? ` (${plan.intervalo_horas} hrs)` : '';
+        const label = escapeHtml(`${plan.nombre}${intervalText}`);
+        const selected = String(plan.id) === String(selectedId) ? ' selected' : '';
+        options.push(`<option value="${plan.id}"${selected}>${label}</option>`);
+    });
+
+    planSelect.innerHTML = options.join('');
+}
+
+async function loadMaintenancePlans() {
+    const planSelect = document.getElementById('adminMaquinaPlan');
+    if (!planSelect) return;
+
+    try {
+        const res = await fetch('/api/planes-mantencion', { headers: getAuthHeaders() });
+        if (!res.ok) throw new Error('No se pudieron cargar los planes');
+
+        const data = await res.json();
+        const planes = Array.isArray(data?.planes) ? data.planes : [];
+        availableMaintenancePlans = planes.map(mapMaintenancePlan);
+        renderMaintenancePlanOptions();
+    } catch (err) {
+        availableMaintenancePlans = [];
+        planSelect.innerHTML = '<option value="">No se pudieron cargar los planes</option>';
+        console.error('Error cargando planes de mantención:', err);
+    }
 }
 
 function showIncidentFormFeedback(message, type = 'info') {
