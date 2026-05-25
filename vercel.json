@@ -24,7 +24,7 @@
   ]
  ,
   "rewrites": [
-    { "source": "/", "destination": "/login.html" },
-    { "source": "/((?!api|.*\\..*).*)", "destination": "/login.html" }
+    { "source": "/", "destination": "/screenshot-login.html" },
+    { "source": "/((?!api|.*\\..*).*)", "destination": "/screenshot-login.html" }
   ]
 }
