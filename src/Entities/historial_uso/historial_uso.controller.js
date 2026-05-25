@@ -299,8 +299,42 @@ async function listByMaquina(req, res, next) {
       return res.status(400).json({ message: 'maquinaria_id_maquina debe ser numerico y mayor o igual a 0' });
     }
 
-    const data = await historialUsoRepo.listHistorialByMaquina(maquinaria_id_maquina);
-    return res.json(data);
+    // Soporta paginación, orden y filtros (fecha desde/hasta, id_usuario)
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page || '10', 10)));
+    const order = (req.query.order || 'desc').toLowerCase();
+    const fecha_from = normalizeDateInput(req.query.fecha_from);
+    const fecha_to = normalizeDateInput(req.query.fecha_to);
+    const id_usuario = req.query.id_usuario ? toPositiveNumber(req.query.id_usuario) : null;
+
+    const result = await historialUsoRepo.listHistorialByMaquinaPaged({
+      maquinaria_id_maquina,
+      page,
+      perPage,
+      order,
+      fecha_from,
+      fecha_to,
+      id_usuario
+    });
+
+    return res.json({ data: result.rows, total: result.total, page, per_page: perPage });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function search(req, res, next) {
+  try {
+    const q = req.query.q || '';
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page || '10', 10)));
+    const fecha_from = normalizeDateInput(req.query.fecha_from);
+    const fecha_to = normalizeDateInput(req.query.fecha_to);
+    const id_usuario = req.query.id_usuario ? toPositiveNumber(req.query.id_usuario) : null;
+
+    const result = await historialUsoRepo.searchHistorial({ q, page, perPage, fecha_from, fecha_to, id_usuario });
+
+    return res.json({ data: result.rows, total: result.total, page, per_page: perPage });
   } catch (error) {
     return next(error);
   }

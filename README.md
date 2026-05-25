@@ -822,3 +822,54 @@ git add .
 git commit -m "Actualizar documentación"
 git push origin main
 ```
+
+## Cambios recientes (25 May 2026)
+
+Se integraron nuevas funcionalidades para el manejo del historial de horómetro y mantenciones:
+
+- Backend:
+  - Nuevo endpoint de búsqueda global: `GET /api/historial_uso/search` (parámetros: `q`, `fecha_from`, `fecha_to`, `id_usuario`, `page`, `per_page`).
+  - `GET /api/historial_uso/maquina/:maquinaria_id_maquina` ahora soporta paginación y filtros (`page`, `per_page`, `order`, `fecha_from`, `fecha_to`, `id_usuario`).
+  - Repositorio actualizado con funciones `listHistorialByMaquinaPaged` y `searchHistorial` en `src/Entities/historial_uso/historial_uso.repository.js`.
+  - Controlador actualizado en `src/Entities/historial_uso/historial_uso.controller.js` para procesar query params y exponer `search`.
+
+- Frontend:
+  - Nuevo componente React `HistorialMantenciones` en `frontend/scr/components/HistorialMantenciones.jsx` con:
+    - Paginación (10/25/50), orden asc/desc
+    - Búsqueda por texto (`q`) y filtros por rango de fechas (`fecha_from`, `fecha_to`) e ID de usuario (`id_usuario`)
+    - Soporta mostrar historial por `maquinaId` o usar búsqueda global
+
+Cómo probar rápido:
+
+1. Inicia el backend:
+
+```bash
+npm run dev
+```
+
+2. Ejemplos de llamadas:
+
+```bash
+curl "http://localhost:3000/api/historial_uso/maquina/123?page=1&per_page=10&order=desc"
+
+curl "http://localhost:3000/api/historial_uso/search?q=excavadora&fecha_from=2026-05-01&fecha_to=2026-05-25&page=1&per_page=25"
+```
+
+3. Integración del componente React en la UI:
+
+```jsx
+import HistorialMantenciones from './components/HistorialMantenciones';
+
+// Historial de una máquina concreta
+<HistorialMantenciones maquinaId={123} />
+
+// Búsqueda/paginación global
+<HistorialMantenciones />
+```
+
+Próximos pasos recomendados:
+
+- Integrar el componente en la página de detalle de máquina o en el dashboard.
+- Mostrar nombre y rol del usuario en la tabla (hacer join con `usuarios`).
+- Añadir opción de exportar CSV y enlaces a mantenciones relacionadas.
+
