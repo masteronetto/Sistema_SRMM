@@ -27,9 +27,9 @@
     <p class="lead">Registra un nuevo usuario como Usuario</p>
     
     <form id="registerForm">
-      <input type="text" id="nombre_completo" name="nombre_completo" placeholder="Nombre completo" required>
-      <input type="email" id="email" name="email" placeholder="Correo electrónico" required>
-      <input type="password" id="contrasena" name="contrasena" placeholder="Contraseña" required>
+      <input type="text" id="nombre_completo" name="nombre_completo" placeholder="Nombre completo" autocomplete="name" required>
+      <input type="email" id="email" name="email" placeholder="Correo electrónico" autocomplete="username" required>
+      <input type="password" id="contrasena" name="contrasena" placeholder="Contraseña" autocomplete="new-password" required>
       <button type="submit">Crear cuenta</button>
     </form>
     <p class="small">¿Ya tienes cuenta? <a href="/login.html">Inicia sesión</a></p>

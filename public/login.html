@@ -26,9 +26,9 @@
   <main class="card">
     <h1>Iniciar sesión</h1>
     <p class="lead">Accede con tu correo y contraseña</p>
-    <form id="loginForm">
-      <input type="email" id="email" name="email" placeholder="Correo electrónico" required>
-      <input type="password" id="password" name="password" placeholder="Contraseña" required>
+    <form id="loginForm" autocomplete="on">
+      <input type="email" id="email" name="email" placeholder="Correo electrónico" autocomplete="username" required>
+      <input type="password" id="password" name="password" placeholder="Contraseña" autocomplete="current-password" required>
       <label class="small" style="display:flex;gap:8px;align-items:center;cursor:pointer;user-select:none;">
         <input type="checkbox" id="rememberSession" style="width:auto;margin:0;">
         Mantener sesión iniciada
