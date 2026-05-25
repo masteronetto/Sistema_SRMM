@@ -88,11 +88,12 @@ export default function ReportesDashboard() {
         <div className="max-w-7xl mx-auto p-6 space-y-8 animate-fadeIn">
             <h2 className="text-3xl font-bold text-slate-800 border-b pb-4">Analítica y Optimización (Sprint 4)</h2>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Subtarea D: Máquinas más utilizadas */}
                 <div className="bg-white p-6 rounded-2xl shadow border border-slate-100">
                     <h3 className="text-xl font-bold text-slate-800 mb-4">Máquinas más utilizadas</h3>
-                    <table className="w-full text-left border-collapse">
+                    <div className="overflow-x-auto max-h-80">
+                    <table className="w-full min-w-full text-left border-collapse table-auto">
                         <thead>
                             <tr className="border-b border-slate-200 text-sm text-slate-500 uppercase">
                                 <th className="pb-3 px-2">Modelo</th>
@@ -111,7 +112,8 @@ export default function ReportesDashboard() {
                                 ))
                             )}
                         </tbody>
-                    </table>
+                        </table>
+                        </div>
                 </div>
 
                 {/* Subtarea A: Gráfico de evolución de uso */}
@@ -127,7 +129,7 @@ export default function ReportesDashboard() {
                             <option key={m.id_maquina} value={m.id_maquina}>{m.modelo_equipo}</option>
                         ))}
                     </select>
-                    <div className="relative h-64 w-full">
+                    <div className="relative h-80 w-full min-h-[260px]">
                         <canvas ref={chartRef}></canvas>
                     </div>
                 </div>
@@ -137,8 +139,8 @@ export default function ReportesDashboard() {
             <div className="bg-white p-6 rounded-2xl shadow border border-slate-100">
                 <h3 className="text-xl font-bold text-slate-800 mb-2">Correlación: Fallas vs Mantenciones preventivas</h3>
                 <p className="text-sm text-slate-500 mb-6">Análisis de efectividad verificando el promedio de horas trabajadas entre cada mantención.</p>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                <div className="overflow-x-auto max-h-96">
+                    <table className="w-full min-w-full text-left border-collapse table-auto">
                         <thead>
                             <tr className="border-b border-slate-200 text-sm text-slate-500 uppercase">
                                 <th className="pb-3 px-2">Máquina</th>
