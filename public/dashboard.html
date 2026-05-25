@@ -20,6 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root {
@@ -992,19 +993,72 @@
 
             <!-- ══ REPORTES ══ -->
             <section id="reportes" class="view">
-                <div class="mini-grid">
-                    <article class="section-card">
-                        <div class="section-title">Reporte de uso</div>
-                        <div class="muted">Horas acumuladas por equipo, tendencias de uso y disponibilidad operativa.</div>
-                    </article>
-                    <article class="section-card">
-                        <div class="section-title">Reporte de mantenimiento</div>
-                        <div class="muted">Historial de intervenciones, fallas y análisis de patrones de desgaste.</div>
-                    </article>
-                    <article class="section-card">
-                        <div class="section-title">Reporte de ingresos</div>
-                        <div class="muted">Rentabilidad por equipo, ingresos por arriendo y análisis financiero.</div>
-                    </article>
+                <div class="section-stack" style="gap:1rem;">
+                    <section class="section-card">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+                            <div>
+                                <div class="section-title">Visualización de reportes históricos</div>
+                                <div class="muted">Consulta uso histórico, mantenciones y estado operativo filtrando por máquina y rango de fechas.</div>
+                            </div>
+                            <div id="reportesStatus" class="role-badge" style="background:rgba(52,152,219,0.14);color:#2980b9;">Listo</div>
+                        </div>
+
+                        <div id="reportesFilters" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;margin-top:1rem;align-items:end;">
+                            <label style="display:grid;gap:0.35rem;">
+                                <span class="small muted">Máquina</span>
+                                <select id="reportMachineSelect" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+                            </label>
+                            <label style="display:grid;gap:0.35rem;">
+                                <span class="small muted">Fecha inicio</span>
+                                <input id="reportStartDate" type="date" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </label>
+                            <label style="display:grid;gap:0.35rem;">
+                                <span class="small muted">Fecha fin</span>
+                                <input id="reportEndDate" type="date" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </label>
+                            <button id="reportRefreshBtn" class="btn" style="height:48px;">Actualizar reporte</button>
+                        </div>
+                    </section>
+
+                    <div class="mini-grid">
+                        <article class="section-card">
+                            <div class="section-title">Horas históricas</div>
+                            <div id="reportHorasHistoricas" class="text-3xl font-bold text-slate-800">—</div>
+                            <div id="reportHorasDetalle" class="muted text-sm mt-2">Selecciona una máquina para ver su evolución.</div>
+                        </article>
+                        <article class="section-card">
+                            <div class="section-title">Mantenciones</div>
+                            <div id="reportTotalMantenciones" class="text-3xl font-bold text-slate-800">—</div>
+                            <div class="muted text-sm mt-2">Registros de intervenciones preventivas y correctivas en el rango seleccionado.</div>
+                        </article>
+                        <article class="section-card">
+                            <div class="section-title">Fallas registradas</div>
+                            <div id="reportTotalFallas" class="text-3xl font-bold text-slate-800">—</div>
+                            <div class="muted text-sm mt-2">Incidencias asociadas a las máquinas visibles en el tablero.</div>
+                        </article>
+                </div>
+
+                    <div class="mini-grid">
+                        <article class="section-card">
+                            <div class="section-title">Top máquinas por horómetro</div>
+                            <div class="relative h-72 w-full mt-3"><canvas id="reportTopChart"></canvas></div>
+                        </article>
+                        <article class="section-card">
+                            <div class="section-title">Evolución histórica de uso</div>
+                            <div class="relative h-72 w-full mt-3"><canvas id="reportUsoChart"></canvas></div>
+                        </article>
+                    </div>
+
+                    <section class="section-card">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+                            <div>
+                                <div class="section-title">Historial unificado</div>
+                                <div class="muted">Uso diario y mantenciones preventivas consolidadas en una sola línea de tiempo.</div>
+                            </div>
+                            <div id="reportSelectedMachineLabel" class="role-badge" style="background:rgba(109,81,65,0.12);color:#6d5141;">Sin máquina seleccionada</div>
+                        </div>
+                        <div id="reporteHistorialTable" class="overflow-x-auto mt-4"></div>
+                    </section>
                 </div>
             </section>
 
@@ -1087,6 +1141,10 @@ let currentUser   = null;
 let userRole      = null;
 let currentMachineId = null;
 let availableMachines = [];
+let reportsInitialized = false;
+let reportTopChart = null;
+let reportUsoChart = null;
+let reportSelectedMachineId = '';
 
 /* ═══════════════════════════════════════════════════
    INIT
@@ -1219,6 +1277,10 @@ function showView(viewName, push = true) {
         loadUsersList();
         loadRoleRequests();
     }
+
+    if (target === 'reportes') {
+        initReportesDashboard();
+    }
 }
 
 function initNavigation() {
@@ -1241,12 +1303,356 @@ async function loadUsersList() {
         const res = await fetch('/api/usuarios', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
+
         if (!res.ok) throw new Error(res.statusText);
         const users = await res.json();
         renderUsersList(users);
     } catch (err) {
         container.innerHTML = `<div class="message error">Error al cargar usuarios: ${err.message}</div>`;
     }
+}
+
+function getAuthHeaders() {
+    return { 'Authorization': `Bearer ${token}` };
+}
+
+function formatCLDate(value) {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString('es-CL', { timeZone: 'UTC' });
+}
+
+function formatNumber(value, suffix = '') {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return `0${suffix}`;
+    return `${numeric.toLocaleString('es-CL')}${suffix}`;
+}
+
+async function loadAvailableMachines() {
+    if (availableMachines.length > 0) {
+        return availableMachines;
+    }
+
+    const res = await fetch('/api/maquinaria', { headers: getAuthHeaders() });
+    if (!res.ok) {
+        throw new Error('No se pudieron cargar las máquinas');
+    }
+
+    availableMachines = await res.json();
+    return availableMachines;
+}
+
+function setReportStatus(message, type = 'info') {
+    const badge = document.getElementById('reportesStatus');
+    if (!badge) return;
+
+    const palette = {
+        info: { bg: 'rgba(52,152,219,0.14)', color: '#2980b9' },
+        success: { bg: 'rgba(39,174,96,0.14)', color: '#27ae60' },
+        warning: { bg: 'rgba(243,156,18,0.16)', color: '#d97706' },
+        error: { bg: 'rgba(231,76,60,0.14)', color: '#c0392b' }
+    };
+
+    const style = palette[type] || palette.info;
+    badge.textContent = message;
+    badge.style.background = style.bg;
+    badge.style.color = style.color;
+}
+
+function destroyReportCharts() {
+    if (reportTopChart) {
+        reportTopChart.destroy();
+        reportTopChart = null;
+    }
+    if (reportUsoChart) {
+        reportUsoChart.destroy();
+        reportUsoChart = null;
+    }
+}
+
+function renderReportTopChart(topMaquinas) {
+    const canvas = document.getElementById('reportTopChart');
+    if (!canvas || !window.Chart) return;
+
+    const labels = topMaquinas.map((item) => item.modelo_equipo);
+    const values = topMaquinas.map((item) => Number(item.horometro_actual) || 0);
+
+    if (reportTopChart) {
+        reportTopChart.destroy();
+    }
+
+    reportTopChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Horas acumuladas',
+                data: values,
+                backgroundColor: 'rgba(109, 81, 65, 0.75)',
+                borderColor: '#6d5141',
+                borderWidth: 1,
+                borderRadius: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { color: '#6b7280' } },
+                x: { ticks: { color: '#6b7280' } }
+            }
+        }
+    });
+}
+
+function renderReportUsoChart(rows) {
+    const canvas = document.getElementById('reportUsoChart');
+    if (!canvas || !window.Chart) return;
+
+    const labels = rows.map((item) => formatCLDate(item.fecha_evento));
+    const values = rows.map((item) => Number(item.horometro) || 0);
+
+    if (reportUsoChart) {
+        reportUsoChart.destroy();
+    }
+
+    reportUsoChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Horómetro histórico',
+                data: values,
+                borderColor: '#4f46e5',
+                backgroundColor: 'rgba(79, 70, 229, 0.12)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.3,
+                pointRadius: 4,
+                pointBackgroundColor: '#4f46e5'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { color: '#6b7280' } },
+                x: { ticks: { color: '#6b7280' } }
+            }
+        }
+    });
+}
+
+function renderReportTable(rows) {
+    const container = document.getElementById('reporteHistorialTable');
+    if (!container) return;
+
+    if (!rows.length) {
+        container.innerHTML = '<p class="muted">No hay registros para el rango seleccionado.</p>';
+        return;
+    }
+
+    container.innerHTML = `
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="border-b border-slate-200 text-sm text-slate-500 uppercase">
+                    <th class="pb-3 px-2">Fecha</th>
+                    <th class="pb-3 px-2">Tipo</th>
+                    <th class="pb-3 px-2">Horómetro</th>
+                    <th class="pb-3 px-2">Responsable</th>
+                    <th class="pb-3 px-2">Detalle</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows.map((item) => `
+                    <tr class="border-b border-slate-100 hover:bg-slate-50 transition align-top">
+                        <td class="py-3 px-2 whitespace-nowrap">${formatCLDate(item.fecha_evento)}</td>
+                        <td class="py-3 px-2 font-semibold text-slate-700">${item.tipo_evento || '—'}</td>
+                        <td class="py-3 px-2 whitespace-nowrap">${formatNumber(item.horometro, ' hrs')}</td>
+                        <td class="py-3 px-2">${item.usuario_responsable || '—'}</td>
+                        <td class="py-3 px-2">${item.detalle || '—'}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function updateReportKpis(summary) {
+    const horasEl = document.getElementById('reportHorasHistoricas');
+    const detalleEl = document.getElementById('reportHorasDetalle');
+    const mantencionesEl = document.getElementById('reportTotalMantenciones');
+    const fallasEl = document.getElementById('reportTotalFallas');
+
+    if (horasEl) horasEl.textContent = formatNumber(summary.totalHoras, ' hrs');
+    if (detalleEl) detalleEl.textContent = summary.detalle;
+    if (mantencionesEl) mantencionesEl.textContent = formatNumber(summary.totalMantenciones);
+    if (fallasEl) fallasEl.textContent = formatNumber(summary.totalFallas);
+}
+
+async function loadSelectedMachineReport(machineId, fechaInicio, fechaFin) {
+    const selectedLabel = document.getElementById('reportSelectedMachineLabel');
+    const headers = getAuthHeaders();
+    const query = new URLSearchParams();
+    if (fechaInicio) query.append('fecha_inicio', fechaInicio);
+    if (fechaFin) query.append('fecha_fin', fechaFin);
+
+    const res = await fetch(`/api/reportes/historial-unificado/${machineId}?${query.toString()}`, { headers });
+    if (!res.ok) throw new Error('No se pudo cargar el historial unificado');
+
+    const rows = await res.json();
+    const totalHoras = rows.reduce((acc, item) => acc + (Number(item.horometro) || 0), 0);
+    const totalMantenciones = rows.filter((item) => String(item.tipo_evento || '').startsWith('Mantención')).length;
+    const totalFallas = rows.filter((item) => String(item.tipo_evento || '').includes('Falla')).length;
+
+    window.__srmmReporteState = {
+        totalHoras,
+        totalMantenciones,
+        totalFallas,
+        detalle: `${rows.length} evento(s) entre ${fechaInicio || 'inicio'} y ${fechaFin || 'hoy'}`
+    };
+
+    const machine = availableMachines.find((item) => String(item.id_maquina) === String(machineId));
+    if (selectedLabel) {
+        selectedLabel.textContent = machine ? machine.modelo_equipo : `Máquina #${machineId}`;
+    }
+
+    renderReportUsoChart(rows);
+    renderReportTable(rows);
+    reportSelectedMachineId = String(machineId);
+}
+
+async function loadReportesDashboard() {
+    const machineSelect = document.getElementById('reportMachineSelect');
+    const startDateInput = document.getElementById('reportStartDate');
+    const endDateInput = document.getElementById('reportEndDate');
+    const selectedLabel = document.getElementById('reportSelectedMachineLabel');
+
+    if (!machineSelect || !startDateInput || !endDateInput) return;
+
+    setReportStatus('Cargando reportes...', 'info');
+
+    try {
+        const machines = await loadAvailableMachines();
+
+        machineSelect.innerHTML = machines.length
+            ? '<option value="">Selecciona una máquina</option>' + machines.map((m) => `<option value="${m.id_maquina}">${m.modelo_equipo}</option>`).join('')
+            : '<option value="">No hay máquinas disponibles</option>';
+
+        if (!machineSelect.value) {
+            machineSelect.value = reportSelectedMachineId || (machines[0] ? String(machines[0].id_maquina) : '');
+        }
+
+        const today = new Date();
+        const defaultEnd = today.toISOString().slice(0, 10);
+        const past = new Date(today);
+        past.setDate(past.getDate() - 30);
+        const defaultStart = past.toISOString().slice(0, 10);
+
+        if (!startDateInput.value) startDateInput.value = defaultStart;
+        if (!endDateInput.value) endDateInput.value = defaultEnd;
+
+        const headers = getAuthHeaders();
+        const [topRes, statsRes] = await Promise.all([
+            fetch('/api/reportes/top-maquinas', { headers }),
+            fetch('/api/reportes/estadisticas', { headers })
+        ]);
+
+        if (!topRes.ok) throw new Error('No se pudieron cargar las máquinas más usadas');
+        if (!statsRes.ok) throw new Error('No se pudieron cargar las estadísticas');
+
+        const topMaquinas = await topRes.json();
+        const estadisticas = await statsRes.json();
+
+        renderReportTopChart(topMaquinas);
+
+        const selectedMachineStats = machineSelect.value
+            ? estadisticas.find((item) => String(item.id_maquina) === String(machineSelect.value))
+            : null;
+
+        const summary = {
+            totalHoras: 0,
+            totalMantenciones: Number(selectedMachineStats?.total_mantenciones) || 0,
+            totalFallas: Number(selectedMachineStats?.total_fallas) || 0,
+            detalle: 'Selecciona una máquina para ver su evolución.'
+        };
+
+        if (machineSelect.value) {
+            await loadSelectedMachineReport(machineSelect.value, startDateInput.value, endDateInput.value);
+        } else if (machines[0]) {
+            machineSelect.value = String(machines[0].id_maquina);
+            await loadSelectedMachineReport(machineSelect.value, startDateInput.value, endDateInput.value);
+        }
+
+        if (selectedLabel) {
+            selectedLabel.textContent = machineSelect.value
+                ? (machines.find((m) => String(m.id_maquina) === String(machineSelect.value))?.modelo_equipo || 'Máquina seleccionada')
+                : 'Sin máquina seleccionada';
+        }
+
+        const reportState = window.__srmmReporteState || {};
+        if (reportState.totalHoras !== undefined) summary.totalHoras = reportState.totalHoras;
+        if (reportState.detalle) summary.detalle = reportState.detalle;
+
+        updateReportKpis(summary);
+        setReportStatus('Reportes actualizados', 'success');
+    } catch (error) {
+        console.error('Error cargando reportes históricos:', error);
+        setReportStatus('Error al cargar reportes', 'error');
+    }
+}
+
+function initReportesDashboard() {
+    const machineSelect = document.getElementById('reportMachineSelect');
+    const startDateInput = document.getElementById('reportStartDate');
+    const endDateInput = document.getElementById('reportEndDate');
+    const refreshBtn = document.getElementById('reportRefreshBtn');
+
+    if (!machineSelect || !startDateInput || !endDateInput || !refreshBtn) return;
+
+    if (!reportsInitialized) {
+        reportsInitialized = true;
+
+        machineSelect.addEventListener('change', async (event) => {
+            reportSelectedMachineId = event.target.value;
+            try {
+                await loadSelectedMachineReport(event.target.value, startDateInput.value, endDateInput.value);
+                setReportStatus('Máquina actualizada', 'success');
+            } catch (error) {
+                console.error(error);
+                setReportStatus('No se pudo actualizar la máquina', 'error');
+            }
+        });
+
+        refreshBtn.addEventListener('click', async () => {
+            try {
+                destroyReportCharts();
+                await loadReportesDashboard();
+            } catch (error) {
+                console.error(error);
+                setReportStatus('No se pudo refrescar el reporte', 'error');
+            }
+        });
+
+        const reloadSelected = async () => {
+            if (!machineSelect.value) return;
+            try {
+                await loadSelectedMachineReport(machineSelect.value, startDateInput.value, endDateInput.value);
+                setReportStatus('Filtros aplicados', 'success');
+            } catch (error) {
+                console.error(error);
+                setReportStatus('No se pudo filtrar el historial', 'error');
+            }
+        };
+
+        startDateInput.addEventListener('change', reloadSelected);
+        endDateInput.addEventListener('change', reloadSelected);
+    }
+
+    loadReportesDashboard();
 }
 
 async function loadRoleRequests() {
@@ -1532,12 +1938,11 @@ function initIncidentForm() {
     // Cargar opciones
     (async () => {
         try {
-            const [mr, ur] = await Promise.all([fetch('/api/maquinaria'), fetch('/api/usuarios')]);
-            if (!mr.ok || !ur.ok) throw new Error('Error cargando datos');
-            const [machines, users] = await Promise.all([mr.json(), ur.json()]);
-            availableMachines = machines;
+            const [machines, ur] = await Promise.all([loadAvailableMachines(), fetch('/api/usuarios', { headers: getAuthHeaders() })]);
             machineSelect.innerHTML  = '<option value="">Selecciona una máquina</option>' +
                 machines.map(m => `<option value="${m.id_maquina}">${m.modelo_equipo} — ${m.estado}</option>`).join('');
+            if (!ur.ok) throw new Error('Error cargando datos');
+            const users = await ur.json();
             const ops = users.filter(u => u.rol_acceso === 'Operador');
             operatorSelect.innerHTML = ops.length
                 ? '<option value="">Selecciona un operador</option>' + ops.map(o => `<option value="${o.id_usuario}">${o.nombre_completo}</option>`).join('')
