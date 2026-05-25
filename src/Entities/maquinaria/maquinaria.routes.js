@@ -1,7 +1,10 @@
 const { Router } = require('express');
 const controller = require('./maquinaria.controller');
+const { verifyToken, requireAdmin } = require('../../middleware/auth');
 
 const router = Router();
+
+router.use(verifyToken);
 
 router.get('/', controller.list);
 router.get('/urgent-maintenance', controller.listUrgentMaintenance);
@@ -11,12 +14,12 @@ router.get('/:id_maquina/disponibilidad', controller.getDisponibilidad);
 router.get('/:id_maquina/bloqueo', controller.getBloqueo);
 router.get('/:id_maquina/incidencias', controller.getIncidencias);
 router.post('/:id_maquina/incidencias', controller.createIncidencia);
-router.post('/', controller.create);
-router.post('/:id_maquina/bloqueo-critico', controller.blockCritical);
-router.post('/:id_maquina/notify-operator', controller.notifyOperator); 
-router.put('/:id_maquina', controller.update);
-router.patch('/:id_maquina/mark-not-operative', controller.markAsNotOperative);
-router.patch('/:id_maquina/desbloquear', controller.unblock);
-router.delete('/:id_maquina', controller.remove);
+router.post('/', requireAdmin, controller.create);
+router.post('/:id_maquina/bloqueo-critico', requireAdmin, controller.blockCritical);
+router.post('/:id_maquina/notify-operator', requireAdmin, controller.notifyOperator);
+router.put('/:id_maquina', requireAdmin, controller.update);
+router.patch('/:id_maquina/mark-not-operative', requireAdmin, controller.markAsNotOperative);
+router.patch('/:id_maquina/desbloquear', requireAdmin, controller.unblock);
+router.delete('/:id_maquina', requireAdmin, controller.remove);
 
 module.exports = router;

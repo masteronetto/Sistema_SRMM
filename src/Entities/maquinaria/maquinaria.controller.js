@@ -32,7 +32,7 @@ function validatePayload(payload) {
 
   if (!estadosPermitidos.has(estado)) {
     return {
-      error: 'estado invalido. Valores permitidos: Disponible, Arrendada, Mantencion, Bloqueada',
+      error: 'estado invalido. Valores permitidos: Disponible, Arrendada, Mantencion, Bloqueada, No Operativa',
       parsed: null
     };
   }
@@ -45,6 +45,15 @@ function validatePayload(payload) {
     };
   }
 
+  const tarifaDiariaRaw = payload.tarifa_diaria;
+  const tarifa_diaria = tarifaDiariaRaw === undefined ? undefined : toNumberOrNull(tarifaDiariaRaw);
+  if (tarifaDiariaRaw !== undefined && tarifaDiariaRaw !== null && tarifa_diaria === null) {
+    return {
+      error: 'tarifa_diaria debe ser numerico y no negativo si se envia',
+      parsed: null
+    };
+  }
+
   return {
     error: null,
     parsed: {
@@ -52,7 +61,8 @@ function validatePayload(payload) {
       horometro_actual,
       estado,
       especificaciones: payload.especificaciones || null,
-      planes_mantencion_id_plan
+      planes_mantencion_id_plan,
+      tarifa_diaria
     }
   };
 }
@@ -281,7 +291,17 @@ async function update(req, res, next) {
       return res.status(400).json({ message: error });
     }
 
-    const data = await maquinariaRepo.updateMaquinaria(id_maquina, parsed);
+    const current = await maquinariaRepo.getMaquinariaById(id_maquina);
+    if (!current) {
+      return res.status(404).json({ message: 'Maquinaria no encontrada' });
+    }
+
+    const payload = {
+      ...parsed,
+      tarifa_diaria: parsed.tarifa_diaria === undefined ? current.tarifa_diaria : parsed.tarifa_diaria
+    };
+
+    const data = await maquinariaRepo.updateMaquinaria(id_maquina, payload);
     if (!data) {
       return res.status(404).json({ message: 'Maquinaria no encontrada' });
     }
@@ -309,7 +329,8 @@ async function markAsNotOperative(req, res, next) {
       horometro_actual: maq.horometro_actual,
       estado: 'Bloqueada',
       especificaciones: maq.especificaciones,
-      planes_mantencion_id_plan: maq.planes_mantencion_id_plan
+      planes_mantencion_id_plan: maq.planes_mantencion_id_plan,
+      tarifa_diaria: maq.tarifa_diaria
     });
 
     return res.json(updated);

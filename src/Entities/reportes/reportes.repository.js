@@ -78,3 +78,59 @@ module.exports = {
   getEstadisticas,
   getUsoHistorico
 };
+
+// Ingresos por arriendos
+async function getIngresosPorArriendos(fecha_inicio, fecha_fin, tarifa_diaria_fallback) {
+  // fecha_inicio and fecha_fin are optional; tarifa_diaria_fallback is number (per day)
+  const params = [];
+  let where = '';
+  let idx = 1;
+  if (fecha_inicio) {
+    where += ` AND a.fecha_inicio >= $${idx}`;
+    params.push(fecha_inicio);
+    idx++;
+  }
+  if (fecha_fin) {
+    where += ` AND a.fecha_inicio <= $${idx}`;
+    params.push(fecha_fin);
+    idx++;
+  }
+
+  // always pass tarifa fallback as last param so we can COALESCE with m.tarifa_diaria
+  params.push(tarifa_diaria_fallback || 0);
+  const tarifaParamIdx = idx; // index of the tarifa fallback in the params array
+
+  // dias = COALESCE(fecha_fin, CURRENT_DATE) - fecha_inicio
+  const query = `
+    SELECT
+      a.maquinaria_id_maquina AS id_maquina,
+      m.modelo_equipo,
+      COUNT(*) AS contratos,
+      SUM( (COALESCE(a.fecha_fin, CURRENT_DATE) - a.fecha_inicio) )::BIGINT AS dias_arrendados,
+      COALESCE(m.tarifa_diaria, $${tarifaParamIdx})::NUMERIC(12,2) AS tarifa_usada,
+      (SUM( (COALESCE(a.fecha_fin, CURRENT_DATE) - a.fecha_inicio) )::BIGINT * COALESCE(m.tarifa_diaria, $${tarifaParamIdx}) )::NUMERIC(14,2) AS ingresos
+    FROM arriendos a
+    LEFT JOIN maquinaria m ON m.id_maquina = a.maquinaria_id_maquina
+    WHERE 1=1 ${where}
+    GROUP BY a.maquinaria_id_maquina, m.modelo_equipo, m.tarifa_diaria
+    ORDER BY dias_arrendados DESC
+  `;
+
+  const { rows } = await pool.query(query, params);
+
+  // normalize numeric types
+  const result = rows.map(r => ({
+    id_maquina: r.id_maquina,
+    modelo_equipo: r.modelo_equipo,
+    contratos: Number(r.contratos || 0),
+    dias_arrendados: Number(r.dias_arrendados || 0),
+    tarifa_usada: Number(r.tarifa_usada || 0),
+    ingresos: Number(r.ingresos || 0)
+  }));
+
+  const total = result.reduce((s, it) => s + (it.ingresos || 0), 0);
+
+  return { by_maquina: result, total_ingresos: total };
+}
+
+module.exports.getIngresosPorArriendos = getIngresosPorArriendos;

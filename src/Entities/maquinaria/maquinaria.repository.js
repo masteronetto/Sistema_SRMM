@@ -1,7 +1,7 @@
 const pool = require('../../db/pool');
 
 const baseSelect = `
-  SELECT id_maquina, modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan, created_at, updated_at
+  SELECT id_maquina, modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan, tarifa_diaria, created_at, updated_at
   FROM maquinaria
 `;
 
@@ -48,6 +48,7 @@ async function listMaquinaria() {
       m.estado, 
       m.especificaciones, 
       m.planes_mantencion_id_plan, 
+      m.tarifa_diaria,
       m.created_at, 
       m.updated_at,
       p.intervalo_horas,
@@ -208,6 +209,7 @@ async function getDisponibilidadMaquina(id_maquina, margenMinimoHoras = 50) {
       m.estado,
       m.especificaciones,
       m.planes_mantencion_id_plan,
+      m.tarifa_diaria,
       p.intervalo_horas,
       COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) AS referencia_horometro,
       (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + COALESCE(p.intervalo_horas, 0) - m.horometro_actual) AS horas_restantes,
@@ -270,11 +272,11 @@ async function getMaquinariaById(id_maquina) {
   return rows[0] || null;
 }
 
-async function createMaquinaria({ modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan }) {
+async function createMaquinaria({ modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan, tarifa_diaria }) {
   const query = `
-    INSERT INTO maquinaria (modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan)
-    VALUES ($1, $2, COALESCE($3, 'Disponible'), $4, $5)
-    RETURNING id_maquina, modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan, created_at, updated_at
+    INSERT INTO maquinaria (modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan, tarifa_diaria)
+    VALUES ($1, $2, COALESCE($3, 'Disponible'), $4, $5, $6)
+    RETURNING id_maquina, modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan, tarifa_diaria, created_at, updated_at
   `;
 
   const values = [
@@ -282,14 +284,15 @@ async function createMaquinaria({ modelo_equipo, horometro_actual, estado, espec
     horometro_actual,
     estado || null,
     especificaciones || null,
-    planes_mantencion_id_plan || null
+    planes_mantencion_id_plan || null,
+    tarifa_diaria ?? null
   ];
 
   const { rows } = await pool.query(query, values);
   return rows[0];
 }
 
-async function updateMaquinaria(id_maquina, { modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan }) {
+async function updateMaquinaria(id_maquina, { modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan, tarifa_diaria }) {
   const query = `
     UPDATE maquinaria
     SET modelo_equipo = $2,
@@ -297,9 +300,10 @@ async function updateMaquinaria(id_maquina, { modelo_equipo, horometro_actual, e
         estado = $4,
         especificaciones = $5,
         planes_mantencion_id_plan = $6,
+        tarifa_diaria = $7,
         updated_at = NOW()
     WHERE id_maquina = $1
-    RETURNING id_maquina, modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan, created_at, updated_at
+    RETURNING id_maquina, modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan, tarifa_diaria, created_at, updated_at
   `;
 
   const values = [
@@ -308,7 +312,8 @@ async function updateMaquinaria(id_maquina, { modelo_equipo, horometro_actual, e
     horometro_actual,
     estado,
     especificaciones || null,
-    planes_mantencion_id_plan || null
+    planes_mantencion_id_plan || null,
+    tarifa_diaria ?? null
   ];
 
   const { rows } = await pool.query(query, values);
@@ -321,7 +326,7 @@ async function updateHorometroActual(id_maquina, horometro_actual) {
     SET horometro_actual = $2,
         updated_at = NOW()
     WHERE id_maquina = $1
-    RETURNING id_maquina, modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan, created_at, updated_at
+    RETURNING id_maquina, modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan, tarifa_diaria, created_at, updated_at
   `;
 
   const { rows } = await pool.query(query, [id_maquina, horometro_actual]);
@@ -347,7 +352,8 @@ async function blockMaquinariaWithReason(id_maquina, motivo_bloqueo, costo_estim
     horometro_actual: maquina.horometro_actual,
     estado: 'Bloqueada',
     especificaciones: maquina.especificaciones,
-    planes_mantencion_id_plan: maquina.planes_mantencion_id_plan
+    planes_mantencion_id_plan: maquina.planes_mantencion_id_plan,
+    tarifa_diaria: maquina.tarifa_diaria
   });
 
   // Registra la razón del bloqueo
@@ -402,7 +408,8 @@ async function unblockMaquinaria(id_maquina) {
     horometro_actual: maquina.horometro_actual,
     estado: 'Disponible',
     especificaciones: maquina.especificaciones,
-    planes_mantencion_id_plan: maquina.planes_mantencion_id_plan
+    planes_mantencion_id_plan: maquina.planes_mantencion_id_plan,
+    tarifa_diaria: maquina.tarifa_diaria
   });
 
   // Marca el bloqueo como resuelto

@@ -340,3 +340,16 @@ SELECT
 FROM mantenimiento m
 JOIN usuarios u ON m.usuarios_id_usuario = u.id_usuario
 ORDER BY fecha_evento DESC, fecha_sistema DESC;
+
+BEGIN;
+
+-- Agrega la columna si no existe
+ALTER TABLE IF EXISTS maquinaria
+  ADD COLUMN IF NOT EXISTS tarifa_diaria NUMERIC(12,2) DEFAULT NULL;
+
+-- Inicializa las tarifas existentes con un valor estándar si todavía no tienen tarifa
+UPDATE maquinaria
+SET tarifa_diaria = 100000
+WHERE tarifa_diaria IS NULL;
+
+COMMIT;

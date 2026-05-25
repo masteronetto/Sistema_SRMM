@@ -52,6 +52,38 @@ DATABASE_URL=postgresql://postgres:TU_PASSWORD_REAL@db.zwsdcardcfxtjngxvsqw.supa
 DB_SSL=true
 ```
 
+## Cambios recientes: Reportes de ingresos y migración de base de datos
+
+Se añadió soporte para calcular y exportar reportes de ingresos generados por los arriendos de maquinaria. Cambios principales:
+
+- Nueva columna en la tabla `maquinaria`: `tarifa_diaria NUMERIC(12,2)` (opcional). Si existe, la aplicación usará esta tarifa por máquina para calcular ingresos; si no, se usará el valor pasado en la query `?tarifa=` o la variable de entorno `ARRIENDO_RATE_DIA` (fallback 100000 CLP).
+- El dashboard de administración de maquinaria permite crear y editar equipos con su tarifa diaria.
+- La API de maquinaria quedó protegida por JWT; los usuarios autenticados pueden consultar, pero solo `Administrador` puede crear, editar, eliminar o cambiar tarifas.
+- Nuevos endpoints:
+  - `GET /api/reportes/ingresos?fecha_inicio=YYYY-MM-DD&fecha_fin=YYYY-MM-DD&tarifa=12345` -> devuelve JSON con `by_maquina` y `total_ingresos`.
+  - `GET /api/reportes/ingresos/csv?fecha_inicio=YYYY-MM-DD&fecha_fin=YYYY-MM-DD&tarifa=12345` -> descarga CSV con detalle por máquina.
+
+Ejemplo de uso (JSON):
+
+```
+GET /api/reportes/ingresos?fecha_inicio=2026-05-01&fecha_fin=2026-05-25
+
+Response:
+{
+  "by_maquina": [
+    { "id_maquina": 1, "modelo_equipo": "Excavadora X", "contratos": 2, "dias_arrendados": 15, "tarifa_usada": 100000, "ingresos": 1500000 },
+    ...
+  ],
+  "total_ingresos": 3500000
+}
+```
+Notas:
+- La API calculará `ingresos = dias_arrendados * tarifa_usada` donde `tarifa_usada = COALESCE(maquinaria.tarifa_diaria, tarifa_query, process.env.ARRIENDO_RATE_DIA, 100000)`.
+- También se añadió un endpoint CSV (`/api/reportes/ingresos/csv`) para descargar directamente el detalle por máquina.
+- Para crear o modificar una maquinaria, usa el panel de administración en la vista de inventario del dashboard legacy; ahí puedes definir la tarifa diaria al alta o modificarla después.
+- La vista React dedicada a maquinaria está en [frontend/scr/components/MaquinariaDashboard.jsx](frontend/scr/components/MaquinariaDashboard.jsx): muestra la lista para todos los roles y deshabilita la edición cuando el rol no es administrador.
+
+
 ### Recuperación de contraseña por correo
 
 Para habilitar el envío real de correos desde `POST /api/auth/recover`, configura al menos estas variables en el hosting:

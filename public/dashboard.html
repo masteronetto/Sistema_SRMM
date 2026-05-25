@@ -630,9 +630,9 @@
         <nav class="sidebar-nav" aria-label="Menú principal">
             <button class="nav-link active" data-view="inicio"><span class="nav-icon">⌂</span>Inicio</button>
 
-            <!-- Maquinaria: Mecánico, Operador, Administrador -->
-            <button class="nav-link" data-view="inventario" data-role-required="Mecanico,Operador,Administrador">
-                <span class="nav-icon">▦</span>Maquinaria
+            <!-- Vista React de maquinaria: Mecánico, Operador, Administrador -->
+            <button class="nav-link" data-url="/maquinaria.html" data-role-required="Mecanico,Operador,Administrador">
+                <span class="nav-icon">🛠</span>Maquinaria 
             </button>
 
             <div class="nav-group-title is-hidden">Operaciones</div>
@@ -785,6 +785,50 @@
                     <article class="stat-card"><div class="stat-label">Grúa Liebherr LTM 1050</div><div class="stat-note">Horómetro 1.380 hrs · Estado Disponible</div></article>
                     <article class="stat-card"><div class="stat-label">Bobcat S570</div><div class="stat-note">Horómetro 890 hrs · Estado Disponible</div></article>
                 </div>
+
+                <section id="adminMaquinariaPanel" class="section-card" style="margin-top:1rem; display:none;">
+                    <div style="display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+                        <div>
+                            <div class="section-title" style="margin-bottom:0.25rem;">Administrar maquinaria</div>
+                            <div class="muted text-sm">Crear y editar maquinaria con su tarifa diaria para calcular ingresos por arriendo.</div>
+                        </div>
+                        <button type="button" id="adminMaquinariaRefreshBtn" class="top-button secondary">Refrescar listado</button>
+                    </div>
+                    <form id="adminMaquinariaForm" class="section-stack" style="margin-bottom:1rem;">
+                        <input id="adminMaquinaId" type="hidden">
+                        <div class="incident-grid">
+                            <label>Modelo<input id="adminMaquinaModelo" type="text" required placeholder="Ej. Excavadora CAT 320"></label>
+                            <label>Horómetro actual<input id="adminMaquinaHorometro" type="number" min="0" step="0.01" required></label>
+                            <label>Estado
+                                <select id="adminMaquinaEstado" required>
+                                    <option value="Disponible">Disponible</option>
+                                    <option value="Arrendada">Arrendada</option>
+                                    <option value="Mantencion">Mantención</option>
+                                    <option value="Bloqueada">Bloqueada</option>
+                                    <option value="No Operativa">No Operativa</option>
+                                </select>
+                            </label>
+                            <label>Tarifa diaria (CLP)<input id="adminMaquinaTarifa" type="number" min="0" step="0.01" placeholder="100000"></label>
+                            <label>Plan mantención ID<input id="adminMaquinaPlan" type="number" min="0" step="1" placeholder="Opcional"></label>
+                        </div>
+                        <label>Especificaciones<textarea id="adminMaquinaSpecs" placeholder="Especificaciones técnicas, marca, serie, accesorios"></textarea></label>
+                        <div class="incident-actions">
+                            <button type="submit" class="top-button primary">Guardar maquinaria</button>
+                            <button type="button" id="adminMaquinariaResetBtn" class="top-button secondary">Limpiar</button>
+                            <span id="adminMaquinariaStatus" class="form-status"></span>
+                        </div>
+                    </form>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr><th>ID</th><th>Modelo</th><th>Estado</th><th>Horómetro</th><th>Tarifa diaria</th><th>Plan</th><th>Acciones</th></tr>
+                            </thead>
+                            <tbody id="adminMaquinariaRows">
+                                <tr><td colspan="7" class="detail-empty">Cargando maquinaria…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             </section>
 
             <!-- ══ MANTENIMIENTO ══ -->
@@ -1019,6 +1063,7 @@
                             </label>
                             <button id="reportRefreshBtn" class="btn" style="height:48px;white-space:nowrap;">Actualizar reporte</button>
                             <button id="reportExportBtn" class="btn btn-secondary" style="height:48px;white-space:nowrap;">Generar CSV</button>
+                            <button id="reportExportIngresosBtn" class="btn btn-secondary" style="height:48px;white-space:nowrap;">Descargar CSV Ingresos</button>
                             <button id="reportPdfBtn" class="btn btn-secondary" style="height:48px;white-space:nowrap;">Generar PDF</button>
                         </div>
                     </section>
@@ -1033,6 +1078,11 @@
                             <div class="section-title">Mantenciones</div>
                             <div id="reportTotalMantenciones" class="text-3xl font-bold text-slate-800">—</div>
                             <div class="muted text-sm mt-2">Registros de intervenciones preventivas y correctivas en el rango seleccionado.</div>
+                        </article>
+                        <article class="section-card">
+                            <div class="section-title">Ingresos por arriendo</div>
+                            <div id="reportTotalIngresos" class="text-3xl font-bold text-slate-800">—</div>
+                            <div class="muted text-sm mt-2">Ingresos estimados según contratos de arriendo en el rango seleccionado.</div>
                         </article>
                         <article class="section-card">
                             <div class="section-title">Fallas registradas</div>
@@ -1119,6 +1169,22 @@ function getAuthToken() {
     }
 }
 
+function initAdminMaquinariaPanel() {
+    if (adminMaquinariaInitialized) return;
+
+    const form = document.getElementById('adminMaquinariaForm');
+    const resetBtn = document.getElementById('adminMaquinariaResetBtn');
+    const refreshBtn = document.getElementById('adminMaquinariaRefreshBtn');
+
+    if (!form || !resetBtn || !refreshBtn) return;
+
+    adminMaquinariaInitialized = true;
+    form.addEventListener('submit', saveAdminMaquinaria);
+    resetBtn.addEventListener('click', resetAdminMaquinariaForm);
+    refreshBtn.addEventListener('click', loadAdminMaquinaria);
+    resetAdminMaquinariaForm();
+}
+
 function clearAuthToken() {
     try {
         sessionStorage.removeItem('srmm_token');
@@ -1145,6 +1211,7 @@ let userRole      = null;
 let currentMachineId = null;
 let availableMachines = [];
 let reportsInitialized = false;
+let adminMaquinariaInitialized = false;
 let reportTopChart = null;
 let reportUsoChart = null;
 let reportSelectedMachineId = '';
@@ -1172,6 +1239,7 @@ async function initDashboard() {
     initNavigation();
     initMachineCards();
     initIncidentForm();
+    initAdminMaquinariaPanel();
 }
 
 /* ─── Sidebar usuario ─── */
@@ -1289,6 +1357,11 @@ function showView(viewName, push = true) {
 function initNavigation() {
     viewButtons.forEach(btn => {
         btn.addEventListener('click', () => showView(btn.dataset.view));
+        if (btn.dataset.url) {
+            btn.addEventListener('click', () => {
+                window.location.href = btn.dataset.url;
+            });
+        }
     });
     window.addEventListener('hashchange', () => {
         showView(location.hash.replace('#', '') || 'inicio', false);
@@ -1330,6 +1403,12 @@ function formatNumber(value, suffix = '') {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return `0${suffix}`;
     return `${numeric.toLocaleString('es-CL')}${suffix}`;
+}
+
+function formatCurrency(value) {
+    const n = Number(value || 0);
+    if (!Number.isFinite(n)) return '0';
+    return n.toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 }
 
 async function loadAvailableMachines() {
@@ -1489,11 +1568,13 @@ function updateReportKpis(summary) {
     const detalleEl = document.getElementById('reportHorasDetalle');
     const mantencionesEl = document.getElementById('reportTotalMantenciones');
     const fallasEl = document.getElementById('reportTotalFallas');
+    const ingresosEl = document.getElementById('reportTotalIngresos');
 
     if (horasEl) horasEl.textContent = formatNumber(summary.totalHoras, ' hrs');
     if (detalleEl) detalleEl.textContent = summary.detalle;
     if (mantencionesEl) mantencionesEl.textContent = formatNumber(summary.totalMantenciones);
     if (fallasEl) fallasEl.textContent = formatNumber(summary.totalFallas);
+    if (ingresosEl) ingresosEl.textContent = formatCurrency(summary.totalIngresos || 0);
 }
 
 async function loadSelectedMachineReport(machineId, fechaInicio, fechaFin) {
@@ -1581,6 +1662,7 @@ async function loadReportesDashboard() {
             totalHoras: 0,
             totalMantenciones: Number(selectedMachineStats?.total_mantenciones) || 0,
             totalFallas: Number(selectedMachineStats?.total_fallas) || 0,
+            totalIngresos: 0,
             detalle: 'Selecciona una máquina para ver su evolución.'
         };
 
@@ -1601,6 +1683,18 @@ async function loadReportesDashboard() {
         if (reportState.totalHoras !== undefined) summary.totalHoras = reportState.totalHoras;
         if (reportState.detalle) summary.detalle = reportState.detalle;
 
+        // Cargar ingresos estimados para el rango y máquina (o global si no hay máquina)
+        try {
+            const q = new URLSearchParams();
+            if (startDateInput.value) q.append('fecha_inicio', startDateInput.value);
+            if (endDateInput.value) q.append('fecha_fin', endDateInput.value);
+            const ingRes = await fetch(`/api/reportes/ingresos?${q.toString()}`, { headers });
+            if (ingRes.ok) {
+                const ingPayload = await ingRes.json();
+                summary.totalIngresos = Number(ingPayload.total_ingresos || 0);
+            }
+        } catch (e) { /* no bloquear la carga de KPIs */ }
+
         updateReportKpis(summary);
         setReportStatus('Reportes actualizados', 'success');
     } catch (error) {
@@ -1615,6 +1709,7 @@ function initReportesDashboard() {
     const endDateInput = document.getElementById('reportEndDate');
     const refreshBtn = document.getElementById('reportRefreshBtn');
     const exportBtn = document.getElementById('reportExportBtn');
+    const exportIngresosBtn = document.getElementById('reportExportIngresosBtn');
     const pdfBtn = document.getElementById('reportPdfBtn');
 
     if (!machineSelect || !startDateInput || !endDateInput || !refreshBtn || !exportBtn || !pdfBtn) return;
@@ -1674,6 +1769,37 @@ function initReportesDashboard() {
             URL.revokeObjectURL(url);
             setReportStatus('CSV generado correctamente', 'success');
         });
+
+        if (exportIngresosBtn) {
+            exportIngresosBtn.addEventListener('click', async () => {
+                try {
+                    const headers = getAuthHeaders();
+                    const q = new URLSearchParams();
+                    if (startDateInput.value) q.append('fecha_inicio', startDateInput.value);
+                    if (endDateInput.value) q.append('fecha_fin', endDateInput.value);
+                    const url = `/api/reportes/ingresos/csv?${q.toString()}`;
+                    const res = await fetch(url, { headers });
+                    if (!res.ok) {
+                        setReportStatus('Error descargando CSV de ingresos', 'error');
+                        return;
+                    }
+                    const blob = await res.blob();
+                    const disposition = res.headers.get('content-disposition') || '';
+                    const filenameMatch = disposition.match(/filename="?(.*)"?/);
+                    const filename = filenameMatch ? filenameMatch[1] : `ingresos_${startDateInput.value || 'from'}_${endDateInput.value || 'to'}.csv`;
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    setReportStatus('CSV de ingresos descargado', 'success');
+                } catch (err) {
+                    console.error(err);
+                    setReportStatus('Error descargando CSV de ingresos', 'error');
+                }
+            });
+        }
 
         pdfBtn.addEventListener('click', () => {
             const reportState = window.__srmmReporteState || {};
@@ -1947,6 +2073,161 @@ function initMachineCards() {
         machineAlertModal.classList.add('visible');
         machineAlertModal.setAttribute('aria-hidden','false');
     }
+
+    function closeModal() {
+        machineAlertModal.classList.remove('visible');
+        machineAlertModal.setAttribute('aria-hidden','true');
+    }
+
+    function showDetailPanel({ id, name, state, motive }) {
+        currentMachineId = id;
+        detailTitle.textContent    = `${name} — Fallas e Incidencias`;
+        detailSubtitle.textContent = `Estado: ${state}`;
+        detailMachineMotive.textContent = motive;
+        machineDetailPanel.classList.remove('hidden');
+        loadMachineIncidencias(detailIncidentRows, detailFilterPending);
+    }
+
+    document.querySelectorAll('.machine-card[data-maquina-id]').forEach(card => {
+        card.addEventListener('click', () => {
+            const data = {
+                id:     card.dataset.maquinaId,
+                name:   card.dataset.nombre  || 'Máquina',
+                state:  card.dataset.estado  || 'Desconocido',
+                motive: card.dataset.motivo  || 'Sin descripción disponible.'
+            };
+            showDetailPanel(data);
+            if (isCritical(data.state)) openModal(data);
+        });
+    });
+
+    modalCloseButton.addEventListener('click', closeModal);
+    modalBackdrop.addEventListener('click', closeModal);
+
+    detailFilterPending.addEventListener('change', () => {
+        if (currentMachineId) loadMachineIncidencias(detailIncidentRows, detailFilterPending);
+    });
+}
+
+async function loadMachineIncidencias(rows, filter) {
+    if (!currentMachineId) return;
+    rows.innerHTML = '<tr><td colspan="6" class="detail-empty">Cargando incidencias…</td></tr>';
+    const solo = filter.checked ? 'true' : 'false';
+    try {
+        const res = await fetch(`/api/maquinaria/${currentMachineId}/incidencias?solo_no_resueltas=${solo}`);
+        if (!res.ok) throw new Error('No se pudo cargar el listado.');
+        const data = await res.json();
+        renderIncidencias(data, rows);
+    } catch (err) {
+        rows.innerHTML = `<tr><td colspan="6" class="detail-empty">Error: ${err.message}</td></tr>`;
+    }
+}
+
+function renderIncidencias(items, rows) {
+    if (!items || !items.length) {
+        rows.innerHTML = '<tr><td colspan="6" class="detail-empty">No hay incidencias registradas.</td></tr>';
+        return;
+    }
+    rows.innerHTML = items.map(i => {
+        const c = i.criticidad || 'Media';
+        return `<tr>
+            <td>${new Date(i.fecha).toLocaleDateString('es-CL')}</td>
+            <td>${i.descripcion}</td>
+            <td><span class="pill tag ${c.toLowerCase()}">${c}</span></td>
+            <td>${i.operador_nombre || `#${i.operador_id}`}</td>
+            <td>${i.vinculada_mantenimiento ? 'Sí' : 'No'}</td>
+            <td>${i.estado || 'Pendiente'}</td>
+        </tr>`;
+    }).join('');
+}
+
+/* ═══════════════════════════════════════════════════
+   INCIDENT FORM
+   ═══════════════════════════════════════════════════ */
+function initIncidentForm() {
+    const machineSelect  = document.getElementById('incidentMachine');
+    const dateInput      = document.getElementById('incidentDate');
+    const operatorSelect = document.getElementById('incidentOperator');
+    const form           = document.getElementById('incidentRegisterForm');
+    const formStatus     = document.getElementById('incidentFormStatus');
+
+    // Fecha de hoy
+    const today = new Date();
+    dateInput.value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+    // Cargar opciones
+    (async () => {
+        try {
+            const [machines, ur] = await Promise.all([loadAvailableMachines(), fetch('/api/usuarios', { headers: getAuthHeaders() })]);
+            machineSelect.innerHTML  = '<option value="">Selecciona una máquina</option>' +
+                machines.map(m => `<option value="${m.id_maquina}">${m.modelo_equipo} — ${m.estado}</option>`).join('');
+            if (!ur.ok) throw new Error('Error cargando datos');
+            const users = await ur.json();
+            const ops = users.filter(u => u.rol_acceso === 'Operador');
+            operatorSelect.innerHTML = ops.length
+                ? '<option value="">Selecciona un operador</option>' + ops.map(o => `<option value="${o.id_usuario}">${o.nombre_completo}</option>`).join('')
+                : '<option value="">Sin operadores disponibles</option>';
+        } catch {
+            machineSelect.innerHTML  = '<option value="">No se pudieron cargar máquinas</option>';
+            operatorSelect.innerHTML = '<option value="">No se pudieron cargar operadores</option>';
+        }
+    })();
+
+    form.addEventListener('submit', async e => {
+        e.preventDefault();
+        formStatus.textContent = '';
+        const maquinaId  = machineSelect.value;
+        const operadorId = operatorSelect.value;
+        const fecha      = dateInput.value;
+        const criticidad = document.getElementById('incidentSeverity').value;
+        const descripcion= document.getElementById('incidentDescription').value.trim();
+        const mantId     = document.getElementById('incidentMaintenanceId').value.trim();
+
+        if (!maquinaId || !operadorId || !fecha || !descripcion) {
+            formStatus.textContent = 'Completa todos los campos obligatorios.';
+            formStatus.style.color = '#9f2934';
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/maquinaria/${maquinaId}/incidencias`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    operador_id: Number(operadorId), fecha, criticidad, descripcion,
+                    mantenimiento_id: mantId ? Number(mantId) : null
+                })
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.message || 'Error al registrar');
+            formStatus.textContent = '✅ Incidencia registrada con estado Pendiente.';
+            formStatus.style.color = '#1f9d49';
+            document.getElementById('incidentDescription').value = '';
+            document.getElementById('incidentMaintenanceId').value = '';
+        } catch (err) {
+            formStatus.textContent = `❌ Error: ${err.message}`;
+            formStatus.style.color = '#9f2934';
+        }
+    });
+}
+
+/* ─── Logout ─── */
+function logout() {
+    clearAuthToken();
+    location.replace('/login.html');
+}
+
+/* ─── Arrancar ─── */
+initDashboard();
+</script>
+</body>
+</html>}
+
+/* ─── Arrancar ─── */
+initDashboard();
+</script>
+</body>
+</html>    }
 
     function closeModal() {
         machineAlertModal.classList.remove('visible');
