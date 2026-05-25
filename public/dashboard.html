@@ -1355,13 +1355,20 @@ function showView(viewName, push = true) {
 }
 
 function initNavigation() {
-    viewButtons.forEach(btn => {
-        btn.addEventListener('click', () => showView(btn.dataset.view));
-        if (btn.dataset.url) {
-            btn.addEventListener('click', () => {
+    const navButtons = Array.from(document.querySelectorAll('.nav-link'));
+
+    navButtons.forEach((btn) => {
+        btn.addEventListener('click', (event) => {
+            if (btn.dataset.url) {
+                event.preventDefault();
                 window.location.href = btn.dataset.url;
-            });
-        }
+                return;
+            }
+
+            if (btn.dataset.view) {
+                showView(btn.dataset.view);
+            }
+        });
     });
     window.addEventListener('hashchange', () => {
         showView(location.hash.replace('#', '') || 'inicio', false);
@@ -2073,161 +2080,6 @@ function initMachineCards() {
         machineAlertModal.classList.add('visible');
         machineAlertModal.setAttribute('aria-hidden','false');
     }
-
-    function closeModal() {
-        machineAlertModal.classList.remove('visible');
-        machineAlertModal.setAttribute('aria-hidden','true');
-    }
-
-    function showDetailPanel({ id, name, state, motive }) {
-        currentMachineId = id;
-        detailTitle.textContent    = `${name} — Fallas e Incidencias`;
-        detailSubtitle.textContent = `Estado: ${state}`;
-        detailMachineMotive.textContent = motive;
-        machineDetailPanel.classList.remove('hidden');
-        loadMachineIncidencias(detailIncidentRows, detailFilterPending);
-    }
-
-    document.querySelectorAll('.machine-card[data-maquina-id]').forEach(card => {
-        card.addEventListener('click', () => {
-            const data = {
-                id:     card.dataset.maquinaId,
-                name:   card.dataset.nombre  || 'Máquina',
-                state:  card.dataset.estado  || 'Desconocido',
-                motive: card.dataset.motivo  || 'Sin descripción disponible.'
-            };
-            showDetailPanel(data);
-            if (isCritical(data.state)) openModal(data);
-        });
-    });
-
-    modalCloseButton.addEventListener('click', closeModal);
-    modalBackdrop.addEventListener('click', closeModal);
-
-    detailFilterPending.addEventListener('change', () => {
-        if (currentMachineId) loadMachineIncidencias(detailIncidentRows, detailFilterPending);
-    });
-}
-
-async function loadMachineIncidencias(rows, filter) {
-    if (!currentMachineId) return;
-    rows.innerHTML = '<tr><td colspan="6" class="detail-empty">Cargando incidencias…</td></tr>';
-    const solo = filter.checked ? 'true' : 'false';
-    try {
-        const res = await fetch(`/api/maquinaria/${currentMachineId}/incidencias?solo_no_resueltas=${solo}`);
-        if (!res.ok) throw new Error('No se pudo cargar el listado.');
-        const data = await res.json();
-        renderIncidencias(data, rows);
-    } catch (err) {
-        rows.innerHTML = `<tr><td colspan="6" class="detail-empty">Error: ${err.message}</td></tr>`;
-    }
-}
-
-function renderIncidencias(items, rows) {
-    if (!items || !items.length) {
-        rows.innerHTML = '<tr><td colspan="6" class="detail-empty">No hay incidencias registradas.</td></tr>';
-        return;
-    }
-    rows.innerHTML = items.map(i => {
-        const c = i.criticidad || 'Media';
-        return `<tr>
-            <td>${new Date(i.fecha).toLocaleDateString('es-CL')}</td>
-            <td>${i.descripcion}</td>
-            <td><span class="pill tag ${c.toLowerCase()}">${c}</span></td>
-            <td>${i.operador_nombre || `#${i.operador_id}`}</td>
-            <td>${i.vinculada_mantenimiento ? 'Sí' : 'No'}</td>
-            <td>${i.estado || 'Pendiente'}</td>
-        </tr>`;
-    }).join('');
-}
-
-/* ═══════════════════════════════════════════════════
-   INCIDENT FORM
-   ═══════════════════════════════════════════════════ */
-function initIncidentForm() {
-    const machineSelect  = document.getElementById('incidentMachine');
-    const dateInput      = document.getElementById('incidentDate');
-    const operatorSelect = document.getElementById('incidentOperator');
-    const form           = document.getElementById('incidentRegisterForm');
-    const formStatus     = document.getElementById('incidentFormStatus');
-
-    // Fecha de hoy
-    const today = new Date();
-    dateInput.value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-
-    // Cargar opciones
-    (async () => {
-        try {
-            const [machines, ur] = await Promise.all([loadAvailableMachines(), fetch('/api/usuarios', { headers: getAuthHeaders() })]);
-            machineSelect.innerHTML  = '<option value="">Selecciona una máquina</option>' +
-                machines.map(m => `<option value="${m.id_maquina}">${m.modelo_equipo} — ${m.estado}</option>`).join('');
-            if (!ur.ok) throw new Error('Error cargando datos');
-            const users = await ur.json();
-            const ops = users.filter(u => u.rol_acceso === 'Operador');
-            operatorSelect.innerHTML = ops.length
-                ? '<option value="">Selecciona un operador</option>' + ops.map(o => `<option value="${o.id_usuario}">${o.nombre_completo}</option>`).join('')
-                : '<option value="">Sin operadores disponibles</option>';
-        } catch {
-            machineSelect.innerHTML  = '<option value="">No se pudieron cargar máquinas</option>';
-            operatorSelect.innerHTML = '<option value="">No se pudieron cargar operadores</option>';
-        }
-    })();
-
-    form.addEventListener('submit', async e => {
-        e.preventDefault();
-        formStatus.textContent = '';
-        const maquinaId  = machineSelect.value;
-        const operadorId = operatorSelect.value;
-        const fecha      = dateInput.value;
-        const criticidad = document.getElementById('incidentSeverity').value;
-        const descripcion= document.getElementById('incidentDescription').value.trim();
-        const mantId     = document.getElementById('incidentMaintenanceId').value.trim();
-
-        if (!maquinaId || !operadorId || !fecha || !descripcion) {
-            formStatus.textContent = 'Completa todos los campos obligatorios.';
-            formStatus.style.color = '#9f2934';
-            return;
-        }
-
-        try {
-            const res = await fetch(`/api/maquinaria/${maquinaId}/incidencias`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    operador_id: Number(operadorId), fecha, criticidad, descripcion,
-                    mantenimiento_id: mantId ? Number(mantId) : null
-                })
-            });
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.message || 'Error al registrar');
-            formStatus.textContent = '✅ Incidencia registrada con estado Pendiente.';
-            formStatus.style.color = '#1f9d49';
-            document.getElementById('incidentDescription').value = '';
-            document.getElementById('incidentMaintenanceId').value = '';
-        } catch (err) {
-            formStatus.textContent = `❌ Error: ${err.message}`;
-            formStatus.style.color = '#9f2934';
-        }
-    });
-}
-
-/* ─── Logout ─── */
-function logout() {
-    clearAuthToken();
-    location.replace('/login.html');
-}
-
-/* ─── Arrancar ─── */
-initDashboard();
-</script>
-</body>
-</html>}
-
-/* ─── Arrancar ─── */
-initDashboard();
-</script>
-</body>
-</html>    }
 
     function closeModal() {
         machineAlertModal.classList.remove('visible');
