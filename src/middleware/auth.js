@@ -41,8 +41,22 @@ function requireAuth(req, res, next) {
   next();
 }
 
+function requireMecanicoOrAdmin(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ message: 'No autenticado' });
+  }
+
+  const role = req.user.rol_acceso;
+  if (role === 'Mecanico' || role === 'Administrador') {
+    return next();
+  }
+
+  return res.status(403).json({ message: 'Permisos insuficientes. Requiere rol Mecánico o Administrador.' });
+}
+
 module.exports = {
   verifyToken,
   requireAdmin,
-  requireAuth
+  requireAuth,
+  requireMecanicoOrAdmin
 };

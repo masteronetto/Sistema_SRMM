@@ -384,6 +384,31 @@ async function iniciar(req, res, next) {
   }
 }
 
+/**
+ * PATCH /api/mantenimientos/ordenes/:id_orden/completar
+ * Completar una orden de trabajo
+ * Body: { horometro_registro? }
+ */
+async function completar(req, res, next) {
+  try {
+    const id_orden = toNumberOrNull(req.params.id_orden);
+    if (id_orden === null) {
+      return res.status(400).json({ message: 'id_orden debe ser numérico' });
+    }
+
+    const horometro = req.body && req.body.horometro_registro !== undefined ? toNumberOrNull(req.body.horometro_registro) : null;
+
+    const orden = await mantenimientosRepo.completarOrdenTrabajo(id_orden, horometro);
+    if (!orden) {
+      return res.status(404).json({ message: 'Orden no encontrada o no se pudo completar' });
+    }
+
+    return res.json({ message: 'Orden completada', orden });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function listOrdenesAtrasadas(req, res, next) {
   try {
     const ordenes = await mantenimientosRepo.listOrdenesAtrasadas();
@@ -497,6 +522,7 @@ module.exports = {
   listOrdenesMecanico,
   iniciar,
   getOrdenById,
+  completar,
   listOrdenesAtrasadas,
   verificarRetrasos,
   procesarRetrasos

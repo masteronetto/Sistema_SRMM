@@ -2452,11 +2452,57 @@ async function openMaintenanceById(idOrden) {
             detailEl.innerHTML = `<div style="padding:0.6rem;background:#fff;border:1px solid #e2e8f0;border-radius:6px;">
                 <strong>Orden #${orden.id_orden}</strong> — ${orden.tipo_servicio || 'Sin tipo'}<br>
                 <small>Fecha programada: ${orden.fecha_programada || orden.fecha_servicio || '—'}</small><br>
-                <div class="muted" style="margin-top:0.35rem;">${orden.detalle_tecnico || ''}</div>
+                <div style="margin-top:0.35rem;">${orden.detalle_tecnico || ''}</div>
+                <div style="margin-top:0.35rem;"><strong>Estado:</strong> ${orden.estado_ot || '—'}</div>
+                <div style="margin-top:0.25rem;"><strong>Mecánico asignado:</strong> ${orden.mecanico_asignado ? ('#' + orden.mecanico_asignado) : '—'}</div>
+                <div class="muted small" style="margin-top:0.35rem;">Creada: ${formatCLDate(orden.created_at)} — Actualizada: ${formatCLDate(orden.updated_at)}</div>
                 <div style="margin-top:0.5rem;">
                     <a class="btn btn-secondary" href="/mantenimientos/ordenes/${orden.id_orden}" target="_blank" rel="noopener">Ver orden completa</a>
                 </div>
             </div>`;
+            // Añadir botones de acción según rol y estado
+            const canAct = (typeof userRole !== 'undefined') && (userRole === 'Mecanico' || userRole === 'Administrador');
+            if (canAct) {
+                const container = detailEl.querySelector('div');
+                const actions = document.createElement('div');
+                actions.style.marginTop = '0.5rem';
+
+                if ((orden.estado_ot || '').toLowerCase() === 'programada') {
+                    const btnStart = document.createElement('button');
+                    btnStart.className = 'btn';
+                    btnStart.textContent = 'Iniciar orden';
+                    btnStart.addEventListener('click', async () => {
+                        btnStart.disabled = true;
+                        try {
+                            await startMaintenanceOrder(orden.id_orden);
+                            await openMaintenanceById(orden.id_orden);
+                        } catch (e) {
+                            alert('Error iniciando orden: ' + e.message);
+                        } finally { btnStart.disabled = false; }
+                    });
+                    actions.appendChild(btnStart);
+                }
+
+                const estadoLower = (orden.estado_ot || '').toLowerCase();
+                if (estadoLower.includes('progr')) {
+                    const btnComplete = document.createElement('button');
+                    btnComplete.className = 'btn btn-secondary';
+                    btnComplete.textContent = 'Completar orden';
+                    btnComplete.addEventListener('click', async () => {
+                        if (!confirm('¿Confirmar completar la orden?')) return;
+                        btnComplete.disabled = true;
+                        try {
+                            await completeMaintenanceOrder(orden.id_orden);
+                            await openMaintenanceById(orden.id_orden);
+                        } catch (e) {
+                            alert('Error completando orden: ' + e.message);
+                        } finally { btnComplete.disabled = false; }
+                    });
+                    actions.appendChild(btnComplete);
+                }
+
+                if (container) container.appendChild(actions);
+            }
         }
         // Intentar encontrar y destacar la tarjeta de la máquina asociada
         const maquinaId = orden.maquinaria_id_maquina || orden.maquinaria_id_maquina;
@@ -2480,6 +2526,27 @@ async function openMaintenanceById(idOrden) {
             console.error('Error cargando orden:', err);
         }
     }
+}
+
+async function startMaintenanceOrder(idOrden) {
+    const res = await fetch(`/api/mantenimientos/ordenes/${idOrden}/iniciar`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.message || 'No se pudo iniciar la orden');
+    return body;
+}
+
+async function completeMaintenanceOrder(idOrden) {
+    const res = await fetch(`/api/mantenimientos/ordenes/${idOrden}/completar`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({})
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.message || 'No se pudo completar la orden');
+    return body;
 }
 
 /* ═══════════════════════════════════════════════════

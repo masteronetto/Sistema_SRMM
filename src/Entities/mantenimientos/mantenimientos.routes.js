@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const controller = require('./mantenimientos.controller');
+const { verifyToken, requireMecanicoOrAdmin } = require('../../middleware/auth');
 
 const router = Router();
 
@@ -15,8 +16,11 @@ router.get('/ordenes/atrasadas', controller.listOrdenesAtrasadas);
 router.post('/ordenes/verificar-retrasos', controller.verificarRetrasos);
 router.get('/ordenes/maquina/:maquinaria_id_maquina', controller.listOrdenesMaquina);
 router.get('/ordenes/mecanico/:mecanico_id', controller.listOrdenesMecanico);
-router.patch('/ordenes/:id_orden/iniciar', controller.iniciar);
+router.patch('/ordenes/:id_orden/iniciar', verifyToken, requireMecanicoOrAdmin, controller.iniciar);
 // Obtener una orden por ID
-router.get('/ordenes/:id_orden', controller.getOrdenById);
+router.get('/ordenes/:id_orden', verifyToken, requireMecanicoOrAdmin, controller.getOrdenById);
+
+// Completar orden de trabajo
+router.patch('/ordenes/:id_orden/completar', verifyToken, requireMecanicoOrAdmin, controller.completar);
 
 module.exports = router;
