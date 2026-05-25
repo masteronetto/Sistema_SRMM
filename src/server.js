@@ -1,21 +1,11 @@
-const http = require('http');
 const app = require('./app');
-const { setupSocketIO } = require('./config/socketio');
 const { port, hasDatabaseConfig } = require('./config/env');
 const intervaloVerificacionRetrasos = Number(process.env.INTERVALO_VERIFICACION_RETRASOS || 86400000);
 
-// Crear servidor HTTP para soportar WebSocket
-const httpServer = http.createServer(app);
+// Evitar iniciar servidores, Socket.IO o schedulers en entornos serverless (ej. Vercel)
+const isStandaloneProcess = require.main === module && !process.env.VERCEL;
 
-// Configurar Socket.IO
-const io = setupSocketIO(httpServer);
-
-// Hacer io accesible en la app
-app.set('io', io);
-
-const pool = require('./db/pool'); 
-
-async function ejecutarChequeoRetrasos() {
+async function ejecutarChequeoRetrasos(io) {
   if (!hasDatabaseConfig) {
     return;
   }
@@ -28,9 +18,14 @@ async function ejecutarChequeoRetrasos() {
   }
 } 
 
-async function verificarFaltasDeRegistro() {
+async function verificarFaltasDeRegistro(io) {
+  if (!hasDatabaseConfig) {
+    return;
+  }
+
   console.log('[Scheduler] Buscando máquinas sin registro de horómetro en las últimas 24 hrs...');
   try {
+    const pool = require('./db/pool');
     const query = `
       SELECT m.id_maquina, m.modelo_equipo, 
              COALESCE(MAX(h.fecha_registro), m.created_at::date) as ultima_fecha
@@ -51,7 +46,7 @@ async function verificarFaltasDeRegistro() {
       
       console.log(`[ALERTA INTERNA] Máquina ID: ${maq.id_maquina} (${maq.modelo_equipo}) sin registro de horómetro desde ${maq.ultima_fecha}. Operador será notificado.`);
       
-      if (typeof io !== 'undefined') {
+      if (io) {
         io.emit('alerta:nueva', {
           tipo: 'Advertencia',
           mensaje: `La máquina ${maq.modelo_equipo} lleva más de 24 hrs sin registro.`
@@ -63,20 +58,33 @@ async function verificarFaltasDeRegistro() {
   }
 }
 
-if (hasDatabaseConfig) {
-  setInterval(verificarFaltasDeRegistro, 86400000);
+if (!isStandaloneProcess && hasDatabaseConfig) {
+  // En entornos serverless no iniciar schedulers ni procesos en background
+  console.log('Entorno serverless detectado: schedulers deshabilitados.');
 }
-
-if (hasDatabaseConfig) {
-  ejecutarChequeoRetrasos();
-  setInterval(ejecutarChequeoRetrasos, intervaloVerificacionRetrasos);
-} else {
-  console.log('Modo frontend activo: la API y el scheduler de BD están deshabilitados hasta configurar PostgreSQL.');
-}
-
-const isStandaloneProcess = require.main === module && !process.env.VERCEL;
 
 if (isStandaloneProcess) {
+  const http = require('http');
+  const { setupSocketIO } = require('./config/socketio');
+
+  // Crear servidor HTTP para soportar WebSocket
+  const httpServer = http.createServer(app);
+
+  // Configurar Socket.IO
+  const io = setupSocketIO(httpServer);
+
+  // Hacer io accesible en la app
+  app.set('io', io);
+
+  if (hasDatabaseConfig) {
+    // Iniciar schedulers solo en modo standalone
+    setInterval(() => verificarFaltasDeRegistro(io), 86400000);
+    ejecutarChequeoRetrasos(io);
+    setInterval(() => ejecutarChequeoRetrasos(io), intervaloVerificacionRetrasos);
+  } else {
+    console.log('Modo frontend activo: la API y el scheduler de BD están deshabilitados hasta configurar PostgreSQL.');
+  }
+
   httpServer.listen(port, () => {
     console.log(`SRMM API escuchando en puerto ${port}`);
     console.log(`WebSocket (Socket.IO) disponible en puerto ${port}`);
