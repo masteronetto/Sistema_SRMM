@@ -12,38 +12,6 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema SRMM - Gestion de Maquinaria</title>
-  <meta name="description" content="Sistema integral de gestion de maquinaria, mantenimiento preventivo y alertas en tiempo real.">
-  <meta name="robots" content="index, follow">
-
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://sistema-srmm.vercel.app/">
-  <meta property="og:site_name" content="Sistema SRMM">
-  <meta property="og:title" content="Sistema SRMM">
-  <meta property="og:description" content="Gestion de maquinaria, mantenimiento y alertas en tiempo real.">
-  <meta property="og:image" content="https://sistema-srmm.vercel.app/og-image.png">
-  <meta property="og:image:secure_url" content="https://sistema-srmm.vercel.app/og-image.png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:type" content="image/png">
-
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Sistema SRMM">
-  <meta name="twitter:description" content="Gestion de maquinaria, mantenimiento y alertas en tiempo real.">
-  <meta name="twitter:image" content="https://sistema-srmm.vercel.app/og-image.png">
-
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-</head>
-<body>
-  <main>
-    <h1>Sistema SRMM</h1>
-    <p>Gestion de maquinaria, mantenimiento y alertas en tiempo real.</p>
-  </main>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SRMM | Panel de Administrador</title>
   <meta name="description" content="Panel de administrador SRMM para inventario, mantenimiento, arriendos, logística, usuarios y reportes.">
   <meta name="robots" content="index, follow">
@@ -157,6 +125,28 @@
     .section-stack { display: grid; gap: 1rem; }
     @media (max-width: 1180px) { .hero-grid, .mini-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid-2 { grid-template-columns: 1fr; } }
     @media (max-width: 900px) { .shell { grid-template-columns: 1fr; } .sidebar { position: sticky; top: 0; z-index: 30; } .sidebar-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.2rem; padding: 0.4rem; } .nav-group-title, .sidebar-footer { display: none; } .brand { display: flex; align-items: center; gap: 0.8rem; } .brand-copy { min-width: 0; } .content { padding: 1rem; } .hero-grid, .mini-grid { grid-template-columns: 1fr; } .bar-row { grid-template-columns: 1fr; } .topbar { padding: 0 1rem; } }
+    
+    .solo-impresion { display: none; }
+    
+    @media print {
+      .sidebar, .topbar, .no-imprimir { display: none !important; }
+      
+      .shell { grid-template-columns: 1fr !important; }
+      .content { padding: 0 !important; }
+      
+      .solo-impresion { 
+        display: block; 
+        margin-bottom: 20px; 
+        padding-bottom: 10px; 
+        border-bottom: 2px solid #000; 
+      }
+      .solo-impresion h1 { font-size: 24pt; font-weight: 800; color: #000; margin:0; }
+      .solo-impresion p { font-size: 14pt; color: #333; margin: 4px 0; }
+
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #000 !important; color: #000 !important; }
+      .bar-fill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
   </style>
 </head>
 <body>
@@ -367,16 +357,38 @@
         </section>
 
         <section id="reportes" class="view">
-          <div class="mini-grid">
-            <article class="section-card"><div class="section-title">Reporte de uso</div><div class="muted">Horas acumuladas por equipo, tendencias de uso y disponibilidad operativa.</div></article>
-            <article class="section-card"><div class="section-title">Reporte de mantenimiento</div><div class="muted">Historial de intervenciones, fallas y análisis de patrones de desgaste.</div></article>
-            <article class="section-card"><div class="section-title">Reporte de ingresos</div><div class="muted">Rentabilidad por equipo, ingresos por arriendo y análisis financiero.</div></article>
+          <div class="no-imprimir" style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+            <button onclick="window.print()" class="top-button primary" style="display: flex; gap: 8px; align-items: center;">
+              🖨️ Exportar Reporte Imprimible
+            </button>
           </div>
+          <div class="solo-impresion">
+            <h1>Reporte de Uso Histórico</h1>
+            <p><strong>Flota total:</strong> Maquinaria Hermosilla y García Ltda.</p>
+            <p><strong>Generado el:</strong> <span id="fecha-impresion"></span></p>
+          </div>
+          <section class="section-card">
+            <div class="section-title">Máquinas más utilizadas (Ranking)</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th onclick="ordenarTabla('nombre')" style="cursor: pointer;">Máquina <span id="flecha-nombre"></span></th>
+                    <th onclick="ordenarTabla('horas')" style="cursor: pointer;">Horas Totales <span id="flecha-horas">↓</span></th>
+                    <th style="width: 25%;">Uso Relativo</th>
+                    <th>Último Registro</th>
+                    <th onclick="ordenarTabla('estado')" style="cursor: pointer;">Estado <span id="flecha-estado"></span></th>
+                  </tr>
+                </thead>
+                <tbody id="cuerpo-ranking">
+                  </tbody>
+              </table>
+            </div>
+          </section>
         </section>
       </div>
     </main>
   </div>
-
   <script>
     const titleByView = { dashboard: 'Dashboard', inventario: 'Inventario de máquinas', mantenimiento: 'Mantenimiento', arriendo: 'Arriendo', logistica: 'Logística de entrega', usuarios: 'Gestión de usuario', reportes: 'Reportes' };
     const viewButtons = Array.from(document.querySelectorAll('[data-view]'));
@@ -394,6 +406,115 @@
     viewButtons.forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
     window.addEventListener('hashchange', () => showView(window.location.hash.replace('#', '') || 'dashboard', false));
     showView(window.location.hash.replace('#', '') || 'dashboard', false);
+        
+    document.getElementById('fecha-impresion').textContent = new Date().toLocaleDateString('es-CL');
+
+    let maquinasRanking = [];
+    let columnaActual = 'horas';
+    let ordenDescendente = true;
+
+    async function obtenerDatosReales() {
+      try {
+        const token = localStorage.getItem('srmm_token');
+        
+        const urlAPI = 'https://sistema-srmm.vercel.app/api/maquinaria'; 
+
+        const respuesta = await fetch(urlAPI, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`, 
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!respuesta.ok) {
+          throw new Error('No se pudo conectar con la base de datos');
+        }
+
+        const datosBackend = await respuesta.json();
+
+        maquinasRanking = datosBackend.map(maquina => ({
+          id: maquina.id_maquina,
+          nombre: maquina.modelo_equipo,
+          horas: parseFloat(maquina.horometro_actual),
+          fecha: new Date().toLocaleDateString('es-CL'),
+          estado: maquina.estado
+        }));
+
+      ordenarTabla('horas');
+
+      } catch (error) {
+        console.error("Error de conexión:", error);
+        document.getElementById('cuerpo-ranking').innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align:center; color:red; font-weight:bold; padding:20px;">
+              Error al cargar los datos desde el servidor. Verifica tu conexión.
+            </td>
+          </tr>`;
+      }
+    }
+
+    function renderizarTabla() {
+      const tbody = document.getElementById('cuerpo-ranking');
+      tbody.innerHTML = ''; 
+      
+      if (maquinasRanking.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay maquinaria registrada en la base de datos.</td></tr>';
+        return;
+      }
+
+      const maxHoras = Math.max(...maquinasRanking.map(m => m.horas));
+
+      maquinasRanking.forEach(maquina => {
+        const porcentaje = maxHoras > 0 ? ((maquina.horas / maxHoras) * 100).toFixed(1) : 0;
+        
+        let claseEstado = 'success';
+        if(maquina.estado === 'Bloqueada') claseEstado = 'blocked';
+        if(maquina.estado === 'En arriendo') claseEstado = 'available';
+
+        const fila = `
+          <tr>
+            <td style="font-weight: 700;">${maquina.nombre}</td>
+            <td style="font-size: 1.1rem;">${maquina.horas} hrs</td>
+            <td>
+              <div style="width: 100%; background: #e5e7eb; border-radius: 999px; height: 12px; overflow: hidden;">
+                <div style="height: 100%; width: ${porcentaje}%; background: #6d5141; transition: width 0.5s ease-out;"></div>
+              </div>
+            </td>
+            <td>${maquina.fecha}</td>
+            <td><span class="pill ${claseEstado}">${maquina.estado}</span></td>
+          </tr>
+        `;
+        tbody.innerHTML += fila;
+      });
+    }
+
+    function ordenarTabla(columna) {
+      if (maquinasRanking.length === 0) return; 
+
+      ['nombre', 'horas', 'estado'].forEach(c => document.getElementById(`flecha-${c}`).textContent = '');
+
+      if (columnaActual === columna) {
+        ordenDescendente = !ordenDescendente;
+      } else {
+        columnaActual = columna;
+        ordenDescendente = columna === 'horas' ? true : false; 
+      }
+
+      document.getElementById(`flecha-${columna}`).textContent = ordenDescendente ? ' ↓' : ' ↑';
+      
+      maquinasRanking.sort((a, b) => {
+        let valorA = a[columna];
+        let valorB = b[columna];
+        
+        if (valorA < valorB) return ordenDescendente ? 1 : -1;
+        if (valorA > valorB) return ordenDescendente ? -1 : 1;
+        return 0;
+      });
+      renderizarTabla();
+    }
+    obtenerDatosReales();
+    
   </script>
 </body>
 </html>
