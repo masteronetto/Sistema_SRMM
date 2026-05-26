@@ -687,6 +687,55 @@
             .topbar-actions { width: 100%; justify-content: flex-end; }
         }
 
+        /* Report filters layout */
+        .report-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: flex-end;
+            margin-top: 1rem;
+        }
+
+        .report-filters > label {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            min-width: 220px;
+            max-width: 420px;
+        }
+
+        .report-machine-select {
+            min-height: 118px;
+            min-width: 240px;
+            flex: 0 1 260px;
+        }
+
+        .report-date {
+            flex: 0 0 130px;
+            max-width: 140px;
+        }
+
+        .report-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex: 1 1 auto;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .report-actions .btn {
+            min-width: 120px;
+            flex: 0 1 auto;
+            height: 44px;
+        }
+
+        @media (max-width: 900px) {
+            .report-filters { align-items: stretch; }
+            .report-filters > label { width: 100%; }
+            .report-actions { width: 100%; }
+            .report-actions .btn { flex: 1 1 auto; min-width: 0; }
+        }
+
         @media (max-width: 900px) {
             .sidebar { position: sticky; top: 0; z-index: 30; }
             .sidebar-nav {
@@ -1193,25 +1242,27 @@
                             <div id="reportesStatus" class="role-badge" style="background:rgba(52,152,219,0.14);color:#2980b9;">Listo</div>
                         </div>
 
-                        <div id="reportesFilters" style="display:grid;grid-template-columns:minmax(240px,1fr) 130px 130px auto auto auto auto;gap:0.5rem;margin-top:1rem;align-items:end;column-gap:0.75rem;">
-                            <label style="display:grid;gap:0.35rem;">
+                        <div id="reportesFilters" class="report-filters">
+                            <label>
                                 <span class="small muted">Máquinas</span>
-                                <select id="reportMachineSelect" multiple size="4" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500" style="min-height: 118px;"></select>
+                                <select id="reportMachineSelect" multiple size="4" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-machine-select"></select>
                                 <span class="small muted">Usa Ctrl/Cmd para seleccionar varias máquinas.</span>
                             </label>
-                            <label style="display:grid;gap:0.35rem;">
+                            <label>
                                 <span class="small muted">Fecha inicio</span>
-                                <input id="reportStartDate" type="date" style="max-width:130px;box-sizing:border-box;" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input id="reportStartDate" type="date" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-date">
                             </label>
-                            <label style="display:grid;gap:0.35rem;">
+                            <label>
                                 <span class="small muted">Fecha fin</span>
-                                <input id="reportEndDate" type="date" style="max-width:130px;box-sizing:border-box;" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input id="reportEndDate" type="date" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-date">
                             </label>
-                            <button id="reportRefreshBtn" class="btn" style="height:48px;white-space:nowrap;">Actualizar reporte</button>
-                            <button id="reportExportBtn" class="btn btn-secondary" style="height:48px;white-space:nowrap;">Generar CSV</button>
-                            <button id="reportExportIngresosBtn" class="btn btn-secondary" style="height:48px;white-space:nowrap;">Descargar CSV Ingresos</button>
-                            <button id="reportPdfBtn" class="btn btn-secondary" style="height:48px;white-space:nowrap;">Generar PDF</button>
-                            <button id="reportPrintBtn" class="btn btn-secondary" style="height:48px;white-space:nowrap;">Exportar imprimible</button>
+                            <div class="report-actions">
+                                <button id="reportRefreshBtn" class="btn">Actualizar reporte</button>
+                                <button id="reportExportBtn" class="btn btn-secondary">Generar CSV</button>
+                                <button id="reportExportIngresosBtn" class="btn btn-secondary">Descargar CSV Ingresos</button>
+                                <button id="reportPdfBtn" class="btn btn-secondary">Generar PDF</button>
+                                <button id="reportPrintBtn" class="btn btn-secondary">Exportar imprimible</button>
+                            </div>
                         </div>
                     </section>
 
