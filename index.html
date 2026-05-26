@@ -1,163 +1,87 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <script>
-    (function(){
-      try{
-        if (!localStorage.getItem('srmm_token') && !location.pathname.endsWith('/login.html')){
-          location.replace('/login.html');
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>SRMM | Iniciar sesión</title>
+    <meta name="description" content="Panel de administrador SRMM para inventario, mantenimiento, arriendos, logística, usuarios y reportes." />
+    <meta name="robots" content="noindex, nofollow" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sistema-srmm.vercel.app/" />
+    <meta property="og:site_name" content="Sistema SRMM" />
+    <meta property="og:title" content="SRMM | Iniciar sesión" />
+    <meta property="og:description" content="Accede al panel de SRMM para gestionar maquinaria y mantenimientos." />
+    <meta property="og:image" content="https://sistema-srmm.vercel.app/og-image.png" />
+    <meta property="og:image:secure_url" content="https://sistema-srmm.vercel.app/og-image.png" />
+
+    <link rel="icon" href="/favicon.svg">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root{ --bg:#f5efe8; --panel:#ffffff; --accent:#6d5141; --accent-strong:#4d372d; --text:#201915; --muted:#7a6c62; }
+      *{box-sizing:border-box}
+      body{margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#faf6f2 0%,#f3ede6 100%);color:var(--text);display:grid;place-items:center;min-height:100vh}
+      .card{background:var(--panel);border-radius:14px;padding:28px;max-width:420px;width:100%;box-shadow:0 12px 30px rgba(12,10,8,0.06)}
+      h1{margin:0 0 10px;font-size:1.35rem}
+      p.lead{margin:0 0 18px;color:var(--muted)}
+      form{display:grid;gap:12px}
+      input{padding:12px 14px;border:1px solid #e9ddd3;border-radius:10px;background:#faf7f4}
+      button{background:var(--accent);color:#fff;border:0;padding:12px 14px;border-radius:10px;font-weight:700;cursor:pointer}
+      .link{color:var(--accent-strong);text-decoration:none;font-weight:700}
+      .small{font-size:0.9rem;color:var(--muted)}
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Iniciar sesión</h1>
+      <p class="lead">Accede con tu correo y contraseña</p>
+      <form id="loginForm" autocomplete="on">
+        <input type="email" id="email" name="email" placeholder="Correo electrónico" autocomplete="username" required>
+        <input type="password" id="password" name="password" placeholder="Contraseña" autocomplete="current-password" required>
+        <label class="small" style="display:flex;gap:8px;align-items:center;cursor:pointer;user-select:none;">
+          <input type="checkbox" id="rememberSession" style="width:auto;margin:0;">
+          Mantener sesión iniciada
+        </label>
+        <button type="submit">Entrar</button>
+      </form>
+      <p class="small">¿No tienes cuenta? <a class="link" href="/register.html">Regístrate</a></p>
+      <p class="small"><a class="link" href="/recover.html">Recuperar contraseña</a></p>
+      <div id="msg" style="margin-top:10px;color:#9f2934;font-weight:700"></div>
+    </main>
+
+    <script>
+      // Versión estática para capturas: mantiene la experiencia de login pero no fuerza redirección.
+      const form = document.getElementById('loginForm');
+      const msg = document.getElementById('msg');
+
+      function setAuthToken(token, rememberSession) {
+        if (rememberSession) {
+          localStorage.setItem('srmm_token', token);
+          sessionStorage.removeItem('srmm_token');
+          return;
         }
-      }catch(e){}
-    })();
-  </script>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SRMM | Panel de Administrador</title>
-  <meta name="description" content="Panel de administrador SRMM para inventario, mantenimiento, arriendos, logística, usuarios y reportes.">
-  <meta name="robots" content="index, follow">
 
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://sistema-srmm.vercel.app/">
-  <meta property="og:site_name" content="Sistema SRMM">
-  <meta property="og:title" content="SRMM | Panel de Administrador">
-  <meta property="og:description" content="Gestión operativa de maquinaria pesada con control de disponibilidad, mantenimiento y trazabilidad.">
-  <meta property="og:image" content="https://sistema-srmm.vercel.app/og-image.png">
-  <meta property="og:image:secure_url" content="https://sistema-srmm.vercel.app/og-image.png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:type" content="image/png">
-
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="SRMM | Panel de Administrador">
-  <meta name="twitter:description" content="Gestión de maquinaria, mantenimiento y alertas en tiempo real.">
-  <meta name="twitter:image" content="https://sistema-srmm.vercel.app/og-image.png">
-
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    :root {
-      --bg: #f5efe8;
-      --panel: #ffffff;
-      --panel-soft: #faf7f4;
-      --text: #201915;
-      --muted: #7a6c62;
-      --accent: #6d5141;
-      --accent-strong: #4d372d;
-      --line: #e9ddd3;
-      --success: #c8efb3;
-      --warning: #ffd8a8;
-      --danger: #f8c8c2;
-      --info: #d9e6f8;
-    }
-
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      font-family: 'Inter', sans-serif;
-      background:
-        radial-gradient(circle at top right, rgba(109, 81, 65, 0.08), transparent 22%),
-        linear-gradient(180deg, #faf6f2 0%, #f3ede6 100%);
-      color: var(--text);
-    }
-
-    .shell { min-height: 100vh; display: grid; grid-template-columns: 250px minmax(0, 1fr); }
-    .sidebar { background: #5c524c; color: #fff; border-right: 1px solid rgba(255, 255, 255, 0.08); display: flex; flex-direction: column; }
-    .brand { padding: 1rem 1rem 0.85rem; border-bottom: 1px solid rgba(255, 255, 255, 0.16); }
-    .brand-mark { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 14px; background: rgba(255, 255, 255, 0.13); font-weight: 800; margin-right: 0.8rem; }
-    .nav-group-title { color: rgba(255, 255, 255, 0.72); font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.9rem 1rem 0.4rem; }
-    .nav-link { display: flex; align-items: center; gap: 0.7rem; width: 100%; padding: 0.72rem 1rem; color: rgba(255, 255, 255, 0.88); text-decoration: none; border: 0; background: transparent; border-left: 4px solid transparent; font-weight: 600; cursor: pointer; transition: 0.2s ease; text-align: left; }
-    .nav-link:hover, .nav-link.active { background: rgba(255, 255, 255, 0.08); border-left-color: #f0d4b6; color: #fff; }
-    .nav-icon { width: 18px; text-align: center; opacity: 0.9; }
-    .sidebar-footer { margin-top: auto; padding: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.16); display: flex; align-items: center; gap: 0.75rem; }
-    .avatar { width: 44px; height: 44px; border-radius: 999px; background: #d9d3ca; color: #3d332d; font-weight: 800; display: grid; place-items: center; flex-shrink: 0; }
-    .main { display: flex; flex-direction: column; min-width: 0; }
-    .topbar { height: 70px; background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; position: sticky; top: 0; z-index: 20; }
-    .topbar-actions { display: flex; gap: 0.75rem; align-items: center; }
-    .top-button { border: 0; border-radius: 999px; padding: 0.6rem 1rem; font-weight: 700; cursor: pointer; transition: 0.2s ease; }
-    .top-button.secondary { background: #ddd8d3; color: #26201c; }
-    .top-button.primary { background: var(--accent); color: #fff; }
-    .content { padding: 1.25rem 1.5rem 2rem; }
-    .view { display: none; animation: fadeIn 0.24s ease; }
-    .view.active { display: block; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-    .hero-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1rem; }
-    .stat-card, .section-card { background: var(--panel); border: 1px solid rgba(55, 43, 35, 0.08); border-radius: 18px; box-shadow: 0 10px 28px rgba(43, 30, 24, 0.06); }
-    .stat-card { padding: 1rem; min-height: 96px; display: flex; flex-direction: column; justify-content: center; }
-    .stat-value { font-size: 1.65rem; font-weight: 800; line-height: 1; margin-top: 0.35rem; }
-    .stat-label { font-weight: 700; color: #16110d; }
-    .stat-note { color: var(--muted); font-size: 0.92rem; margin-top: 0.2rem; }
-    .grid-2 { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 1rem; margin-bottom: 1rem; }
-    .section-card { padding: 1rem; }
-    .section-title { font-size: 1.05rem; font-weight: 800; margin-bottom: 0.9rem; }
-    .alert-list { display: grid; gap: 0.7rem; }
-    .alert-item { border-radius: 14px; padding: 0.75rem 0.85rem; display: grid; grid-template-columns: 28px 1fr; gap: 0.75rem; align-items: start; border: 1px solid transparent; }
-    .alert-item strong { display: block; font-size: 0.95rem; }
-    .alert-item span { color: #342a24; font-size: 0.9rem; }
-    .alert-critical { background: var(--danger); border-color: #f2b8b0; }
-    .alert-warning { background: var(--warning); border-color: #edc389; }
-    .alert-info { background: #f5e6c7; border-color: #e7ca91; }
-    .bar-row { display: grid; grid-template-columns: 130px 1fr 90px; gap: 0.75rem; align-items: center; margin-bottom: 0.95rem; font-size: 0.94rem; }
-    .bar-track { height: 10px; background: #ede7e1; border-radius: 999px; overflow: hidden; }
-    .bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #8fbf6b, #d7bc62, #e57d67); }
-    .mini-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
-    .machine-card { padding: 0; overflow: hidden; }
-    .machine-head { padding: 0.85rem 1rem 0.75rem; border-bottom: 2px solid #1d1916; display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; }
-    .machine-name { font-weight: 800; font-size: 0.98rem; }
-    .machine-sub { color: #2f2622; font-size: 0.88rem; font-weight: 700; }
-    .pill { display: inline-flex; align-items: center; justify-content: center; padding: 0.4rem 0.7rem; border-radius: 999px; font-size: 0.78rem; font-weight: 800; white-space: nowrap; }
-    .pill.available { background: #f5ddea; color: #7b3658; }
-    .pill.blocked { background: #efc6cb; color: #7a2032; }
-    .pill.maintenance { background: #eadbc8; color: #705331; }
-    .pill.success { background: #d7efbf; color: #3d6f19; }
-    .machine-body { padding: 0.9rem 1rem 1rem; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem 1.2rem; font-size: 0.92rem; }
-    .machine-body strong { display: block; color: #111; }
-    .machine-body span { color: #b71b1b; font-weight: 800; }
-    .table-wrap { overflow: auto; border-radius: 16px; border: 1px solid rgba(40, 28, 22, 0.08); background: white; }
-    table { width: 100%; border-collapse: collapse; min-width: 760px; }
-    th, td { padding: 0.9rem 1rem; border-bottom: 1px solid rgba(40, 28, 22, 0.08); text-align: left; vertical-align: top; }
-    th { background: #faf4ef; font-size: 0.84rem; color: #6b5b52; text-transform: uppercase; letter-spacing: 0.04em; }
-    .muted { color: var(--muted); }
-    .placeholder-card { padding: 1rem; min-height: 220px; display: grid; place-items: center; text-align: center; color: var(--muted); background: linear-gradient(180deg, #fff, #fcfaf8); }
-    .section-stack { display: grid; gap: 1rem; }
-    @media (max-width: 1180px) { .hero-grid, .mini-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid-2 { grid-template-columns: 1fr; } }
-    @media (max-width: 900px) { .shell { grid-template-columns: 1fr; } .sidebar { position: sticky; top: 0; z-index: 30; } .sidebar-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.2rem; padding: 0.4rem; } .nav-group-title, .sidebar-footer { display: none; } .brand { display: flex; align-items: center; gap: 0.8rem; } .brand-copy { min-width: 0; } .content { padding: 1rem; } .hero-grid, .mini-grid { grid-template-columns: 1fr; } .bar-row { grid-template-columns: 1fr; } .topbar { padding: 0 1rem; } }
-    
-    .solo-impresion { display: none; }
-    
-    @media print {
-      .sidebar, .topbar, .no-imprimir { display: none !important; }
-      
-      .shell { grid-template-columns: 1fr !important; }
-      .content { padding: 0 !important; }
-      
-      .solo-impresion { 
-        display: block; 
-        margin-bottom: 20px; 
-        padding-bottom: 10px; 
-        border-bottom: 2px solid #000; 
+        sessionStorage.setItem('srmm_token', token);
+        localStorage.removeItem('srmm_token');
       }
-      .solo-impresion h1 { font-size: 24pt; font-weight: 800; color: #000; margin:0; }
-      .solo-impresion p { font-size: 14pt; color: #333; margin: 4px 0; }
 
-      table { width: 100%; border-collapse: collapse; }
-      th, td { border: 1px solid #000 !important; color: #000 !important; }
-      .bar-fill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    }
-  </style>
-</head>
-<body>
-  <div class="shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="flex items-center">
-          <div class="brand-mark">SR</div>
-          <div class="brand-copy">
-            <div class="text-xl font-extrabold leading-none">SRMM</div>
-            <div class="text-xs font-semibold opacity-90">Hermosilla y García Ltda.</div>
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        msg.textContent='';
+        const email = document.getElementById('email').value;
+        const contrasena = document.getElementById('password').value;
+        const rememberSession = document.getElementById('rememberSession').checked;
+        try{
+          const res = await fetch('/api/auth/login', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,contrasena})});
+          const data = await res.json();
+          if(!res.ok){ msg.textContent = data.message || 'Error'; return; }
+          setAuthToken(data.token, rememberSession);
+          window.location.href = '/dashboard.html';
+        }catch(err){ msg.textContent = 'Error de conexión' }
+      });
+    </script>
+  </body>
+</html>
           </div>
         </div>
       </div>
