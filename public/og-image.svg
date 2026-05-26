@@ -1,4 +1,35 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Sistema SRMM">
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5EFE8"/>
+      <stop offset="1" stop-color="#F3E6D8"/>
+    </linearGradient>
+    <linearGradient id="card" x1="120" y1="110" x2="1080" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#FBF7F3"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1020" cy="125" r="135" fill="#D8C3B3" fill-opacity="0.35"/>
+  <circle cx="190" cy="520" r="175" fill="#C7D9F5" fill-opacity="0.22"/>
+  <rect x="120" y="100" width="960" height="430" rx="36" fill="url(#card)" stroke="#E7D8CA"/>
+  <rect x="155" y="135" width="120" height="120" rx="28" fill="#6D5141"/>
+  <text x="215" y="208" text-anchor="middle" fill="white" font-size="48" font-family="Inter, Arial, sans-serif" font-weight="800">SR</text>
+  <text x="310" y="170" fill="#201915" font-size="54" font-family="Inter, Arial, sans-serif" font-weight="800">Sistema SRMM</text>
+  <text x="310" y="220" fill="#7A6C62" font-size="26" font-family="Inter, Arial, sans-serif">Gestión de maquinaria, mantenimiento y reportes</text>
+  <rect x="155" y="292" width="890" height="1" fill="#E9DDD3"/>
+  <rect x="155" y="330" width="250" height="120" rx="24" fill="#FAF7F4" stroke="#E9DDD3"/>
+  <rect x="432" y="330" width="250" height="120" rx="24" fill="#FAF7F4" stroke="#E9DDD3"/>
+  <rect x="709" y="330" width="336" height="120" rx="24" fill="#FAF7F4" stroke="#E9DDD3"/>
+  <g fill="#6D5141" font-family="Inter, Arial, sans-serif">
+    <text x="205" y="382" font-size="28" font-weight="800">Inventario</text>
+    <text x="482" y="382" font-size="28" font-weight="800">Mantenimiento</text>
+    <text x="759" y="382" font-size="28" font-weight="800">Reportes imprimibles</text>
+    <text x="205" y="418" fill="#7A6C62" font-size="20">Control operativo</text>
+    <text x="482" y="418" fill="#7A6C62" font-size="20">Órdenes y fallas</text>
+    <text x="759" y="418" fill="#7A6C62" font-size="20">Exportación y métricas</text>
+  </g>
+</svg><svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Sistema SRMM">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#0f172a"/>
