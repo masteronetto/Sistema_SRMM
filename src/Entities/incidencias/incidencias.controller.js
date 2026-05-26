@@ -1,4 +1,4 @@
-const incidenciasRepository = require('./incidencias.repository');
+const incidenciasRepository = require('../repositories/incidencias.repository');
 
 async function crearIncidencia(req, res) {
     try {
