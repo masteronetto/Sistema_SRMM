@@ -843,7 +843,6 @@
                         <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
                             <button type="button" id="adminMaquinariaRefreshBtn" class="btn">Refrescar listado</button>
                             <button type="button" id="adminMaquinariaNewBtn" class="btn btn-secondary">Nueva maquinaria</button>
-                            <button type="button" id="adminMaquinariaShowFormBtn" class="btn btn-secondary">Mostrar formulario</button>
                         </div>
                     </div>
                 </section>
@@ -919,6 +918,7 @@
                         <div class="maquinaria-form-actions">
                             <button type="submit" class="top-button primary">Guardar maquinaria</button>
                             <button type="button" id="adminMaquinariaResetBtn" class="top-button secondary">Limpiar</button>
+                            <button type="button" id="adminMaquinariaCancelBtn" class="top-button secondary">Cancelar</button>
                         </div>
                     </form>
                 </section>
@@ -1142,7 +1142,7 @@
                             <div id="reportesStatus" class="role-badge" style="background:rgba(52,152,219,0.14);color:#2980b9;">Listo</div>
                         </div>
 
-                        <div id="reportesFilters" style="display:grid;grid-template-columns:minmax(220px,1fr) 130px 130px auto auto auto;gap:0.5rem;margin-top:1rem;align-items:end;column-gap:0.75rem;">
+                        <div id="reportesFilters" style="display:grid;grid-template-columns:minmax(220px,1fr) 130px 130px auto auto auto auto;gap:0.5rem;margin-top:1rem;align-items:end;column-gap:0.75rem;">
                             <label style="display:grid;gap:0.35rem;">
                                 <span class="small muted">Máquina</span>
                                 <select id="reportMachineSelect" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
@@ -1159,6 +1159,7 @@
                             <button id="reportExportBtn" class="btn btn-secondary" style="height:48px;white-space:nowrap;">Generar CSV</button>
                             <button id="reportExportIngresosBtn" class="btn btn-secondary" style="height:48px;white-space:nowrap;">Descargar CSV Ingresos</button>
                             <button id="reportPdfBtn" class="btn btn-secondary" style="height:48px;white-space:nowrap;">Generar PDF</button>
+                            <button id="reportPrintBtn" class="btn btn-secondary" style="height:48px;white-space:nowrap;">Exportar imprimible</button>
                         </div>
                     </section>
 
@@ -1268,9 +1269,9 @@ function initAdminMaquinariaPanel() {
 
     const form = document.getElementById('adminMaquinariaForm');
     const resetBtn = document.getElementById('adminMaquinariaResetBtn');
+    const cancelBtn = document.getElementById('adminMaquinariaCancelBtn');
     const refreshBtn = document.getElementById('adminMaquinariaRefreshBtn');
     const newBtn = document.getElementById('adminMaquinariaNewBtn');
-    const showFormBtn = document.getElementById('adminMaquinariaShowFormBtn');
     const formPanel = document.getElementById('adminMaquinariaFormPanel');
 
     if (!refreshBtn) return;
@@ -1283,6 +1284,12 @@ function initAdminMaquinariaPanel() {
     if (resetBtn) {
         resetBtn.addEventListener('click', resetAdminMaquinariaForm);
     }
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            resetAdminMaquinariaForm();
+            if (formPanel) formPanel.style.display = 'none';
+        });
+    }
     refreshBtn.addEventListener('click', loadAdminMaquinaria);
 
     if (newBtn) {
@@ -1292,17 +1299,10 @@ function initAdminMaquinariaPanel() {
         });
     }
 
-    if (showFormBtn) {
-        showFormBtn.addEventListener('click', () => {
-            showMaquinariaForm();
-        });
-    }
-
     loadMaintenancePlans();
 
     if (userRole !== 'Administrador' && formPanel) {
         formPanel.style.display = 'none';
-        if (showFormBtn) showFormBtn.style.display = 'none';
         if (newBtn) newBtn.style.display = 'none';
     }
 
@@ -1313,7 +1313,8 @@ function showMaquinariaForm(forceVisible = false) {
     const formPanel = document.getElementById('adminMaquinariaFormPanel');
     if (!formPanel) return;
 
-    const shouldShow = forceVisible || formPanel.style.display === 'none' || getComputedStyle(formPanel).display === 'none';
+    const isHidden = formPanel.style.display === 'none' || getComputedStyle(formPanel).display === 'none';
+    const shouldShow = forceVisible ? true : !isHidden;
     formPanel.style.display = shouldShow ? 'block' : 'none';
     if (shouldShow) {
         formPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2291,6 +2292,83 @@ function initReportesDashboard() {
             doc.save(`reporte_maquina_${machineSelect.value || 'sin_seleccion'}.pdf`);
             setReportStatus('PDF generado correctamente', 'success');
         });
+
+        const printBtn = document.getElementById('reportPrintBtn');
+        if (printBtn) {
+            printBtn.addEventListener('click', () => {
+                const reportState = window.__srmmReporteState || {};
+                const rows = Array.isArray(reportState.rows) ? reportState.rows : [];
+                if (!rows.length) {
+                    setReportStatus('No hay datos para exportar', 'error');
+                    return;
+                }
+
+                // Crear ventana con vista imprimible
+                const machineLabel = document.getElementById('reportSelectedMachineLabel')?.textContent || 'Sin máquina seleccionada';
+                const startDate = document.getElementById('reportStartDate')?.value || '';
+                const endDate = document.getElementById('reportEndDate')?.value || '';
+
+                const win = window.open('', '_blank');
+                if (!win) {
+                    setReportStatus('No se pudo abrir ventana de impresión', 'error');
+                    return;
+                }
+
+                const style = `
+                    body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; color: #191919; padding: 24px; }
+                    .print-header { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+                    .print-logo { width:72px; height:72px; object-fit:contain; }
+                    .print-title { font-size:18px; font-weight:800; margin:0; }
+                    .print-meta { color:#666; margin-top:6px; font-size:13px; }
+                    h1 { font-size: 18px; margin-bottom: 6px; }
+                    .meta { color: #666; margin-bottom: 18px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+                    th, td { border: 1px solid #eee; padding: 8px 10px; text-align: left; font-size: 12px; }
+                    th { background: #f7f7f7; font-weight: 700; }
+                    footer { margin-top:18px; color:#666; font-size:12px; }
+                    @media print {
+                        button { display: none !important; }
+                        a { color: inherit; text-decoration: none; }
+                        header, footer { page-break-inside: avoid; }
+                    }
+                `;
+
+                const userName = document.getElementById('sidebarName')?.textContent || '';
+                const companyLogo = '/favicon.svg';
+                const headerHtml = `
+                    <div class="print-header">
+                        <img src="${companyLogo}" class="print-logo" alt="Logo">
+                        <div>
+                            <div class="print-title">Historial de mantenciones</div>
+                            <div class="print-meta">Máquina: ${escapeHtml(machineLabel)} · Rango: ${escapeHtml(startDate || '-') } — ${escapeHtml(endDate || '-')}</div>
+                            <div class="print-meta">Generado: ${new Date().toLocaleString('es-CL')} · Usuario: ${escapeHtml(userName)}</div>
+                        </div>
+                    </div>
+                `;
+
+                const rowsHtml = rows.map(r => `
+                    <tr>
+                        <td>${r.fecha_evento || '-'}</td>
+                        <td>${escapeHtml(r.tipo_evento || '-')}</td>
+                        <td>${r.horometro ?? '-'}</td>
+                        <td>${escapeHtml(r.usuario_responsable || '-')}</td>
+                        <td>${escapeHtml(r.detalle || '-')}</td>
+                    </tr>
+                `).join('');
+
+                const tableHtml = `
+                    <table>
+                        <thead>
+                            <tr><th>Fecha</th><th>Tipo</th><th>Horómetro</th><th>Responsable</th><th>Detalle</th></tr>
+                        </thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>`;
+
+                win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Historial imprimible</title><style>${style}</style></head><body>${headerHtml}${tableHtml}<div style="margin-top:18px;"><button onclick="window.print();">Imprimir</button></div></body></html>`);
+                win.document.close();
+                setReportStatus('Vista imprimible generada', 'success');
+            });
+        }
 
         const reloadSelected = async () => {
             if (!machineSelect.value) return;
