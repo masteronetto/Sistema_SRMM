@@ -23,8 +23,8 @@
     }
   ]
  ,
-  "rewrites": [
-    { "source": "/", "destination": "/screenshot-login.html" },
-    { "source": "/((?!api|.*\\..*).*)", "destination": "/screenshot-login.html" }
+  "redirects": [
+    { "source": "/", "destination": "/screenshot-login.html", "permanent": false },
+    { "source": "/((?!api|.*\\..*).*)", "destination": "/screenshot-login.html", "permanent": false }
   ]
 }

@@ -736,6 +736,25 @@
             .report-actions .btn { flex: 1 1 auto; min-width: 0; }
         }
 
+        /* Estilos para inputs de fecha más visibles */
+        .nice-date {
+            height: 84px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 18px;
+            padding: 0.6rem 0.9rem;
+        }
+
+        #toggleMultiSelectBtn.btn-secondary {
+            background: #f2f0ee; color: #3e2f26; border: 1px solid rgba(40,28,22,0.06);
+        }
+
+        #toggleMultiSelectBtn.active {
+            background: #6d5141; color: #fff; border-color: #5a3f34;
+        }
+
         @media (max-width: 900px) {
             .sidebar { position: sticky; top: 0; z-index: 30; }
             .sidebar-nav {
@@ -1244,17 +1263,20 @@
 
                         <div id="reportesFilters" class="report-filters">
                             <label>
-                                <span class="small muted">Máquinas</span>
-                                <select id="reportMachineSelect" multiple size="4" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-machine-select"></select>
-                                <span class="small muted">Usa Ctrl/Cmd para seleccionar varias máquinas.</span>
+                                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                                    <span class="small muted">Máquinas</span>
+                                    <button type="button" id="toggleMultiSelectBtn" class="btn btn-secondary" style="padding:4px 10px;font-weight:700;min-width:140px;">Seleccionar varias</button>
+                                </div>
+                                <select id="reportMachineSelect" size="4" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-machine-select"></select>
+                                <span id="reportMultiHelp" class="small muted">Pulsa 'Seleccionar varias' para activar multiselección.</span>
                             </label>
                             <label>
                                 <span class="small muted">Fecha inicio</span>
-                                <input id="reportStartDate" type="date" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-date">
+                                <input id="reportStartDate" type="date" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-date nice-date">
                             </label>
                             <label>
                                 <span class="small muted">Fecha fin</span>
-                                <input id="reportEndDate" type="date" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-date">
+                                <input id="reportEndDate" type="date" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-date nice-date">
                             </label>
                             <div class="report-actions">
                                 <button id="reportRefreshBtn" class="btn">Actualizar reporte</button>
@@ -2779,6 +2801,29 @@ function initReportesDashboard() {
             fallasEndDateInput.addEventListener('change', loadReportFallasDashboard);
             fallasCriticidadSelect.addEventListener('change', loadReportFallasDashboard);
             syncFallasDateInputs();
+        }
+
+        // Toggle para multiselección de máquinas
+        const toggleMultiBtn = document.getElementById('toggleMultiSelectBtn');
+        const multiHelp = document.getElementById('reportMultiHelp');
+        if (toggleMultiBtn) {
+            // inicio: multiselección desactivada
+            toggleMultiBtn.classList.remove('active');
+            toggleMultiBtn.addEventListener('click', () => {
+                const isActive = toggleMultiBtn.classList.toggle('active');
+                if (isActive) {
+                    machineSelect.multiple = true;
+                    if (multiHelp) multiHelp.textContent = 'Multiselección activada — selecciona varias máquinas.';
+                } else {
+                    // desactivar: mantener sólo la primera seleccionada
+                    machineSelect.multiple = false;
+                    const first = machineSelect.selectedOptions[0];
+                    Array.from(machineSelect.options).forEach((opt) => {
+                        opt.selected = first ? String(opt.value) === String(first.value) : false;
+                    });
+                    if (multiHelp) multiHelp.textContent = "Pulsa 'Seleccionar varias' para activar multiselección.";
+                }
+            });
         }
 
         refreshBtn.addEventListener('click', async () => {
