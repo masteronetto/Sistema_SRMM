@@ -1142,10 +1142,11 @@
                             <div id="reportesStatus" class="role-badge" style="background:rgba(52,152,219,0.14);color:#2980b9;">Listo</div>
                         </div>
 
-                        <div id="reportesFilters" style="display:grid;grid-template-columns:minmax(220px,1fr) 130px 130px auto auto auto auto;gap:0.5rem;margin-top:1rem;align-items:end;column-gap:0.75rem;">
+                        <div id="reportesFilters" style="display:grid;grid-template-columns:minmax(240px,1fr) 130px 130px auto auto auto auto;gap:0.5rem;margin-top:1rem;align-items:end;column-gap:0.75rem;">
                             <label style="display:grid;gap:0.35rem;">
-                                <span class="small muted">Máquina</span>
-                                <select id="reportMachineSelect" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+                                <span class="small muted">Máquinas</span>
+                                <select id="reportMachineSelect" multiple size="4" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500" style="min-height: 118px;"></select>
+                                <span class="small muted">Usa Ctrl/Cmd para seleccionar varias máquinas.</span>
                             </label>
                             <label style="display:grid;gap:0.35rem;">
                                 <span class="small muted">Fecha inicio</span>
@@ -1185,6 +1186,79 @@
                             <div class="muted text-sm mt-2">Incidencias asociadas a las máquinas visibles en el tablero.</div>
                         </article>
                 </div>
+
+                        <section class="section-card">
+                            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+                                <div>
+                                    <div class="section-title">Reporte de fallas</div>
+                                    <div class="muted">Agrupa fallas por máquina, período y criticidad, con estadísticas clave e impresión limpia.</div>
+                                </div>
+                                <div id="reportFallasStatus" class="role-badge" style="background:rgba(217,119,6,0.14);color:#d97706;">Listo</div>
+                            </div>
+
+                            <div id="reportFallasFilters" style="display:grid;grid-template-columns:minmax(240px,1fr) 130px 130px 140px auto auto;gap:0.5rem;margin-top:1rem;align-items:end;column-gap:0.75rem;">
+                                <label style="display:grid;gap:0.35rem;">
+                                    <span class="small muted">Período</span>
+                                    <select id="reportFallasPeriodo" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option value="semanal">Semanal</option>
+                                        <option value="mensual" selected>Mensual</option>
+                                        <option value="trimestral">Trimestral</option>
+                                        <option value="personalizado">Personalizado</option>
+                                    </select>
+                                </label>
+                                <label style="display:grid;gap:0.35rem;">
+                                    <span class="small muted">Fecha inicio</span>
+                                    <input id="reportFallasStartDate" type="date" style="max-width:130px;box-sizing:border-box;" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </label>
+                                <label style="display:grid;gap:0.35rem;">
+                                    <span class="small muted">Fecha fin</span>
+                                    <input id="reportFallasEndDate" type="date" style="max-width:130px;box-sizing:border-box;" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </label>
+                                <label style="display:grid;gap:0.35rem;">
+                                    <span class="small muted">Criticidad</span>
+                                    <select id="reportFallasCriticidad" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option value="">Todas</option>
+                                        <option value="Alta">Alta</option>
+                                        <option value="Media">Media</option>
+                                        <option value="Baja">Baja</option>
+                                    </select>
+                                </label>
+                                <button id="reportFallasRefreshBtn" class="btn" style="height:48px;white-space:nowrap;">Actualizar fallas</button>
+                                <button id="reportFallasPrintBtn" class="btn btn-secondary" style="height:48px;white-space:nowrap;">Imprimir fallas</button>
+                            </div>
+
+                            <div class="mini-grid" style="margin-top:1rem;">
+                                <article class="section-card">
+                                    <div class="section-title">Total fallas</div>
+                                    <div id="reportFallasTotal" class="text-3xl font-bold text-slate-800">—</div>
+                                </article>
+                                <article class="section-card">
+                                    <div class="section-title">Máquina con más fallas</div>
+                                    <div id="reportFallasTopMachine" class="text-3xl font-bold text-slate-800">—</div>
+                                </article>
+                                <article class="section-card">
+                                    <div class="section-title">Tiempo promedio resolución</div>
+                                    <div id="reportFallasAvgResolution" class="text-3xl font-bold text-slate-800">—</div>
+                                </article>
+                                <article class="section-card">
+                                    <div class="section-title">Pendientes</div>
+                                    <div id="reportFallasPending" class="text-3xl font-bold text-slate-800">—</div>
+                                </article>
+                            </div>
+
+                            <div class="mini-grid" style="margin-top:1rem;">
+                                <article class="section-card">
+                                    <div class="section-title">Fallas por criticidad</div>
+                                    <div class="relative h-72 w-full mt-3"><canvas id="reportFallasCriticidadChart"></canvas></div>
+                                </article>
+                                <article class="section-card">
+                                    <div class="section-title">Fallas por período</div>
+                                    <div class="relative h-72 w-full mt-3"><canvas id="reportFallasPeriodoChart"></canvas></div>
+                                </article>
+                            </div>
+
+                            <div id="reportFallasTable" class="overflow-x-auto mt-4"></div>
+                        </section>
 
                     <div class="mini-grid">
                         <article class="section-card">
@@ -1557,6 +1631,13 @@ let adminMaquinariaInitialized = false;
 let reportTopChart = null;
 let reportUsoChart = null;
 let reportSelectedMachineId = '';
+let reportFallasCriticidadChart = null;
+let reportFallasPeriodoChart = null;
+let reportFallasState = {
+    rows: [],
+    resumen: null,
+    filtros: null
+};
 
 /* ═══════════════════════════════════════════════════
    INIT
@@ -1887,6 +1968,14 @@ function destroyReportCharts() {
         reportUsoChart.destroy();
         reportUsoChart = null;
     }
+    if (reportFallasCriticidadChart) {
+        reportFallasCriticidadChart.destroy();
+        reportFallasCriticidadChart = null;
+    }
+    if (reportFallasPeriodoChart) {
+        reportFallasPeriodoChart.destroy();
+        reportFallasPeriodoChart = null;
+    }
 }
 
 function renderReportTopChart(topMaquinas) {
@@ -1925,7 +2014,7 @@ function renderReportTopChart(topMaquinas) {
     });
 }
 
-function renderReportUsoChart(rows) {
+function renderReportUsoChart(rows, machineLabels = []) {
     const canvas = document.getElementById('reportUsoChart');
     if (!canvas || !window.Chart) return;
 
@@ -1936,12 +2025,18 @@ function renderReportUsoChart(rows) {
         reportUsoChart.destroy();
     }
 
+    const tooltipFormatter = (context) => {
+        const value = Number(context.parsed.y);
+        const label = machineLabels[context.datasetIndex] || context.dataset.label || 'Horómetro histórico';
+        return `${label}: ${Number.isFinite(value) ? value.toLocaleString('es-CL') : '0'} hrs`;
+    };
+
     reportUsoChart = new Chart(canvas, {
         type: 'line',
         data: {
             labels,
             datasets: [{
-                label: 'Horómetro histórico',
+                label: machineLabels[0] || 'Horómetro histórico',
                 data: values,
                 borderColor: '#4f46e5',
                 backgroundColor: 'rgba(79, 70, 229, 0.12)',
@@ -1955,7 +2050,80 @@ function renderReportUsoChart(rows) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            plugins: {
+                legend: { display: true, position: 'bottom' },
+                tooltip: {
+                    callbacks: {
+                        label: tooltipFormatter
+                    }
+                }
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { color: '#6b7280' } },
+                x: { ticks: { color: '#6b7280' } }
+            }
+        }
+    });
+}
+
+function renderComparativeUsageChart(seriesList) {
+    const canvas = document.getElementById('reportUsoChart');
+    if (!canvas || !window.Chart) return;
+
+    if (reportUsoChart) {
+        reportUsoChart.destroy();
+    }
+
+    const allDates = new Set();
+    seriesList.forEach((series) => {
+        series.rows.forEach((item) => allDates.add(item.fecha_evento));
+    });
+
+    const labels = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b)).map((value) => formatCLDate(value));
+
+    const palette = [
+        { border: '#4f46e5', background: 'rgba(79, 70, 229, 0.12)' },
+        { border: '#059669', background: 'rgba(5, 150, 105, 0.12)' },
+        { border: '#d97706', background: 'rgba(217, 119, 6, 0.12)' },
+        { border: '#dc2626', background: 'rgba(220, 38, 38, 0.12)' },
+        { border: '#7c3aed', background: 'rgba(124, 58, 237, 0.12)' }
+    ];
+
+    const datasets = seriesList.map((series, index) => {
+        const byDate = new Map(series.rows.map((item) => [formatCLDate(item.fecha_evento), Number(item.horometro) || 0]));
+        const paletteItem = palette[index % palette.length];
+        return {
+            label: series.label,
+            data: labels.map((label) => byDate.get(label) ?? null),
+            borderColor: paletteItem.border,
+            backgroundColor: paletteItem.background,
+            borderWidth: 3,
+            fill: false,
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: paletteItem.border,
+            spanGaps: true
+        };
+    });
+
+    reportUsoChart = new Chart(canvas, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'nearest', intersect: false },
+            plugins: {
+                legend: { display: true, position: 'bottom' },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => {
+                            const value = Number(context.parsed.y);
+                            return `${context.dataset.label}: ${Number.isFinite(value) ? value.toLocaleString('es-CL') : '0'} hrs`;
+                        }
+                    }
+                }
+            },
             scales: {
                 y: { beginAtZero: true, ticks: { color: '#6b7280' } },
                 x: { ticks: { color: '#6b7280' } }
@@ -1999,6 +2167,285 @@ function renderReportTable(rows) {
     `;
 }
 
+function renderReportFallasTable(rows) {
+    const container = document.getElementById('reportFallasTable');
+    if (!container) return;
+
+    if (!rows.length) {
+        container.innerHTML = '<p class="muted">No hay fallas para los filtros seleccionados.</p>';
+        return;
+    }
+
+    container.innerHTML = `
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="border-b border-slate-200 text-sm text-slate-500 uppercase">
+                    <th class="pb-3 px-2">Máquina</th>
+                    <th class="pb-3 px-2">Período</th>
+                    <th class="pb-3 px-2">Criticidad</th>
+                    <th class="pb-3 px-2">Total fallas</th>
+                    <th class="pb-3 px-2">Resueltas</th>
+                    <th class="pb-3 px-2">Pendientes</th>
+                    <th class="pb-3 px-2">Prom. resolución</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows.map((item) => `
+                    <tr class="border-b border-slate-100 hover:bg-slate-50 transition align-top">
+                        <td class="py-3 px-2">${item.modelo_equipo || '—'}</td>
+                        <td class="py-3 px-2 whitespace-nowrap">${formatCLDate(item.periodo_bucket)}</td>
+                        <td class="py-3 px-2 font-semibold text-slate-700">${item.criticidad || '—'}</td>
+                        <td class="py-3 px-2">${formatNumber(item.total_fallas)}</td>
+                        <td class="py-3 px-2">${formatNumber(item.total_resueltas)}</td>
+                        <td class="py-3 px-2">${formatNumber(item.total_pendientes)}</td>
+                        <td class="py-3 px-2 whitespace-nowrap">${formatNumber(item.promedio_resolucion_horas, ' hrs')}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function renderReportFallasCharts(resumen) {
+    const criticidadCanvas = document.getElementById('reportFallasCriticidadChart');
+    const periodoCanvas = document.getElementById('reportFallasPeriodoChart');
+    if (!window.Chart) return;
+
+    if (reportFallasCriticidadChart) {
+        reportFallasCriticidadChart.destroy();
+        reportFallasCriticidadChart = null;
+    }
+    if (reportFallasPeriodoChart) {
+        reportFallasPeriodoChart.destroy();
+        reportFallasPeriodoChart = null;
+    }
+
+    const criticidadLabels = (resumen?.por_criticidad || []).map((item) => item.label);
+    const criticidadValues = (resumen?.por_criticidad || []).map((item) => Number(item.total) || 0);
+    const periodoLabels = (resumen?.por_periodo || []).map((item) => item.label);
+    const periodoValues = (resumen?.por_periodo || []).map((item) => Number(item.total) || 0);
+
+    if (criticidadCanvas) {
+        reportFallasCriticidadChart = new Chart(criticidadCanvas, {
+            type: 'bar',
+            data: {
+                labels: criticidadLabels,
+                datasets: [{
+                    label: 'Fallas',
+                    data: criticidadValues,
+                    backgroundColor: ['#dc2626', '#d97706', '#16a34a'],
+                    borderRadius: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `Fallas: ${Number(context.parsed.y || 0).toLocaleString('es-CL')}`
+                        }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { color: '#6b7280' } },
+                    x: { ticks: { color: '#6b7280' } }
+                }
+            }
+        });
+    }
+
+    if (periodoCanvas) {
+        reportFallasPeriodoChart = new Chart(periodoCanvas, {
+            type: 'line',
+            data: {
+                labels: periodoLabels,
+                datasets: [{
+                    label: 'Fallas por período',
+                    data: periodoValues,
+                    borderColor: '#4f46e5',
+                    backgroundColor: 'rgba(79, 70, 229, 0.12)',
+                    borderWidth: 3,
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#4f46e5'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `Fallas: ${Number(context.parsed.y || 0).toLocaleString('es-CL')}`
+                        }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { color: '#6b7280' } },
+                    x: { ticks: { color: '#6b7280' } }
+                }
+            }
+        });
+    }
+}
+
+async function loadReportFallasDashboard() {
+    const periodoSelect = document.getElementById('reportFallasPeriodo');
+    const startDateInput = document.getElementById('reportFallasStartDate');
+    const endDateInput = document.getElementById('reportFallasEndDate');
+    const criticidadSelect = document.getElementById('reportFallasCriticidad');
+    const statusBadge = document.getElementById('reportFallasStatus');
+    const totalEl = document.getElementById('reportFallasTotal');
+    const topMachineEl = document.getElementById('reportFallasTopMachine');
+    const avgEl = document.getElementById('reportFallasAvgResolution');
+    const pendingEl = document.getElementById('reportFallasPending');
+
+    if (!periodoSelect || !startDateInput || !endDateInput || !criticidadSelect) return;
+
+    try {
+        setReportStatus('Cargando reporte de fallas...', 'info');
+        if (statusBadge) {
+            statusBadge.textContent = 'Cargando...';
+            statusBadge.style.background = 'rgba(217,119,6,0.14)';
+            statusBadge.style.color = '#d97706';
+        }
+
+        const q = new URLSearchParams();
+        const periodo = periodoSelect.value || 'mensual';
+        const machineIds = getSelectedReportMachineIds(document.getElementById('reportMachineSelect'));
+        const criticidad = criticidadSelect.value;
+
+        q.append('periodo', periodo);
+        if (machineIds.length) q.append('maquinaria_ids', machineIds.join(','));
+        if (criticidad) q.append('criticidad', criticidad);
+        if (periodo === 'personalizado') {
+            if (startDateInput.value) q.append('fecha_inicio', startDateInput.value);
+            if (endDateInput.value) q.append('fecha_fin', endDateInput.value);
+        }
+
+        const res = await fetch(`/api/reportes/fallas?${q.toString()}`, { headers: getAuthHeaders() });
+        if (!res.ok) {
+            const e = await res.json().catch(() => ({ message: res.statusText }));
+            throw new Error(e.message || 'No se pudo cargar el reporte de fallas');
+        }
+
+        const payload = await res.json();
+        const resumen = payload.resumen || {};
+        const rows = Array.isArray(payload.agrupados) ? payload.agrupados : [];
+
+        reportFallasState = { rows, resumen, filtros: payload.filtros || {} };
+
+        if (totalEl) totalEl.textContent = formatNumber(resumen.total_fallas);
+        if (topMachineEl) topMachineEl.textContent = resumen.maquina_con_mas_fallas ? `${resumen.maquina_con_mas_fallas.modelo_equipo} (${formatNumber(resumen.maquina_con_mas_fallas.total_fallas)})` : '—';
+        if (avgEl) avgEl.textContent = formatNumber(resumen.promedio_resolucion_horas, ' hrs');
+        if (pendingEl) pendingEl.textContent = formatNumber(resumen.total_pendientes);
+
+        renderReportFallasCharts(resumen);
+        renderReportFallasTable(rows);
+
+        if (statusBadge) {
+            statusBadge.textContent = 'Actualizado';
+            statusBadge.style.background = 'rgba(39,174,96,0.14)';
+            statusBadge.style.color = '#27ae60';
+        }
+
+        setReportStatus('Reporte de fallas actualizado', 'success');
+    } catch (error) {
+        console.error('Error cargando reporte de fallas:', error);
+        if (statusBadge) {
+            statusBadge.textContent = 'Error';
+            statusBadge.style.background = 'rgba(231,76,60,0.14)';
+            statusBadge.style.color = '#c0392b';
+        }
+        setReportStatus('No se pudo cargar el reporte de fallas', 'error');
+    }
+}
+
+function buildFallasPrintableHtml() {
+    const resumen = reportFallasState.resumen || {};
+    const rows = Array.isArray(reportFallasState.rows) ? reportFallasState.rows : [];
+    const filtros = reportFallasState.filtros || {};
+    const title = 'Reporte de fallas';
+    const generatedAt = new Date().toLocaleString('es-CL');
+    const machineSelect = document.getElementById('reportMachineSelect');
+    const selectedLabels = Array.from(machineSelect?.selectedOptions || []).map((option) => option.textContent).filter(Boolean);
+
+    const rowsHtml = rows.map((item) => `
+        <tr>
+            <td>${escapeHtml(item.modelo_equipo || '—')}</td>
+            <td>${escapeHtml(formatCLDate(item.periodo_bucket))}</td>
+            <td>${escapeHtml(item.criticidad || '—')}</td>
+            <td>${escapeHtml(String(item.total_fallas ?? 0))}</td>
+            <td>${escapeHtml(String(item.total_resueltas ?? 0))}</td>
+            <td>${escapeHtml(String(item.total_pendientes ?? 0))}</td>
+            <td>${escapeHtml(formatNumber(item.promedio_resolucion_horas, ' hrs'))}</td>
+        </tr>
+    `).join('');
+
+    return `
+        <div class="print-header">
+            <img src="/favicon.svg" class="print-logo" alt="Logo">
+            <div>
+                <div class="print-title">${title}</div>
+                <div class="print-meta">Generado: ${generatedAt}</div>
+                <div class="print-meta">Período: ${escapeHtml(String(filtros.periodo || 'mensual'))} · Criticidad: ${escapeHtml(String(filtros.criticidad || 'todas'))}</div>
+                <div class="print-meta">Máquinas: ${escapeHtml(selectedLabels.length ? selectedLabels.join(', ') : 'Todas')}</div>
+            </div>
+        </div>
+        <div class="print-summary">
+            <div>Total fallas: ${escapeHtml(String(resumen.total_fallas ?? 0))}</div>
+            <div>Resueltas: ${escapeHtml(String(resumen.total_resueltas ?? 0))}</div>
+            <div>Pendientes: ${escapeHtml(String(resumen.total_pendientes ?? 0))}</div>
+            <div>Promedio resolución: ${escapeHtml(formatNumber(resumen.promedio_resolucion_horas, ' hrs'))}</div>
+            <div>Máquina con más fallas: ${escapeHtml(resumen.maquina_con_mas_fallas ? `${resumen.maquina_con_mas_fallas.modelo_equipo} (${resumen.maquina_con_mas_fallas.total_fallas})` : '—')}</div>
+        </div>
+        <table>
+            <thead>
+                <tr><th>Máquina</th><th>Período</th><th>Criticidad</th><th>Total</th><th>Resueltas</th><th>Pendientes</th><th>Prom. resolución</th></tr>
+            </thead>
+            <tbody>${rowsHtml || '<tr><td colspan="7">Sin datos</td></tr>'}</tbody>
+        </table>
+    `;
+}
+
+function openReportFallasPrintWindow() {
+    const win = window.open('', '_blank');
+    if (!win) {
+        setReportStatus('No se pudo abrir ventana de impresión', 'error');
+        return;
+    }
+
+    const styles = `
+        body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; color: #191919; padding: 24px; }
+        .print-header { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+        .print-logo { width:72px; height:72px; object-fit:contain; }
+        .print-title { font-size:18px; font-weight:800; margin:0; }
+        .print-meta { color:#666; margin-top:6px; font-size:13px; }
+        .print-summary { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:8px; margin: 16px 0; padding: 12px; border: 1px solid #eee; border-radius: 12px; background: #fafafa; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th, td { border: 1px solid #eee; padding: 8px 10px; text-align: left; font-size: 12px; }
+        th { background: #f7f7f7; font-weight: 700; }
+        @media print {
+            button { display: none !important; }
+            table { page-break-inside: auto; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
+        }
+    `;
+
+    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Reporte de fallas</title><style>${styles}</style></head><body>${buildFallasPrintableHtml()}<div style="margin-top:18px; display:flex; gap:8px;"><button onclick="window.print();">Imprimir</button><button onclick="window.close();">Cerrar</button></div></body></html>`);
+    win.document.close();
+}
+
+function getSelectedReportMachineIds(machineSelect) {
+    return Array.from(machineSelect?.selectedOptions || [])
+        .map((option) => String(option.value))
+        .filter(Boolean);
+}
+
 function updateReportKpis(summary) {
     const horasEl = document.getElementById('reportHorasHistoricas');
     const detalleEl = document.getElementById('reportHorasDetalle');
@@ -2014,16 +2461,39 @@ function updateReportKpis(summary) {
 }
 
 async function loadSelectedMachineReport(machineId, fechaInicio, fechaFin) {
+    const selectedIds = machineId ? [machineId] : [];
+    return loadSelectedMachinesReport(selectedIds, fechaInicio, fechaFin);
+}
+
+async function loadSelectedMachinesReport(machineIds, fechaInicio, fechaFin) {
     const selectedLabel = document.getElementById('reportSelectedMachineLabel');
     const headers = getAuthHeaders();
+    const ids = Array.isArray(machineIds) ? machineIds.filter(Boolean).map(String) : [];
     const query = new URLSearchParams();
     if (fechaInicio) query.append('fecha_inicio', fechaInicio);
     if (fechaFin) query.append('fecha_fin', fechaFin);
 
-    const res = await fetch(`/api/reportes/historial-unificado/${machineId}?${query.toString()}`, { headers });
-    if (!res.ok) throw new Error('No se pudo cargar el historial unificado');
+    if (!ids.length) {
+        window.__srmmReporteState = { rows: [], totalHoras: 0, totalMantenciones: 0, totalFallas: 0, detalle: 'Selecciona una o varias máquinas para ver su evolución.' };
+        if (selectedLabel) selectedLabel.textContent = 'Sin máquina seleccionada';
+        renderReportUsoChart([]);
+        renderReportTable([]);
+        return;
+    }
 
-    const rows = await res.json();
+    const labelMap = new Map(availableMachines.map((item) => [String(item.id_maquina), item.modelo_equipo]));
+    const seriesResults = await Promise.all(ids.map(async (idMaquina) => {
+        const res = await fetch(`/api/reportes/historial-unificado/${idMaquina}?${query.toString()}`, { headers });
+        if (!res.ok) throw new Error(`No se pudo cargar el historial unificado de la máquina ${idMaquina}`);
+        const rows = await res.json();
+        return {
+            id: String(idMaquina),
+            label: labelMap.get(String(idMaquina)) || `Máquina #${idMaquina}`,
+            rows
+        };
+    }));
+
+    const rows = seriesResults.flatMap((series) => series.rows.map((row) => ({ ...row, maquina_label: series.label, maquinaria_id_maquina: row.maquinaria_id_maquina || series.id })));
     const totalHoras = rows.reduce((acc, item) => acc + (Number(item.horometro) || 0), 0);
     const totalMantenciones = rows.filter((item) => String(item.tipo_evento || '').startsWith('Mantención')).length;
     const totalFallas = rows.filter((item) => String(item.tipo_evento || '').includes('Falla')).length;
@@ -2033,17 +2503,22 @@ async function loadSelectedMachineReport(machineId, fechaInicio, fechaFin) {
         totalHoras,
         totalMantenciones,
         totalFallas,
-        detalle: `${rows.length} evento(s) entre ${fechaInicio || 'inicio'} y ${fechaFin || 'hoy'}`
+        detalle: `${rows.length} evento(s) entre ${fechaInicio || 'inicio'} y ${fechaFin || 'hoy'} en ${ids.length} máquina(s)`,
+        selectedMachineIds: ids
     };
 
-    const machine = availableMachines.find((item) => String(item.id_maquina) === String(machineId));
     if (selectedLabel) {
-        selectedLabel.textContent = machine ? machine.modelo_equipo : `Máquina #${machineId}`;
+        selectedLabel.textContent = ids.length === 1 ? (labelMap.get(ids[0]) || `Máquina #${ids[0]}`) : `${ids.length} máquinas seleccionadas`;
     }
 
-    renderReportUsoChart(rows);
+    if (ids.length === 1) {
+        renderReportUsoChart(seriesResults[0]?.rows || [], [seriesResults[0]?.label || 'Horómetro histórico']);
+    } else {
+        renderComparativeUsageChart(seriesResults);
+    }
+
     renderReportTable(rows);
-    reportSelectedMachineId = String(machineId);
+    reportSelectedMachineId = ids[0] || '';
 }
 
 async function loadReportesDashboard() {
@@ -2060,12 +2535,13 @@ async function loadReportesDashboard() {
         const machines = await loadAvailableMachines();
 
         machineSelect.innerHTML = machines.length
-            ? '<option value="">Selecciona una máquina</option>' + machines.map((m) => `<option value="${m.id_maquina}">${m.modelo_equipo}</option>`).join('')
+            ? machines.map((m) => `<option value="${m.id_maquina}">${m.modelo_equipo}</option>`).join('')
             : '<option value="">No hay máquinas disponibles</option>';
 
-        if (!machineSelect.value) {
-            machineSelect.value = reportSelectedMachineId || (machines[0] ? String(machines[0].id_maquina) : '');
-        }
+        const initialIds = reportSelectedMachineId ? [String(reportSelectedMachineId)] : (machines[0] ? [String(machines[0].id_maquina)] : []);
+        Array.from(machineSelect.options).forEach((option) => {
+            option.selected = initialIds.includes(String(option.value));
+        });
 
         const today = new Date();
         const defaultEnd = today.toISOString().slice(0, 10);
@@ -2090,29 +2566,32 @@ async function loadReportesDashboard() {
 
         renderReportTopChart(topMaquinas);
 
-        const selectedMachineStats = machineSelect.value
-            ? estadisticas.find((item) => String(item.id_maquina) === String(machineSelect.value))
-            : null;
+        const selectedMachineIds = Array.from(machineSelect.selectedOptions).map((option) => String(option.value)).filter(Boolean);
+        const selectedMachineStats = selectedMachineIds.length
+            ? estadisticas.filter((item) => selectedMachineIds.includes(String(item.id_maquina)))
+            : [];
 
         const summary = {
             totalHoras: 0,
-            totalMantenciones: Number(selectedMachineStats?.total_mantenciones) || 0,
-            totalFallas: Number(selectedMachineStats?.total_fallas) || 0,
+            totalMantenciones: selectedMachineStats.reduce((acc, item) => acc + Number(item.total_mantenciones || 0), 0),
+            totalFallas: selectedMachineStats.reduce((acc, item) => acc + Number(item.total_fallas || 0), 0),
             totalIngresos: 0,
-            detalle: 'Selecciona una máquina para ver su evolución.'
+            detalle: 'Selecciona una o varias máquinas para ver su evolución.'
         };
 
-        if (machineSelect.value) {
-            await loadSelectedMachineReport(machineSelect.value, startDateInput.value, endDateInput.value);
+        if (selectedMachineIds.length) {
+            await loadSelectedMachinesReport(selectedMachineIds, startDateInput.value, endDateInput.value);
         } else if (machines[0]) {
-            machineSelect.value = String(machines[0].id_maquina);
-            await loadSelectedMachineReport(machineSelect.value, startDateInput.value, endDateInput.value);
+            await loadSelectedMachinesReport([String(machines[0].id_maquina)], startDateInput.value, endDateInput.value);
+            Array.from(machineSelect.options).forEach((option) => {
+                option.selected = String(option.value) === String(machines[0].id_maquina);
+            });
         }
 
         if (selectedLabel) {
-            selectedLabel.textContent = machineSelect.value
-                ? (machines.find((m) => String(m.id_maquina) === String(machineSelect.value))?.modelo_equipo || 'Máquina seleccionada')
-                : 'Sin máquina seleccionada';
+            selectedLabel.textContent = selectedMachineIds.length === 1
+                ? (machines.find((m) => String(m.id_maquina) === String(selectedMachineIds[0]))?.modelo_equipo || 'Máquina seleccionada')
+                : (selectedMachineIds.length > 1 ? `${selectedMachineIds.length} máquinas seleccionadas` : 'Sin máquina seleccionada');
         }
 
         const reportState = window.__srmmReporteState || {};
@@ -2132,6 +2611,7 @@ async function loadReportesDashboard() {
         } catch (e) { /* no bloquear la carga de KPIs */ }
 
         updateReportKpis(summary);
+        await loadReportFallasDashboard();
         setReportStatus('Reportes actualizados', 'success');
     } catch (error) {
         console.error('Error cargando reportes históricos:', error);
@@ -2143,26 +2623,61 @@ function initReportesDashboard() {
     const machineSelect = document.getElementById('reportMachineSelect');
     const startDateInput = document.getElementById('reportStartDate');
     const endDateInput = document.getElementById('reportEndDate');
+    const fallasPeriodoSelect = document.getElementById('reportFallasPeriodo');
+    const fallasStartDateInput = document.getElementById('reportFallasStartDate');
+    const fallasEndDateInput = document.getElementById('reportFallasEndDate');
+    const fallasCriticidadSelect = document.getElementById('reportFallasCriticidad');
     const refreshBtn = document.getElementById('reportRefreshBtn');
     const exportBtn = document.getElementById('reportExportBtn');
     const exportIngresosBtn = document.getElementById('reportExportIngresosBtn');
     const pdfBtn = document.getElementById('reportPdfBtn');
+    const fallasRefreshBtn = document.getElementById('reportFallasRefreshBtn');
+    const fallasPrintBtn = document.getElementById('reportFallasPrintBtn');
 
     if (!machineSelect || !startDateInput || !endDateInput || !refreshBtn || !exportBtn || !pdfBtn) return;
 
     if (!reportsInitialized) {
         reportsInitialized = true;
 
-        machineSelect.addEventListener('change', async (event) => {
-            reportSelectedMachineId = event.target.value;
+        machineSelect.addEventListener('change', async () => {
+            const selectedIds = getSelectedReportMachineIds(machineSelect);
             try {
-                await loadSelectedMachineReport(event.target.value, startDateInput.value, endDateInput.value);
-                setReportStatus('Máquina actualizada', 'success');
+                if (!selectedIds.length) {
+                    window.__srmmReporteState = { rows: [], totalHoras: 0, totalMantenciones: 0, totalFallas: 0, detalle: 'Selecciona una o varias máquinas para ver su evolución.' };
+                    renderReportUsoChart([]);
+                    renderReportTable([]);
+                    setReportStatus('Selecciona al menos una máquina', 'warning');
+                    return;
+                }
+
+                await loadSelectedMachinesReport(selectedIds, startDateInput.value, endDateInput.value);
+                await loadReportFallasDashboard();
+                reportSelectedMachineId = selectedIds[0] || '';
+                setReportStatus(selectedIds.length === 1 ? 'Máquina actualizada' : 'Máquinas actualizadas', 'success');
             } catch (error) {
                 console.error(error);
-                setReportStatus('No se pudo actualizar la máquina', 'error');
+                setReportStatus('No se pudo actualizar la selección', 'error');
             }
         });
+
+        if (fallasPeriodoSelect && fallasStartDateInput && fallasEndDateInput && fallasCriticidadSelect) {
+            const syncFallasDateInputs = () => {
+                const custom = fallasPeriodoSelect.value === 'personalizado';
+                fallasStartDateInput.disabled = !custom;
+                fallasEndDateInput.disabled = !custom;
+                fallasStartDateInput.style.opacity = custom ? '1' : '0.6';
+                fallasEndDateInput.style.opacity = custom ? '1' : '0.6';
+            };
+
+            fallasPeriodoSelect.addEventListener('change', async () => {
+                syncFallasDateInputs();
+                await loadReportFallasDashboard();
+            });
+            fallasStartDateInput.addEventListener('change', loadReportFallasDashboard);
+            fallasEndDateInput.addEventListener('change', loadReportFallasDashboard);
+            fallasCriticidadSelect.addEventListener('change', loadReportFallasDashboard);
+            syncFallasDateInputs();
+        }
 
         refreshBtn.addEventListener('click', async () => {
             try {
@@ -2177,6 +2692,7 @@ function initReportesDashboard() {
         exportBtn.addEventListener('click', () => {
             const reportState = window.__srmmReporteState || {};
             const rows = Array.isArray(reportState.rows) ? reportState.rows : [];
+            const selectedIds = getSelectedReportMachineIds(machineSelect);
 
             if (!rows.length) {
                 setReportStatus('No hay datos para exportar', 'error');
@@ -2198,7 +2714,7 @@ function initReportesDashboard() {
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `reporte_maquina_${machineSelect.value || 'sin_seleccion'}.csv`;
+            link.download = `reporte_maquina_${selectedIds[0] || 'sin_seleccion'}.csv`;
             document.body.appendChild(link);
             link.click();
             link.remove();
@@ -2241,6 +2757,7 @@ function initReportesDashboard() {
             const reportState = window.__srmmReporteState || {};
             const rows = Array.isArray(reportState.rows) ? reportState.rows : [];
             const jsPDF = window.jspdf && window.jspdf.jsPDF;
+            const selectedIds = getSelectedReportMachineIds(machineSelect);
 
             if (!jsPDF) {
                 setReportStatus('No se pudo cargar jsPDF', 'error');
@@ -2289,18 +2806,39 @@ function initReportesDashboard() {
                 y += 16;
             });
 
-            doc.save(`reporte_maquina_${machineSelect.value || 'sin_seleccion'}.pdf`);
+            doc.save(`reporte_maquina_${selectedIds[0] || 'sin_seleccion'}.pdf`);
             setReportStatus('PDF generado correctamente', 'success');
         });
 
         const printBtn = document.getElementById('reportPrintBtn');
         if (printBtn) {
-            printBtn.addEventListener('click', () => {
-                const reportState = window.__srmmReporteState || {};
-                const rows = Array.isArray(reportState.rows) ? reportState.rows : [];
+            printBtn.addEventListener('click', async () => {
+                let reportState = window.__srmmReporteState || {};
+                let rows = Array.isArray(reportState.rows) ? reportState.rows : [];
+
+                // Fallback: si no hay rows en el estado cliente, intentar pedirlos al servidor
                 if (!rows.length) {
-                    setReportStatus('No hay datos para exportar', 'error');
-                    return;
+                    const selectedIds = getSelectedReportMachineIds(machineSelect);
+                    if (!selectedIds.length) {
+                        setReportStatus('No hay datos para exportar', 'error');
+                        return;
+                    }
+
+                    setReportStatus('Buscando datos en el servidor...', 'info');
+                    try {
+                        await loadSelectedMachinesReport(selectedIds, startDateInput.value, endDateInput.value);
+                        reportState = window.__srmmReporteState || {};
+                        rows = Array.isArray(reportState.rows) ? reportState.rows : [];
+                        if (!rows.length) {
+                            setReportStatus('No hay datos en el servidor para los filtros seleccionados', 'error');
+                            return;
+                        }
+                        setReportStatus('Datos cargados desde servidor', 'success');
+                    } catch (err) {
+                        console.error('Error fallback historial:', err);
+                        setReportStatus('Error obteniendo datos del servidor', 'error');
+                        return;
+                    }
                 }
 
                 // Crear ventana con vista imprimible
@@ -2326,10 +2864,14 @@ function initReportesDashboard() {
                     th, td { border: 1px solid #eee; padding: 8px 10px; text-align: left; font-size: 12px; }
                     th { background: #f7f7f7; font-weight: 700; }
                     footer { margin-top:18px; color:#666; font-size:12px; }
+                    /* Paginación imprimible: cada .print-page se cortará en papel */
+                    .print-page { page-break-after: always; }
                     @media print {
                         button { display: none !important; }
                         a { color: inherit; text-decoration: none; }
                         header, footer { page-break-inside: avoid; }
+                        table { page-break-inside: auto; }
+                        tr    { page-break-inside: avoid; page-break-after: auto; }
                     }
                 `;
 
@@ -2346,34 +2888,63 @@ function initReportesDashboard() {
                     </div>
                 `;
 
-                const rowsHtml = rows.map(r => `
-                    <tr>
-                        <td>${r.fecha_evento || '-'}</td>
-                        <td>${escapeHtml(r.tipo_evento || '-')}</td>
-                        <td>${r.horometro ?? '-'}</td>
-                        <td>${escapeHtml(r.usuario_responsable || '-')}</td>
-                        <td>${escapeHtml(r.detalle || '-')}</td>
-                    </tr>
-                `).join('');
+                // Paginación: dividir filas en páginas (ej. 25 filas por página)
+                const rowsPerPage = 25;
+                const pages = [];
+                for (let i = 0; i < rows.length; i += rowsPerPage) {
+                    pages.push(rows.slice(i, i + rowsPerPage));
+                }
 
-                const tableHtml = `
-                    <table>
-                        <thead>
-                            <tr><th>Fecha</th><th>Tipo</th><th>Horómetro</th><th>Responsable</th><th>Detalle</th></tr>
-                        </thead>
-                        <tbody>${rowsHtml}</tbody>
-                    </table>`;
+                const pagesHtml = pages.map((pageRows, pageIndex) => {
+                    const bodyRows = pageRows.map(r => `
+                        <tr>
+                            <td>${escapeHtml(r.fecha_evento || '-')}</td>
+                            <td>${escapeHtml(r.tipo_evento || '-')}</td>
+                            <td>${escapeHtml(r.horometro ?? '-')}</td>
+                            <td>${escapeHtml(r.usuario_responsable || '-')}</td>
+                            <td>${escapeHtml(r.detalle || '-')}</td>
+                        </tr>
+                    `).join('');
 
-                win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Historial imprimible</title><style>${style}</style></head><body>${headerHtml}${tableHtml}<div style="margin-top:18px;"><button onclick="window.print();">Imprimir</button></div></body></html>`);
+                    const table = `
+                        <table>
+                            <thead>
+                                <tr><th>Fecha</th><th>Tipo</th><th>Horómetro</th><th>Responsable</th><th>Detalle</th></tr>
+                            </thead>
+                            <tbody>${bodyRows}</tbody>
+                        </table>`;
+
+                    const pageFooter = `<div style="margin-top:8px;font-size:12px;color:#666;">Página ${pageIndex + 1} / ${pages.length}</div>`;
+
+                    return `<div class="print-page">${headerHtml}${table}${pageFooter}</div>`;
+                }).join('\n');
+
+                win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Historial imprimible</title><style>${style}</style></head><body>${pagesHtml}<div style="margin-top:18px; display:flex; gap:8px;"><button onclick="window.print();">Imprimir</button><button onclick="window.close();">Cerrar</button></div></body></html>`);
                 win.document.close();
                 setReportStatus('Vista imprimible generada', 'success');
             });
         }
 
+        if (fallasRefreshBtn) {
+            fallasRefreshBtn.addEventListener('click', loadReportFallasDashboard);
+        }
+
+        if (fallasPrintBtn) {
+            fallasPrintBtn.addEventListener('click', () => {
+                if (!reportFallasState.rows || !reportFallasState.rows.length) {
+                    setReportStatus('No hay datos de fallas para imprimir', 'warning');
+                    return;
+                }
+                openReportFallasPrintWindow();
+            });
+        }
+
         const reloadSelected = async () => {
-            if (!machineSelect.value) return;
+            const selectedIds = getSelectedReportMachineIds(machineSelect);
+            if (!selectedIds.length) return;
             try {
-                await loadSelectedMachineReport(machineSelect.value, startDateInput.value, endDateInput.value);
+                await loadSelectedMachinesReport(selectedIds, startDateInput.value, endDateInput.value);
+                await loadReportFallasDashboard();
                 setReportStatus('Filtros aplicados', 'success');
             } catch (error) {
                 console.error(error);

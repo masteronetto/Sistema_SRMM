@@ -72,11 +72,163 @@ async function getUsoHistorico(id_maquina) {
   return rows;
 }
 
+function buildReporteFallasFilters({ maquinaria_ids = [], fecha_inicio = null, fecha_fin = null, criticidad = null } = {}) {
+  const conditions = [];
+  const values = [];
+  let paramIndex = 0;
+
+  if (Array.isArray(maquinaria_ids) && maquinaria_ids.length > 0) {
+    paramIndex += 1;
+    conditions.push(`i.maquinaria_id_maquina = ANY($${paramIndex}::bigint[])`);
+    values.push(maquinaria_ids.map((item) => Number(item)).filter((item) => Number.isFinite(item)));
+  }
+
+  if (fecha_inicio) {
+    paramIndex += 1;
+    conditions.push(`i.fecha >= $${paramIndex}`);
+    values.push(fecha_inicio);
+  }
+
+  if (fecha_fin) {
+    paramIndex += 1;
+    conditions.push(`i.fecha <= $${paramIndex}`);
+    values.push(fecha_fin);
+  }
+
+  if (criticidad) {
+    paramIndex += 1;
+    conditions.push(`i.criticidad = $${paramIndex}`);
+    values.push(criticidad);
+  }
+
+  return {
+    whereClause: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '',
+    values
+  };
+}
+
+function getReporteFallasPeriodoExpr(periodo = 'mensual') {
+  const normalized = String(periodo || 'mensual').toLowerCase();
+
+  if (normalized === 'semanal') {
+    return `date_trunc('week', i.fecha)::date`;
+  }
+
+  if (normalized === 'trimestral') {
+    return `date_trunc('quarter', i.fecha)::date`;
+  }
+
+  if (normalized === 'personalizado') {
+    return `i.fecha::date`;
+  }
+
+  return `date_trunc('month', i.fecha)::date`;
+}
+
+async function getReporteFallas(filtros = {}) {
+  const {
+    periodo = 'mensual',
+    maquinaria_ids = [],
+    fecha_inicio = null,
+    fecha_fin = null,
+    criticidad = null
+  } = filtros;
+
+  const { whereClause, values } = buildReporteFallasFilters({ maquinaria_ids, fecha_inicio, fecha_fin, criticidad });
+  const periodoExpr = getReporteFallasPeriodoExpr(periodo);
+
+  const groupedQuery = `
+    SELECT
+      i.maquinaria_id_maquina,
+      m.modelo_equipo,
+      i.criticidad,
+      ${periodoExpr} AS periodo_bucket,
+      COUNT(*)::int AS total_fallas,
+      COUNT(*) FILTER (WHERE i.estado = 'Resuelta')::int AS total_resueltas,
+      COUNT(*) FILTER (WHERE i.estado = 'Pendiente')::int AS total_pendientes,
+      ROUND(COALESCE(AVG(CASE WHEN i.estado = 'Resuelta' THEN EXTRACT(EPOCH FROM (i.updated_at - i.created_at)) / 3600.0 END), 0)::numeric, 2) AS promedio_resolucion_horas
+    FROM incidencias_maquina i
+    INNER JOIN maquinaria m ON m.id_maquina = i.maquinaria_id_maquina
+    ${whereClause}
+    GROUP BY 1, 2, 3, 4
+    ORDER BY periodo_bucket DESC, total_fallas DESC, m.modelo_equipo ASC, i.criticidad ASC
+  `;
+
+  const summaryQuery = `
+    SELECT
+      COUNT(*)::int AS total_fallas,
+      COUNT(*) FILTER (WHERE i.estado = 'Resuelta')::int AS total_resueltas,
+      COUNT(*) FILTER (WHERE i.estado = 'Pendiente')::int AS total_pendientes,
+      ROUND(COALESCE(AVG(CASE WHEN i.estado = 'Resuelta' THEN EXTRACT(EPOCH FROM (i.updated_at - i.created_at)) / 3600.0 END), 0)::numeric, 2) AS promedio_resolucion_horas
+    FROM incidencias_maquina i
+    ${whereClause}
+  `;
+
+  const [groupedResult, summaryResult] = await Promise.all([
+    pool.query(groupedQuery, values),
+    pool.query(summaryQuery, values)
+  ]);
+
+  const rows = groupedResult.rows.map((row) => ({
+    maquinaria_id_maquina: Number(row.maquinaria_id_maquina),
+    modelo_equipo: row.modelo_equipo,
+    criticidad: row.criticidad,
+    periodo_bucket: row.periodo_bucket,
+    total_fallas: Number(row.total_fallas || 0),
+    total_resueltas: Number(row.total_resueltas || 0),
+    total_pendientes: Number(row.total_pendientes || 0),
+    promedio_resolucion_horas: Number(row.promedio_resolucion_horas || 0)
+  }));
+
+  const totalFallas = Number(summaryResult.rows[0]?.total_fallas || 0);
+  const totalResueltas = Number(summaryResult.rows[0]?.total_resueltas || 0);
+  const totalPendientes = Number(summaryResult.rows[0]?.total_pendientes || 0);
+  const promedioResolucionHoras = Number(summaryResult.rows[0]?.promedio_resolucion_horas || 0);
+
+  const porCriticidadMap = new Map();
+  const porMaquinaMap = new Map();
+  const porPeriodoMap = new Map();
+
+  rows.forEach((row) => {
+    porCriticidadMap.set(row.criticidad, (porCriticidadMap.get(row.criticidad) || 0) + row.total_fallas);
+    porMaquinaMap.set(row.maquinaria_id_maquina, {
+      maquinaria_id_maquina: row.maquinaria_id_maquina,
+      modelo_equipo: row.modelo_equipo,
+      total_fallas: (porMaquinaMap.get(row.maquinaria_id_maquina)?.total_fallas || 0) + row.total_fallas
+    });
+    const periodKey = row.periodo_bucket ? String(row.periodo_bucket).slice(0, 10) : 'Sin periodo';
+    porPeriodoMap.set(periodKey, (porPeriodoMap.get(periodKey) || 0) + row.total_fallas);
+  });
+
+  const maquinaConMasFallas = Array.from(porMaquinaMap.values()).sort((a, b) => b.total_fallas - a.total_fallas)[0] || null;
+
+  return {
+    filtros: {
+      periodo,
+      maquinaria_ids: Array.isArray(maquinaria_ids) ? maquinaria_ids.map((item) => Number(item)).filter((item) => Number.isFinite(item)) : [],
+      fecha_inicio,
+      fecha_fin,
+      criticidad
+    },
+    resumen: {
+      total_fallas: totalFallas,
+      total_resueltas: totalResueltas,
+      total_pendientes: totalPendientes,
+      promedio_resolucion_horas: promedioResolucionHoras,
+      maquina_con_mas_fallas: maquinaConMasFallas,
+      por_criticidad: Array.from(porCriticidadMap.entries()).map(([label, total]) => ({ label, total })).sort((a, b) => b.total - a.total),
+      por_periodo: Array.from(porPeriodoMap.entries()).map(([label, total]) => ({ label, total })).sort((a, b) => new Date(b.label) - new Date(a.label))
+    },
+    agrupados: rows
+  };
+}
+
 module.exports = {
   getHistorialUnificado,
   getTopMaquinas,
   getEstadisticas,
-  getUsoHistorico
+  getUsoHistorico,
+  getReporteFallas
 };
 
 // Ingresos por arriendos

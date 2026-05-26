@@ -91,6 +91,38 @@ async function obtenerIngresosCsv(req, res, next) {
   }
 }
 
+async function obtenerReporteFallas(req, res, next) {
+  try {
+    const periodo = typeof req.query.periodo === 'string' && req.query.periodo.trim() !== ''
+      ? req.query.periodo.trim()
+      : 'mensual';
+    const criticidad = typeof req.query.criticidad === 'string' && req.query.criticidad.trim() !== ''
+      ? req.query.criticidad.trim()
+      : null;
+    const maquinariaIds = typeof req.query.maquinaria_ids === 'string' && req.query.maquinaria_ids.trim() !== ''
+      ? req.query.maquinaria_ids.split(',').map((value) => Number(value.trim())).filter((value) => Number.isFinite(value))
+      : [];
+    const fechaInicio = typeof req.query.fecha_inicio === 'string' && req.query.fecha_inicio.trim() !== ''
+      ? req.query.fecha_inicio.trim()
+      : null;
+    const fechaFin = typeof req.query.fecha_fin === 'string' && req.query.fecha_fin.trim() !== ''
+      ? req.query.fecha_fin.trim()
+      : null;
+
+    const data = await reportesRepo.getReporteFallas({
+      periodo,
+      criticidad,
+      maquinaria_ids: maquinariaIds,
+      fecha_inicio: fechaInicio,
+      fecha_fin: fechaFin
+    });
+
+    return res.json(data);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   obtenerHistorialMaquina,
   obtenerTopMaquinas,
@@ -98,4 +130,5 @@ module.exports = {
   obtenerUsoHistorico
   , obtenerIngresos
   , obtenerIngresosCsv
+  , obtenerReporteFallas
 };

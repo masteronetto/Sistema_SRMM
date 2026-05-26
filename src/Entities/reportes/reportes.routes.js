@@ -7,6 +7,7 @@ router.get('/historial-unificado/:id_maquina', controller.obtenerHistorialMaquin
 router.get('/top-maquinas', controller.obtenerTopMaquinas);
 router.get('/estadisticas', controller.obtenerEstadisticas);
 router.get('/uso-historico/:id_maquina', controller.obtenerUsoHistorico);
+router.get('/fallas', controller.obtenerReporteFallas);
 router.get('/ingresos', controller.obtenerIngresos);
 router.get('/ingresos/csv', controller.obtenerIngresosCsv);
 
