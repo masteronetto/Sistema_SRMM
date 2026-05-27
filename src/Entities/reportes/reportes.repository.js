@@ -131,7 +131,8 @@ async function getReporteFallas(filtros = {}) {
     maquinaria_ids = [],
     fecha_inicio = null,
     fecha_fin = null,
-    criticidad = null
+    criticidad = null,
+    mostrar_advertencia = false
   } = filtros;
 
   const { whereClause, values } = buildReporteFallasFilters({ maquinaria_ids, fecha_inicio, fecha_fin, criticidad });
@@ -146,6 +147,7 @@ async function getReporteFallas(filtros = {}) {
       COUNT(*)::int AS total_fallas,
       COUNT(*) FILTER (WHERE i.estado = 'Resuelta')::int AS total_resueltas,
       COUNT(*) FILTER (WHERE i.estado = 'Pendiente')::int AS total_pendientes,
+      COUNT(*) FILTER (WHERE COALESCE(i.vinculada_mantenimiento, 0) = 1)::int AS total_vinculadas,
       ROUND(COALESCE(AVG(CASE WHEN i.estado = 'Resuelta' THEN EXTRACT(EPOCH FROM (i.updated_at - i.created_at)) / 3600.0 END), 0)::numeric, 2) AS promedio_resolucion_horas
     FROM incidencias_maquina i
     INNER JOIN maquinaria m ON m.id_maquina = i.maquinaria_id_maquina
@@ -159,6 +161,7 @@ async function getReporteFallas(filtros = {}) {
       COUNT(*)::int AS total_fallas,
       COUNT(*) FILTER (WHERE i.estado = 'Resuelta')::int AS total_resueltas,
       COUNT(*) FILTER (WHERE i.estado = 'Pendiente')::int AS total_pendientes,
+      COUNT(*) FILTER (WHERE COALESCE(i.vinculada_mantenimiento, 0) = 1)::int AS total_vinculadas,
       ROUND(COALESCE(AVG(CASE WHEN i.estado = 'Resuelta' THEN EXTRACT(EPOCH FROM (i.updated_at - i.created_at)) / 3600.0 END), 0)::numeric, 2) AS promedio_resolucion_horas
     FROM incidencias_maquina i
     ${whereClause}
@@ -177,6 +180,7 @@ async function getReporteFallas(filtros = {}) {
     total_fallas: Number(row.total_fallas || 0),
     total_resueltas: Number(row.total_resueltas || 0),
     total_pendientes: Number(row.total_pendientes || 0),
+    total_vinculadas: Number(row.total_vinculadas || 0),
     promedio_resolucion_horas: Number(row.promedio_resolucion_horas || 0)
   }));
 
@@ -214,6 +218,7 @@ async function getReporteFallas(filtros = {}) {
       total_fallas: totalFallas,
       total_resueltas: totalResueltas,
       total_pendientes: totalPendientes,
+      total_vinculadas: Number(summaryResult.rows[0]?.total_vinculadas || 0),
       promedio_resolucion_horas: promedioResolucionHoras,
       maquina_con_mas_fallas: maquinaConMasFallas,
       por_criticidad: Array.from(porCriticidadMap.entries()).map(([label, total]) => ({ label, total })).sort((a, b) => b.total - a.total),

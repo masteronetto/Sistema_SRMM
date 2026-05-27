@@ -1184,6 +1184,9 @@
                                 <button type="submit" class="top-button primary">Registrar incidencia</button>
                                 <span id="incidentFormStatus" class="form-status"></span>
                             </div>
+                            <div id="incidentWarningBanner" class="message warning hidden" style="margin-bottom:0;">
+                                
+                            </div>
                         </form>
                     </section>
 
@@ -1385,6 +1388,10 @@
                                         <option value="Media">Media</option>
                                         <option value="Baja">Baja</option>
                                     </select>
+                                </label>
+                                <label style="display:flex;gap:0.5rem;align-items:center;font-weight:700;color:#5f5048;">
+                                    <input id="reportFallasShowWarning" type="checkbox" />
+                                    Mostrar advertencia
                                 </label>
                                 <button id="reportFallasRefreshBtn" class="btn" style="height:48px;white-space:nowrap;">Actualizar fallas</button>
                                 <button id="reportFallasPrintBtn" class="btn btn-secondary" style="height:48px;white-space:nowrap;">Imprimir fallas</button>
@@ -2067,6 +2074,20 @@ function showIncidentFormFeedback(message, type = 'info') {
     formStatus.style.color = colors[type] || colors.info;
 }
 
+function showIncidentWarningBanner(message) {
+    const banner = document.getElementById('incidentWarningBanner');
+    if (!banner) return;
+
+    if (!message) {
+        banner.textContent = '';
+        banner.classList.add('hidden');
+        return;
+    }
+
+    banner.textContent = message;
+    banner.classList.remove('hidden');
+}
+
 function validateIncidentFormFields({ maquinaId, operadorId, fecha, descripcion }) {
     if (!maquinaId) return 'Selecciona una máquina.';
     if (!operadorId) return 'Selecciona un operador responsable.';
@@ -2327,9 +2348,14 @@ function renderReportTable(rows) {
     `;
 }
 
+function shouldShowReportWarningColumn() {
+    return Boolean(document.getElementById('reportFallasShowWarning')?.checked);
+}
+
 function renderReportFallasTable(rows) {
     const container = document.getElementById('reportFallasTable');
     if (!container) return;
+    const showWarning = shouldShowReportWarningColumn();
 
     if (!rows.length) {
         container.innerHTML = '<p class="muted">No hay fallas para los filtros seleccionados.</p>';
@@ -2346,6 +2372,7 @@ function renderReportFallasTable(rows) {
                     <th class="pb-3 px-2">Total fallas</th>
                     <th class="pb-3 px-2">Resueltas</th>
                     <th class="pb-3 px-2">Pendientes</th>
+                    ${showWarning ? '<th class="pb-3 px-2">Advertencia</th>' : ''}
                     <th class="pb-3 px-2">Prom. resolución</th>
                 </tr>
             </thead>
@@ -2358,6 +2385,7 @@ function renderReportFallasTable(rows) {
                         <td class="py-3 px-2">${formatNumber(item.total_fallas)}</td>
                         <td class="py-3 px-2">${formatNumber(item.total_resueltas)}</td>
                         <td class="py-3 px-2">${formatNumber(item.total_pendientes)}</td>
+                        ${showWarning ? `<td class="py-3 px-2">${Number(item.total_vinculadas || 0) > 0 ? `Sí (${formatNumber(item.total_vinculadas)})` : 'No'}</td>` : ''}
                         <td class="py-3 px-2 whitespace-nowrap">${formatNumber(item.promedio_resolucion_horas, ' hrs')}</td>
                     </tr>
                 `).join('')}
@@ -2533,6 +2561,7 @@ function buildFallasPrintableHtml() {
     const generatedAt = new Date().toLocaleString('es-CL');
     const machineSelect = document.getElementById('reportMachineSelect');
     const selectedLabels = Array.from(machineSelect?.selectedOptions || []).map((option) => option.textContent).filter(Boolean);
+    const showWarning = shouldShowReportWarningColumn();
 
     const rowsHtml = rows.map((item) => `
         <tr>
@@ -2542,6 +2571,7 @@ function buildFallasPrintableHtml() {
             <td>${escapeHtml(String(item.total_fallas ?? 0))}</td>
             <td>${escapeHtml(String(item.total_resueltas ?? 0))}</td>
             <td>${escapeHtml(String(item.total_pendientes ?? 0))}</td>
+            ${showWarning ? `<td>${escapeHtml(Number(item.total_vinculadas || 0) > 0 ? `Sí (${item.total_vinculadas})` : 'No')}</td>` : ''}
             <td>${escapeHtml(formatNumber(item.promedio_resolucion_horas, ' hrs'))}</td>
         </tr>
     `).join('');
@@ -2565,9 +2595,9 @@ function buildFallasPrintableHtml() {
         </div>
         <table>
             <thead>
-                <tr><th>Máquina</th><th>Período</th><th>Criticidad</th><th>Total</th><th>Resueltas</th><th>Pendientes</th><th>Prom. resolución</th></tr>
+                <tr><th>Máquina</th><th>Período</th><th>Criticidad</th><th>Total</th><th>Resueltas</th><th>Pendientes</th>${showWarning ? '<th>Advertencia</th>' : ''}<th>Prom. resolución</th></tr>
             </thead>
-            <tbody>${rowsHtml || '<tr><td colspan="7">Sin datos</td></tr>'}</tbody>
+            <tbody>${rowsHtml || `<tr><td colspan="${showWarning ? 8 : 7}">Sin datos</td></tr>`}</tbody>
         </table>
     `;
 }
@@ -2787,6 +2817,7 @@ function initReportesDashboard() {
     const fallasStartDateInput = document.getElementById('reportFallasStartDate');
     const fallasEndDateInput = document.getElementById('reportFallasEndDate');
     const fallasCriticidadSelect = document.getElementById('reportFallasCriticidad');
+    const fallasWarningToggle = document.getElementById('reportFallasShowWarning');
     const refreshBtn = document.getElementById('reportRefreshBtn');
     const exportBtn = document.getElementById('reportExportBtn');
     const exportIngresosBtn = document.getElementById('reportExportIngresosBtn');
@@ -2836,6 +2867,9 @@ function initReportesDashboard() {
             fallasStartDateInput.addEventListener('change', loadReportFallasDashboard);
             fallasEndDateInput.addEventListener('change', loadReportFallasDashboard);
             fallasCriticidadSelect.addEventListener('change', loadReportFallasDashboard);
+            if (fallasWarningToggle) {
+                fallasWarningToggle.addEventListener('change', loadReportFallasDashboard);
+            }
             syncFallasDateInputs();
         }
 
@@ -3772,10 +3806,12 @@ function initIncidentForm() {
             const result = await res.json();
             if (!res.ok) throw new Error(result.message || 'Error al registrar');
             showIncidentFormFeedback('✅ Incidencia registrada con estado Pendiente.', 'success');
+            showIncidentWarningBanner(result.advertencia || '');
             document.getElementById('incidentDescription').value = '';
             document.getElementById('incidentMaintenanceId').value = '';
             await refreshIncidentDetailPanelIfNeeded(maquinaId);
         } catch (err) {
+            showIncidentWarningBanner('');
             showIncidentFormFeedback(`❌ Error: ${err.message}`, 'error');
         }
     });

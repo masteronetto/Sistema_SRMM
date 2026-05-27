@@ -99,6 +99,7 @@ async function obtenerReporteFallas(req, res, next) {
     const criticidad = typeof req.query.criticidad === 'string' && req.query.criticidad.trim() !== ''
       ? req.query.criticidad.trim()
       : null;
+    const mostrarAdvertencia = String(req.query.mostrar_advertencia || '').toLowerCase() === 'true';
     const maquinariaIds = typeof req.query.maquinaria_ids === 'string' && req.query.maquinaria_ids.trim() !== ''
       ? req.query.maquinaria_ids.split(',').map((value) => Number(value.trim())).filter((value) => Number.isFinite(value))
       : [];
@@ -112,6 +113,7 @@ async function obtenerReporteFallas(req, res, next) {
     const data = await reportesRepo.getReporteFallas({
       periodo,
       criticidad,
+      mostrar_advertencia: mostrarAdvertencia,
       maquinaria_ids: maquinariaIds,
       fecha_inicio: fechaInicio,
       fecha_fin: fechaFin
