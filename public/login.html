@@ -4,6 +4,22 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>SRMM | Iniciar sesión</title>
+    <meta name="description" content="Panel de administrador SRMM para inventario, mantenimiento, arriendos, logística, usuarios y reportes." />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sistema-srmm.vercel.app/" />
+    <meta property="og:site_name" content="Sistema SRMM" />
+    <meta property="og:title" content="SRMM | Iniciar sesión" />
+    <meta property="og:description" content="Accede al panel de SRMM para gestionar maquinaria, mantenimiento y reportes." />
+    <meta property="og:image" content="https://sistema-srmm.vercel.app/og-image.png" />
+    <meta property="og:image:secure_url" content="https://sistema-srmm.vercel.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SRMM | Iniciar sesión" />
+    <meta name="twitter:description" content="Accede al panel de SRMM para gestionar maquinaria, mantenimiento y reportes." />
+    <meta name="twitter:image" content="https://sistema-srmm.vercel.app/og-image.png" />
   <link rel="icon" href="/favicon.svg">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
@@ -57,10 +73,6 @@
 
     function getAuthToken() {
       return sessionStorage.getItem('srmm_token') || localStorage.getItem('srmm_token');
-    }
-
-    if (getAuthToken()) {
-      window.location.replace('/dashboard.html');
     }
 
     form.addEventListener('submit', async (e) => {
