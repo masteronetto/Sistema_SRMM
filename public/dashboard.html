@@ -591,6 +591,40 @@
         .incident-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
         .form-status      { font-size: 0.95rem; font-weight: 600; }
 
+        .incident-warning-banner {
+            grid-column: 1 / -1;
+            display: none;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.95rem 1rem;
+            border-radius: 14px;
+            border: 1px solid #edc389;
+            background: linear-gradient(180deg, #fff8ea 0%, #fff1d8 100%);
+            color: #7a4c10;
+            box-shadow: 0 10px 24px rgba(126, 91, 28, 0.06);
+        }
+
+        .incident-warning-banner.visible {
+            display: flex;
+        }
+
+        .incident-warning-banner .banner-icon {
+            flex: 0 0 auto;
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            display: grid;
+            place-items: center;
+            background: rgba(217, 119, 6, 0.14);
+            color: #d97706;
+            font-weight: 800;
+        }
+
+        .incident-warning-banner .banner-text {
+            line-height: 1.45;
+            font-weight: 600;
+        }
+
         .maquinaria-form-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -1184,8 +1218,9 @@
                                 <button type="submit" class="top-button primary">Registrar incidencia</button>
                                 <span id="incidentFormStatus" class="form-status"></span>
                             </div>
-                            <div id="incidentWarningBanner" class="message warning hidden" style="margin-bottom:0;">
-                                
+                            <div id="incidentWarningBanner" class="incident-warning-banner" aria-live="polite" aria-atomic="true">
+                                <div class="banner-icon">!</div>
+                                <div class="banner-text"></div>
                             </div>
                         </form>
                     </section>
@@ -2076,16 +2111,17 @@ function showIncidentFormFeedback(message, type = 'info') {
 
 function showIncidentWarningBanner(message) {
     const banner = document.getElementById('incidentWarningBanner');
+    const bannerText = banner?.querySelector('.banner-text');
     if (!banner) return;
 
     if (!message) {
-        banner.textContent = '';
-        banner.classList.add('hidden');
+        if (bannerText) bannerText.textContent = '';
+        banner.classList.remove('visible');
         return;
     }
 
-    banner.textContent = message;
-    banner.classList.remove('hidden');
+    if (bannerText) bannerText.textContent = message;
+    banner.classList.add('visible');
 }
 
 function validateIncidentFormFields({ maquinaId, operadorId, fecha, descripcion }) {
