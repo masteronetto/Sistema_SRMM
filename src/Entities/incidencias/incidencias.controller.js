@@ -31,5 +31,23 @@ async function crearIncidencia(req, res) {
 }
 
 module.exports = {
-    crearIncidencia
+    crearIncidencia,
+    listarIncidencias
 };
+
+async function listarIncidencias(req, res, next) {
+    try {
+        const maquinaIds = typeof req.query.maquina_ids === 'string' && req.query.maquina_ids.trim() !== ''
+            ? req.query.maquina_ids.split(',').map((v) => Number(v.trim())).filter((v) => Number.isFinite(v))
+            : [];
+        const fechaInicio = typeof req.query.fecha_inicio === 'string' && req.query.fecha_inicio.trim() !== '' ? req.query.fecha_inicio.trim() : null;
+        const fechaFin = typeof req.query.fecha_fin === 'string' && req.query.fecha_fin.trim() !== '' ? req.query.fecha_fin.trim() : null;
+        const criticidad = typeof req.query.criticidad === 'string' && req.query.criticidad.trim() !== '' ? req.query.criticidad.trim() : null;
+        const soloNoResueltas = req.query.solo_no_resueltas === 'true' || req.query.solo_no_resueltas === '1';
+
+        const rows = await incidenciasRepository.listIncidencias({ maquinaria_ids: maquinaIds, fecha_inicio: fechaInicio, fecha_fin: fechaFin, criticidad, solo_no_resueltas: soloNoResueltas });
+        return res.json(rows);
+    } catch (error) {
+        return next(error);
+    }
+}

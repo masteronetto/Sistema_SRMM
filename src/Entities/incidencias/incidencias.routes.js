@@ -3,6 +3,9 @@ const incidenciasController = require('./incidencias.controller');
 
 const router = Router();
 
+// Listar incidencias (GET /api/incidencias)
+router.get('/', incidenciasController.listarIncidencias);
+
 // Registrar una incidencia (POST /api/incidencias)
 router.post('/', incidenciasController.crearIncidencia);
 

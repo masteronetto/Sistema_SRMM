@@ -398,6 +398,23 @@ El registro público crea usuarios con rol `Usuario`. Luego, un `Administrador` 
 
 ## Endpoints principales
 
+Nuevas rutas relevantes añadidas recientemente:
+
+- `GET /api/incidencias?maquina_ids=1,2&fecha_inicio=YYYY-MM-DD&fecha_fin=YYYY-MM-DD&criticidad=Alta&solo_no_resueltas=true`
+  - Devuelve una lista detallada de incidencias que coinciden con los filtros. Cada registro incluye `id_incidencia`, `maquinaria_id_maquina`, `modelo_equipo`, `fecha`, `descripcion`, `criticidad`, `vinculada_mantenimiento`, `mantenimiento_id`, `estado`, `operador_id` y `operador_nombre`.
+
+Notas sobre reportes de fallas:
+- El endpoint `GET /api/reportes/fallas` devuelve ahora en `resumen` un campo adicional `porcentaje_vinculadas` (porcentaje de fallas vinculadas a mantenimiento vencido) y `total_vinculadas`.
+- El frontend del dashboard muestra una interpretación automática: número de fallas vinculadas y porcentaje (por ejemplo, "3 de 10 fallas (30%) ocurrieron con mantenimiento vencido"). También hay una vista global de incidencias filtrable en el panel de reportes.
+
+Tests:
+- Se agregó un test mínimo en `tests/reportes.test.js` que valida el cálculo de porcentaje (`computePorcentajeVinculadas`). Ejecuta con:
+
+```bash
+npm test
+```
+
+
 ### Health
 
 - GET /health

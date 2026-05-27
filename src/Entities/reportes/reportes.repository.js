@@ -1,5 +1,12 @@
 const pool = require('../../db/pool');
 
+function computePorcentajeVinculadas(totalVinculadas, totalFallas) {
+  const vinc = Number(totalVinculadas || 0);
+  const tot = Number(totalFallas || 0);
+  if (!tot || tot === 0) return 0;
+  return Number(((vinc / tot) * 100).toFixed(2));
+}
+
 async function getHistorialUnificado(id_maquina, fecha_inicio, fecha_fin) {
   let query = `
     SELECT * FROM vista_historial_completo 
@@ -219,6 +226,7 @@ async function getReporteFallas(filtros = {}) {
       total_resueltas: totalResueltas,
       total_pendientes: totalPendientes,
       total_vinculadas: Number(summaryResult.rows[0]?.total_vinculadas || 0),
+      porcentaje_vinculadas: computePorcentajeVinculadas(Number(summaryResult.rows[0]?.total_vinculadas || 0), Number(summaryResult.rows[0]?.total_fallas || 0)),
       promedio_resolucion_horas: promedioResolucionHoras,
       maquina_con_mas_fallas: maquinaConMasFallas,
       por_criticidad: Array.from(porCriticidadMap.entries()).map(([label, total]) => ({ label, total })).sort((a, b) => b.total - a.total),
@@ -235,6 +243,8 @@ module.exports = {
   getUsoHistorico,
   getReporteFallas
 };
+
+module.exports.computePorcentajeVinculadas = computePorcentajeVinculadas;
 
 // Ingresos por arriendos
 async function getIngresosPorArriendos(fecha_inicio, fecha_fin, tarifa_diaria_fallback) {
