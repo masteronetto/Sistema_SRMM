@@ -1865,29 +1865,24 @@ function renderWelcome() {
 
     document.getElementById('welcomeDesc').textContent =
         `Sesión activa como: ${currentUser.email || currentUser.nombre}`;
-
-    const info = ROLE_WELCOME[userRole] || { msg: 'Rol no reconocido.', type: 'info' };
-
+    // No mostrar mensajes de bienvenida (banner) en la vista Inicio para ningún rol.
+    // Sólo mostrar la interfaz de acceso limitado para usuarios tipo `Usuario`, sin el banner informativo.
     if (userRole === 'Usuario') {
         document.getElementById('welcomeMessages').innerHTML = `
             <div class="user-access-panel">
                 <div class="user-access-icon" aria-hidden="true">◌</div>
-                <div class="message ${info.type}" style="margin-bottom:0; width:100%;">
-                    Tu acceso está limitado a la vista de usuario.<br>
-                    Si necesitas otros permisos, solicítalo al administrador.
+                <div class="user-access-copy">
+                    Tu acceso está limitado a la vista de usuario. Si necesitas más permisos, solicítalo al administrador.
                 </div>
-                <p class="user-access-copy">
-                    Desde esta cuenta solo puedes revisar información básica. Si necesitas más acceso, envía una solicitud para que el administrador evalúe tu perfil.
-                </p>
-                <button type="button" class="role-request-btn" onclick="requestRoleChange()">
+                <button type="button" class="role-request-btn" onclick="requestRoleChange()" style="margin-top:10px;">
                     ✉ Solicitar cambio de rol
                 </button>
             </div>`;
         return;
     }
 
-    document.getElementById('welcomeMessages').innerHTML =
-        `<div class="message ${info.type}">${info.msg}</div>`;
+    // Para otros roles dejar el contenedor vacío (sin banner)
+    document.getElementById('welcomeMessages').innerHTML = '';
 }
 
 function requestRoleChange() {
