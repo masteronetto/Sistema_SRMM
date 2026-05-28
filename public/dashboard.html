@@ -1325,14 +1325,23 @@
                                 <select id="reportMachineSelect" size="4" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-machine-select"></select>
                                 <span id="reportMultiHelp" class="small muted">Pulsa 'Seleccionar varias' para activar multiselección.</span>
                             </label>
-                            <label>
-                                <span class="small muted">Fecha inicio</span>
-                                <input id="reportStartDate" type="date" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-date nice-date">
-                            </label>
-                            <label>
-                                <span class="small muted">Fecha fin</span>
-                                <input id="reportEndDate" type="date" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-date nice-date">
-                            </label>
+                            <div style="display:flex;flex-direction:column;gap:8px;">
+                                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                                    <div class="small muted">Rango de fechas</div>
+                                    <button id="reportToggleCustomDatesBtn" type="button" class="btn btn-secondary" style="padding:6px 10px;min-width:140px;">Usar rango personalizado</button>
+                                </div>
+                                <div id="reportDateGlobalNotice" class="muted small">Usando rango global (barra superior). Pulsa "Usar rango personalizado" para elegir fechas específicas.</div>
+                                <div id="reportDateCustom" style="display:none;gap:8px;align-items:center;">
+                                    <label style="display:flex;flex-direction:column;">
+                                        <span class="small muted">Fecha inicio</span>
+                                        <input id="reportStartDate" type="date" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-date nice-date">
+                                    </label>
+                                    <label style="display:flex;flex-direction:column;">
+                                        <span class="small muted">Fecha fin</span>
+                                        <input id="reportEndDate" type="date" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-date nice-date">
+                                    </label>
+                                </div>
+                            </div>
                             <div class="report-actions">
                                 <button id="reportRefreshBtn" class="btn">Actualizar reporte</button>
                                 <button id="reportExportBtn" class="btn btn-secondary">Generar CSV</button>
@@ -1575,6 +1584,23 @@ function initAdminMaquinariaPanel() {
     }
 
     loadAdminMaquinaria();
+    // Event delegation for action buttons in maquinaria rows
+    const rowsContainer = document.getElementById('adminMaquinariaRows');
+    if (rowsContainer && !rowsContainer.dataset.delegation) {
+        rowsContainer.addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const id = btn.dataset.id;
+            if (btn.classList.contains('btn-edit')) {
+                editMaquinariaById(id);
+            } else if (btn.classList.contains('btn-incidencias')) {
+                focusMaquinariaIncidenciasById(id);
+            } else if (btn.classList.contains('btn-delete')) {
+                deleteMaquinariaById(id);
+            }
+        });
+        rowsContainer.dataset.delegation = '1';
+    }
     // Bind validation for form UX
     const submitBtn = document.querySelector('#adminMaquinariaForm .top-button.primary');
     const inputsToWatch = ['adminMaquinaModelo','adminMaquinaHorometro','adminMaquinaEstado'];
@@ -1651,9 +1677,9 @@ function renderAdminMaquinaria(rows) {
             <td>${formatCurrency(maquina.tarifa_diaria || 0)}</td>
             <td>${maquina.plan_mantenimiento_id || '—'}</td>
             <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-                <button class="btn" onclick="editMaquinariaById(${JSON.stringify(maquina.id ?? null)})">Editar</button>
-                <button class="btn btn-secondary" onclick="focusMaquinariaIncidenciasById(${JSON.stringify(maquina.id ?? null)})">Incidencias</button>
-                ${userRole === 'Administrador' ? `<button class="btn btn-danger" onclick="deleteMaquinariaById(${JSON.stringify(maquina.id ?? null)})">Eliminar</button>` : ''}
+                <button class="btn btn-edit" data-id="${maquina.id ?? ''}">Editar</button>
+                <button class="btn btn-secondary btn-incidencias" data-id="${maquina.id ?? ''}">Incidencias</button>
+                ${userRole === 'Administrador' ? `<button class="btn btn-danger btn-delete" data-id="${maquina.id ?? ''}">Eliminar</button>` : ''}
             </td>
         </tr>`;
     }).join('');
@@ -1701,7 +1727,8 @@ function resetAdminMaquinariaForm() {
 
     renderMaintenancePlanOptions('');
 
-    setMaquinariaStatus('Formulario listo para crear una máquina', 'info');
+    // Clear status message by default (avoid static 'formulario listo' text)
+    setMaquinariaStatus('', 'info');
 }
 
 function editMaquinariaById(maquinaId) {
@@ -2994,10 +3021,11 @@ async function loadReportesDashboard() {
             detalle: 'Selecciona una o varias máquinas para ver su evolución.'
         };
 
+        const dates = getEffectiveReportDates();
         if (selectedMachineIds.length) {
-            await loadSelectedMachinesReport(selectedMachineIds, startDateInput.value, endDateInput.value);
+            await loadSelectedMachinesReport(selectedMachineIds, dates.start, dates.end);
         } else if (machines[0]) {
-            await loadSelectedMachinesReport([String(machines[0].id_maquina)], startDateInput.value, endDateInput.value);
+            await loadSelectedMachinesReport([String(machines[0].id_maquina)], dates.start, dates.end);
             Array.from(machineSelect.options).forEach((option) => {
                 option.selected = String(option.value) === String(machines[0].id_maquina);
             });
@@ -3016,8 +3044,9 @@ async function loadReportesDashboard() {
         // Cargar ingresos estimados para el rango y máquina (o global si no hay máquina)
         try {
             const q = new URLSearchParams();
-            if (startDateInput.value) q.append('fecha_inicio', startDateInput.value);
-            if (endDateInput.value) q.append('fecha_fin', endDateInput.value);
+            const d = getEffectiveReportDates();
+            if (d.start) q.append('fecha_inicio', d.start);
+            if (d.end) q.append('fecha_fin', d.end);
             const ingRes = await fetch(`/api/reportes/ingresos?${q.toString()}`, { headers });
             if (ingRes.ok) {
                 const ingPayload = await ingRes.json();
@@ -3032,6 +3061,20 @@ async function loadReportesDashboard() {
         console.error('Error cargando reportes históricos:', error);
         setReportStatus('Error al cargar reportes', 'error');
     }
+}
+
+// Devuelve el rango de fechas efectivo para reportes: usa el rango global a menos que
+// el panel de fechas personalizado esté visible.
+function getEffectiveReportDates() {
+    const customPanel = document.getElementById('reportDateCustom');
+    const startEl = document.getElementById('reportStartDate');
+    const endEl = document.getElementById('reportEndDate');
+    const globalStart = document.getElementById('globalStartDate') ? document.getElementById('globalStartDate').value : '';
+    const globalEnd = document.getElementById('globalEndDate') ? document.getElementById('globalEndDate').value : '';
+    const useCustom = customPanel && getComputedStyle(customPanel).display !== 'none';
+    const start = useCustom ? (startEl?.value || globalStart) : (globalStart || startEl?.value || '');
+    const end = useCustom ? (endEl?.value || globalEnd) : (globalEnd || endEl?.value || '');
+    return { start, end, useCustom };
 }
 
 function initReportesDashboard() {
@@ -3066,7 +3109,8 @@ function initReportesDashboard() {
                     return;
                 }
 
-                await loadSelectedMachinesReport(selectedIds, startDateInput.value, endDateInput.value);
+                const d = getEffectiveReportDates();
+                await loadSelectedMachinesReport(selectedIds, d.start, d.end);
                 await loadReportFallasDashboard();
                 reportSelectedMachineId = selectedIds[0] || '';
                 setReportStatus(selectedIds.length === 1 ? 'Máquina actualizada' : 'Máquinas actualizadas', 'success');
@@ -3169,8 +3213,9 @@ function initReportesDashboard() {
                 try {
                     const headers = getAuthHeaders();
                     const q = new URLSearchParams();
-                    if (startDateInput.value) q.append('fecha_inicio', startDateInput.value);
-                    if (endDateInput.value) q.append('fecha_fin', endDateInput.value);
+                    const d = getEffectiveReportDates();
+                    if (d.start) q.append('fecha_inicio', d.start);
+                    if (d.end) q.append('fecha_fin', d.end);
                     const url = `/api/reportes/ingresos/csv?${q.toString()}`;
                     const res = await fetch(url, { headers });
                     if (!res.ok) {
@@ -3180,7 +3225,7 @@ function initReportesDashboard() {
                     const blob = await res.blob();
                     const disposition = res.headers.get('content-disposition') || '';
                     const filenameMatch = disposition.match(/filename="?(.*)"?/);
-                    const filename = filenameMatch ? filenameMatch[1] : `ingresos_${startDateInput.value || 'from'}_${endDateInput.value || 'to'}.csv`;
+                    const filename = filenameMatch ? filenameMatch[1] : `ingresos_${d.start || 'from'}_${d.end || 'to'}.csv`;
                     const link = document.createElement('a');
                     link.href = URL.createObjectURL(blob);
                     link.download = filename;
@@ -3214,8 +3259,9 @@ function initReportesDashboard() {
             const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
             const title = 'Reporte histórico SRMM';
             const machineLabel = document.getElementById('reportSelectedMachineLabel')?.textContent || 'Sin máquina seleccionada';
-            const startDate = document.getElementById('reportStartDate')?.value || 'inicio';
-            const endDate = document.getElementById('reportEndDate')?.value || 'hoy';
+            const d = getEffectiveReportDates();
+            const startDate = d.start || 'inicio';
+            const endDate = d.end || 'hoy';
             const summary = reportState.detalle || '';
 
             doc.setFontSize(16);
@@ -3268,7 +3314,8 @@ function initReportesDashboard() {
 
                     setReportStatus('Buscando datos en el servidor...', 'info');
                     try {
-                        await loadSelectedMachinesReport(selectedIds, startDateInput.value, endDateInput.value);
+                        const d = getEffectiveReportDates();
+                        await loadSelectedMachinesReport(selectedIds, d.start, d.end);
                         reportState = window.__srmmReporteState || {};
                         rows = Array.isArray(reportState.rows) ? reportState.rows : [];
                         if (!rows.length) {
@@ -3285,8 +3332,9 @@ function initReportesDashboard() {
 
                 // Crear ventana con vista imprimible
                 const machineLabel = document.getElementById('reportSelectedMachineLabel')?.textContent || 'Sin máquina seleccionada';
-                const startDate = document.getElementById('reportStartDate')?.value || '';
-                const endDate = document.getElementById('reportEndDate')?.value || '';
+                const d = getEffectiveReportDates();
+                const startDate = d.start || '';
+                const endDate = d.end || '';
 
                 const win = window.open('', '_blank');
                 if (!win) {
@@ -3420,11 +3468,15 @@ function setGlobalRangeDays(days) {
     if (gStart) gStart.value = start;
     if (gEnd) gEnd.value = end;
 
-    // Mirror into report inputs
+    // Mirror into report inputs only when report is not using a custom range
     const rStart = document.getElementById('reportStartDate');
     const rEnd = document.getElementById('reportEndDate');
-    if (rStart) rStart.value = start;
-    if (rEnd) rEnd.value = end;
+    const customPanel = document.getElementById('reportDateCustom');
+    const reportUsesCustom = customPanel && getComputedStyle(customPanel).display !== 'none';
+    if (!reportUsesCustom) {
+        if (rStart) rStart.value = start;
+        if (rEnd) rEnd.value = end;
+    }
 
     updateActiveRangeLabel();
     const activeView = document.querySelector('.view.active')?.id;
@@ -3497,7 +3549,9 @@ function initGlobalDateControls() {
 
     gStart.addEventListener('change', () => {
         const rStart = document.getElementById('reportStartDate');
-        if (rStart) rStart.value = gStart.value;
+        const customPanel = document.getElementById('reportDateCustom');
+        const reportUsesCustom = customPanel && getComputedStyle(customPanel).display !== 'none';
+        if (rStart && !reportUsesCustom) rStart.value = gStart.value;
         updateActiveRangeLabel();
         const activeView = document.querySelector('.view.active')?.id;
         if (activeView === 'reportes') loadReportesDashboard();
@@ -3506,7 +3560,9 @@ function initGlobalDateControls() {
 
     gEnd.addEventListener('change', () => {
         const rEnd = document.getElementById('reportEndDate');
-        if (rEnd) rEnd.value = gEnd.value;
+        const customPanel = document.getElementById('reportDateCustom');
+        const reportUsesCustom = customPanel && getComputedStyle(customPanel).display !== 'none';
+        if (rEnd && !reportUsesCustom) rEnd.value = gEnd.value;
         updateActiveRangeLabel();
         const activeView = document.querySelector('.view.active')?.id;
         if (activeView === 'reportes') loadReportesDashboard();
@@ -3643,6 +3699,26 @@ async function loadInicioKpis() {
                     options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{color:'#6b7280'}}, x:{ticks:{color:'#6b7280'}}} }
                 });
             }
+        }
+
+        // Toggle para usar rango de fechas personalizado dentro de Reportes
+        const toggleCustomBtn = document.getElementById('reportToggleCustomDatesBtn');
+        const dateCustomPanel = document.getElementById('reportDateCustom');
+        const dateNotice = document.getElementById('reportDateGlobalNotice');
+        if (toggleCustomBtn && dateCustomPanel && dateNotice) {
+            toggleCustomBtn.addEventListener('click', () => {
+                const isHidden = getComputedStyle(dateCustomPanel).display === 'none';
+                dateCustomPanel.style.display = isHidden ? 'flex' : 'none';
+                if (isHidden) {
+                    toggleCustomBtn.textContent = 'Usar rango global';
+                    dateNotice.textContent = 'Usando rango personalizado para reportes.';
+                } else {
+                    toggleCustomBtn.textContent = 'Usar rango personalizado';
+                    dateNotice.textContent = 'Usando rango global (barra superior). Pulsa "Usar rango personalizado" para elegir fechas específicas.';
+                }
+                // recargar para reflejar nuevo rango
+                loadReportesDashboard();
+            });
         }
 
         setReportStatus('Métricas cargadas', 'success');
