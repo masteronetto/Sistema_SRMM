@@ -953,49 +953,35 @@
                 <div class="hero-grid">
                     <article class="stat-card">
                         <div class="stat-label">Total maquinaria</div>
-                        <div class="stat-value text-[#2b56d8]">13</div>
-                        <div class="stat-note">3 categorías</div>
+                        <div id="inicioTotalMaquinaria" class="stat-value text-[#2b56d8]">—</div>
+                        <div id="inicioTotalMaquinariaNote" class="stat-note">Cargando información real</div>
                     </article>
                     <article class="stat-card">
                         <div class="stat-label">Disponibles</div>
-                        <div class="stat-value text-[#1f9d49]">7</div>
-                        <div class="stat-note">Listas para uso</div>
+                        <div id="inicioDisponibles" class="stat-value text-[#1f9d49]">—</div>
+                        <div id="inicioDisponiblesNote" class="stat-note">Listas para uso</div>
                     </article>
                     <article class="stat-card">
                         <div class="stat-label">En arriendo</div>
-                        <div class="stat-value text-[#f5a623]">3</div>
-                        <div class="stat-note">Activos hoy</div>
+                        <div id="inicioEnArriendo" class="stat-value text-[#f5a623]">—</div>
+                        <div id="inicioEnArriendoNote" class="stat-note">Activos hoy</div>
                     </article>
                     <article class="stat-card">
                         <div class="stat-label">Mantenimiento urgente</div>
-                        <div class="stat-value text-[#d43c35]">3</div>
-                        <div class="stat-note">Acción requerida</div>
+                        <div id="inicioMantenimientoUrgente" class="stat-value text-[#d43c35]">—</div>
+                        <div id="inicioMantenimientoUrgenteNote" class="stat-note">Acción requerida</div>
                     </article>
                 </div>
 
                 <div class="grid-2">
                     <section class="section-card">
                         <div class="section-title">Alertas críticas</div>
-                        <div class="alert-list">
-                            <div class="alert-item alert-critical">
-                                <div>⚠</div>
-                                <div>
-                                    <strong>Excavadora CAT 320 — Mantenimiento vencido</strong>
-                                    <span>Horómetro: 2.840 hrs · Umbral superado en 340 hrs</span>
-                                </div>
-                            </div>
-                            <div class="alert-item alert-warning">
-                                <div>⚡</div>
-                                <div>
-                                    <strong>Grúa Liebherr LTM 1050 — Próximo mantenimiento</strong>
-                                    <span>Faltan 120 hrs para próxima revisión</span>
-                                </div>
-                            </div>
+                        <div id="inicioAlertList" class="alert-list">
                             <div class="alert-item alert-info">
-                                <div>⚡</div>
+                                <div>⟳</div>
                                 <div>
-                                    <strong>Retroexcavadora JCB 3CX — Sin registro 48h</strong>
-                                    <span>No se ha actualizado el horómetro</span>
+                                    <strong>Cargando alertas reales…</strong>
+                                    <span>Se consultará la base de datos para mostrar el estado actual.</span>
                                 </div>
                             </div>
                         </div>
@@ -1006,7 +992,7 @@
                         <div class="bar-row">
                             <div>Disponibles</div>
                             <div class="bar-track"><div id="barFillDisponibles" class="bar-fill" style="width:0%"></div></div>
-                            <div class="text-right font-semibold">7 (58%)</div>
+                            <div id="barDisponiblesLabel" class="text-right font-semibold">—</div>
                         </div>
                         <div class="bar-row">
                             <div>En arriendo</div>
@@ -1041,10 +1027,10 @@
                 </section>
 
                 <div class="hero-grid" style="margin-top:1rem;">
-                    <article class="stat-card"><div class="stat-label">Total equipos</div><div class="stat-value">13</div><div class="stat-note">Inventario activo</div></article>
-                    <article class="stat-card"><div class="stat-label">Disponibles</div><div class="stat-value">7</div><div class="stat-note">Listas para arriendo</div></article>
-                    <article class="stat-card"><div class="stat-label">Bloqueadas</div><div class="stat-value">2</div><div class="stat-note">Requieren intervención</div></article>
-                    <article class="stat-card"><div class="stat-label">En revisión</div><div class="stat-value">3</div><div class="stat-note">Seguimiento operativo</div></article>
+                    <article class="stat-card"><div class="stat-label">Total equipos</div><div id="inventarioTotal" class="stat-value">—</div><div class="stat-note">Inventario activo</div></article>
+                    <article class="stat-card"><div class="stat-label">Disponibles</div><div id="inventarioDisponibles" class="stat-value">—</div><div class="stat-note">Listas para arriendo</div></article>
+                    <article class="stat-card"><div class="stat-label">Bloqueadas</div><div id="inventarioBloqueadas" class="stat-value">—</div><div class="stat-note">Requieren intervención</div></article>
+                    <article class="stat-card"><div class="stat-label">En revisión</div><div id="inventarioRevision" class="stat-value">—</div><div class="stat-note">Seguimiento operativo</div></article>
                 </div>
 
                 <section id="adminMaquinariaPanel" class="section-card" style="margin-top:1rem;">
@@ -1125,78 +1111,24 @@
                         <div id="maintenanceOrderDetail" class="muted" style="margin-top:0.5rem;"></div>
                         <div class="mini-grid">
                             <article class="machine-card stat-card">
-                                <div class="stat-label">Pendientes (3)</div>
+                                <div class="stat-label">Pendientes</div>
+                                <div id="maintenancePendientes" class="stat-value">—</div>
                                 <div class="stat-note">Tareas críticas y próximas</div>
                             </article>
                             <article class="machine-card stat-card">
                                 <div class="stat-label">Programados</div>
+                                <div id="maintenanceProgramados" class="stat-value">—</div>
                                 <div class="stat-note">Órdenes asignadas</div>
                             </article>
                             <article class="machine-card stat-card">
                                 <div class="stat-label">Historial</div>
+                                <div id="maintenanceHistorial" class="stat-value">—</div>
                                 <div class="stat-note">Mantenciones completadas</div>
                             </article>
                         </div>
                     </section>
 
-                    <section class="mini-grid">
-                        <article class="section-card machine-card" data-maquina-id="101" data-nombre="Excavadora CAT 320" data-estado="Bloqueada" data-motivo="Falla hidráulica detectada y bloqueo de seguridad activo">
-                            <div class="machine-head">
-                                <div class="machine-head-info">
-                                    <span class="status-indicator status-locked" title="Bloqueada">🔒</span>
-                                    <div>
-                                        <div class="machine-name">Excavadora CAT 320 — Mantenimiento mayor</div>
-                                        <div class="machine-sub">Umbral superado · 2.840 / 2.500 hrs</div>
-                                    </div>
-                                </div>
-                                <span class="pill blocked">Urgente</span>
-                            </div>
-                            <div class="machine-body">
-                                <div><strong>Tipo</strong><span>Preventivo mayor</span></div>
-                                <div><strong>Días vencido</strong><span>12 días</span></div>
-                                <div><strong>Responsable</strong><span>Sin asignar</span></div>
-                                <div><strong>Impacto</strong><span>Máquina bloqueada</span></div>
-                            </div>
-                        </article>
-
-                        <article class="section-card machine-card" data-maquina-id="102" data-nombre="Grúa Liebherr LTM 1050" data-estado="Disponible" data-motivo="Máquina preparada y disponible para uso">
-                            <div class="machine-head">
-                                <div class="machine-head-info">
-                                    <span class="status-indicator status-available" title="Disponible">✔</span>
-                                    <div>
-                                        <div class="machine-name">Grúa Liebherr LTM 1050 — Revisión de aceite</div>
-                                        <div class="machine-sub">120 hrs para próximo umbral · 1.380 / 1.500 hrs</div>
-                                    </div>
-                                </div>
-                                <span class="pill available">Próximo</span>
-                            </div>
-                            <div class="machine-body">
-                                <div><strong>Tipo</strong><span>Preventivo</span></div>
-                                <div><strong>Días vencido</strong><span>0 días</span></div>
-                                <div><strong>Responsable</strong><span>Jorge Videla</span></div>
-                                <div><strong>Impacto</strong><span>Sin bloqueo</span></div>
-                            </div>
-                        </article>
-
-                        <article class="section-card machine-card" data-maquina-id="103" data-nombre="Retroexcavadora JCB 3CX" data-estado="No Operativa" data-motivo="Registro de horómetro pendiente y equipo marcado como no operativo">
-                            <div class="machine-head">
-                                <div class="machine-head-info">
-                                    <span class="status-indicator status-warning" title="No Operativa">⚠</span>
-                                    <div>
-                                        <div class="machine-name">Retroexcavadora JCB 3CX — Actualizar horómetro</div>
-                                        <div class="machine-sub">Sin registro de horas hace 48h · Serie #RE-003</div>
-                                    </div>
-                                </div>
-                                <span class="pill maintenance">No operativa</span>
-                            </div>
-                            <div class="machine-body">
-                                <div><strong>Tipo</strong><span>Correctivo</span></div>
-                                <div><strong>Estado</strong><span>No operativa</span></div>
-                                <div><strong>Responsable</strong><span>Operador</span></div>
-                                <div><strong>Prioridad</strong><span>Alta</span></div>
-                            </div>
-                        </article>
-                    </section>
+                    <section id="maintenanceHighlights" class="mini-grid"></section>
 
                     <section class="section-card">
                         <div class="section-title">Registrar incidencia</div>
@@ -1251,29 +1183,32 @@
 
             <!-- ══ ARRIENDO ══ -->
             <section id="arriendo" class="view">
-                <div class="grid-2">
+                <div class="section-stack">
                     <section class="section-card">
-                        <div class="section-title">Arriendos activos</div>
-                        <div class="table-wrap">
-                            <table>
-                                <thead><tr><th>Máquina</th><th>Cliente</th><th>Inicio</th><th>Fin</th><th>Estado</th></tr></thead>
-                                <tbody>
-                                    <tr><td>Retroexcavadora JCB 3CX</td><td>Construcciones Andes S.A.</td><td>01 abr 2026</td><td>25 abr 2026</td><td><span class="pill success">En terreno</span></td></tr>
-                                    <tr><td>Komatsu PC200</td><td>Inmobiliaria Norte SpA</td><td>05 abr 2026</td><td>05 may 2026</td><td><span class="pill success">En terreno</span></td></tr>
-                                </tbody>
-                            </table>
-                        </div>
+                        <div class="section-title">Arriendos reales</div>
+                        <div class="muted">Listado, creación y eliminación de contratos usando la tabla `arriendos`.</div>
+                        <form id="arriendoForm" class="incident-form" style="margin-top:1rem;">
+                            <div class="incident-grid">
+                                <label>Máquina<select id="arriendoMaquina" required><option value="">Cargando máquinas…</option></select></label>
+                                <label>Cliente<select id="arriendoCliente"><option value="">Sin cliente</option></select></label>
+                                <label>Fecha inicio<input id="arriendoFechaInicio" type="date"></label>
+                                <label>Fecha fin<input id="arriendoFechaFin" type="date"></label>
+                                <label>Horómetro entrada<input id="arriendoHorometroEntrada" type="number" step="0.01" min="0"></label>
+                                <label>Horómetro salida<input id="arriendoHorometroSalida" type="number" step="0.01" min="0"></label>
+                                <label>Estado<select id="arriendoEstado"><option value="Activo">Activo</option><option value="Finalizado">Finalizado</option><option value="Cancelado">Cancelado</option></select></label>
+                            </div>
+                            <div class="incident-actions">
+                                <button type="submit" class="top-button primary">Guardar arriendo</button>
+                                <span id="arriendoStatus" class="form-status"></span>
+                            </div>
+                        </form>
                     </section>
                     <section class="section-card">
-                        <div class="section-title">Próximos arriendos</div>
-                        <div class="table-wrap">
+                        <div class="section-title">Contratos de arriendo</div>
+                        <div id="arriendosTable" class="table-wrap">
                             <table>
-                                <thead><tr><th>Máquina</th><th>Cliente</th><th>Fecha</th><th>Estado</th></tr></thead>
-                                <tbody>
-                                    <tr><td>Excavadora CAT 320</td><td>Constr. Andes</td><td>15 abr 2026</td><td><span class="pill blocked">Pendiente</span></td></tr>
-                                    <tr><td>Minicargadora Bobcat</td><td>Inmob. Norte</td><td>18 abr 2026</td><td><span class="pill success">Confirmado</span></td></tr>
-                                    <tr><td>Grúa Liebherr</td><td>Obras Públicas</td><td>22 abr 2026</td><td><span class="pill available">En revisión</span></td></tr>
-                                </tbody>
+                                <thead><tr><th>Máquina</th><th>Cliente</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Acciones</th></tr></thead>
+                                <tbody><tr><td colspan="6" class="detail-empty">Cargando arriendos…</td></tr></tbody>
                             </table>
                         </div>
                     </section>
@@ -1282,22 +1217,33 @@
 
             <!-- ══ LOGÍSTICA ══ -->
             <section id="logistica" class="view">
-                <div class="grid-2">
+                <div class="section-stack">
                     <section class="section-card">
                         <div class="section-title">Logística de entrega</div>
-                        <div class="table-wrap">
-                            <table>
-                                <thead><tr><th>Equipo</th><th>Ruta</th><th>Hora</th><th>Estado</th></tr></thead>
-                                <tbody>
-                                    <tr><td>Komatsu PC200</td><td>Av. Providencia 1820</td><td>09:00 hrs</td><td><span class="pill available">Pendiente</span></td></tr>
-                                    <tr><td>Bobcat S570</td><td>Ruta 5 Norte Km 52</td><td>14:00 hrs</td><td><span class="pill success">Confirmado</span></td></tr>
-                                </tbody>
-                            </table>
-                        </div>
+                        <div class="muted">Eventos reales de entrega, recepción y traslado. La tabla se guarda en `logistica_eventos`.</div>
+                        <form id="logisticaForm" class="incident-form" style="margin-top:1rem;">
+                            <div class="incident-grid">
+                                <label>Título<input id="logisticaTitulo" type="text" required placeholder="Entrega a obra / recepción / traslado"></label>
+                                <label>Equipo<input id="logisticaEquipo" type="text" required placeholder="Ej. Komatsu PC200"></label>
+                                <label>Cliente<input id="logisticaCliente" type="text" required placeholder="Cliente / obra"></label>
+                                <label>Ruta<input id="logisticaRuta" type="text" required placeholder="Dirección o ruta"></label>
+                                <label>Hora<input id="logisticaHora" type="text" required placeholder="09:00 hrs"></label>
+                                <label>Estado<select id="logisticaEstado"><option value="Pendiente">Pendiente</option><option value="Confirmado">Confirmado</option><option value="En Ruta">En Ruta</option><option value="Completado">Completado</option><option value="Cancelado">Cancelado</option></select></label>
+                            </div>
+                            <div class="incident-actions">
+                                <button type="submit" class="top-button primary">Guardar evento</button>
+                                <span id="logisticaStatus" class="form-status"></span>
+                            </div>
+                        </form>
                     </section>
                     <section class="section-card">
-                        <div class="section-title">Confirmar entrega / recepción</div>
-                        <div class="placeholder-card">Formulario de operación y registro de horómetro al momento de entregar o recibir maquinaria.</div>
+                        <div class="section-title">Eventos logísticos</div>
+                        <div id="logisticaTable" class="table-wrap">
+                            <table>
+                                <thead><tr><th>Título</th><th>Equipo</th><th>Cliente</th><th>Ruta</th><th>Hora</th><th>Estado</th><th>Acciones</th></tr></thead>
+                                <tbody><tr><td colspan="7" class="detail-empty">Cargando eventos…</td></tr></tbody>
+                            </table>
+                        </div>
                     </section>
                 </div>
             </section>
@@ -1408,13 +1354,13 @@
                                         <option value="personalizado">Personalizado</option>
                                     </select>
                                 </label>
-                                <label style="display:grid;gap:0.35rem;">
+                                <label style="display:none;gap:0.35rem;">
                                     <span class="small muted">Fecha inicio</span>
-                                    <input id="reportFallasStartDate" type="date" style="max-width:130px;box-sizing:border-box;" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <input id="reportFallasStartDate" type="date" style="display:none;max-width:130px;box-sizing:border-box;" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 </label>
-                                <label style="display:grid;gap:0.35rem;">
+                                <label style="display:none;gap:0.35rem;">
                                     <span class="small muted">Fecha fin</span>
-                                    <input id="reportFallasEndDate" type="date" style="max-width:130px;box-sizing:border-box;" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <input id="reportFallasEndDate" type="date" style="display:none;max-width:130px;box-sizing:border-box;" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 </label>
                                 <label style="display:grid;gap:0.35rem;">
                                     <span class="small muted">Criticidad</span>
@@ -1701,6 +1647,7 @@ function resetAdminMaquinariaForm() {
     const horometroInput = document.getElementById('adminMaquinaHorometro');
     const estadoInput = document.getElementById('adminMaquinaEstado');
     const tarifaInput = document.getElementById('adminMaquinaTarifa');
+    const planInput = document.getElementById('adminMaquinaPlan');
     const specsInput = document.getElementById('adminMaquinaSpecs');
 
     if (idInput) idInput.value = '';
@@ -1784,7 +1731,7 @@ async function saveAdminMaquinaria(event) {
         horometro_actual: Number(horometroInput?.value || 0),
         estado: estadoInput?.value,
         tarifa_diaria: tarifaInput?.value === '' ? null : Number(tarifaInput.value),
-        plan_mantenimiento_id: planInput?.value === '' ? null : Number(planInput.value),
+        planes_mantencion_id_plan: planInput?.value === '' ? null : Number(planInput.value),
         especificaciones: specsInput?.value.trim() || null
     };
 
@@ -1882,6 +1829,8 @@ async function initDashboard() {
     initAdminMaquinariaPanel();
     initGlobalDateControls();
     loadInicioKpis();
+    loadArriendosDashboard();
+    loadLogisticaDashboard();
 }
 
 /* ─── Sidebar usuario ─── */
@@ -1980,8 +1929,20 @@ function showView(viewName, push = true) {
         loadRoleRequests();
     }
 
+    if (target === 'mantenimiento') {
+        loadMaintenanceDashboard();
+    }
+
     if (target === 'reportes') {
         initReportesDashboard();
+    }
+
+    if (target === 'arriendo') {
+        loadArriendosDashboard();
+    }
+
+    if (target === 'logistica') {
+        loadLogisticaDashboard();
     }
 }
 
@@ -3436,33 +3397,66 @@ async function loadInicioKpis() {
             fetch('/api/reportes/top-maquinas', { headers })
         ]);
 
+        const [machinesRes, alertsRes, urgentRes] = await Promise.all([
+            fetch('/api/maquinaria', { headers }),
+            fetch('/api/alertas-criticas?limit=5', { headers }),
+            fetch('/api/maquinaria/urgent-maintenance?umbral=0&limit=5', { headers })
+        ]);
+
         if (!statsRes.ok) throw new Error('No se pudieron cargar estadísticas');
         if (!topRes.ok) throw new Error('No se pudieron cargar top máquinas');
+
+        const machines = machinesRes.ok ? await machinesRes.json() : [];
+        const alerts = alertsRes.ok ? await alertsRes.json() : [];
+        const urgent = urgentRes.ok ? await urgentRes.json() : [];
+        availableMachines = Array.isArray(machines) ? machines : [];
 
         const stats = await statsRes.json();
         const top = await topRes.json();
 
-        // stats expected: array or object with totals
-        // intentar mapear campos conocidos
-        const totalMaquinaria = Number(stats.total_maquinaria ?? stats.totalEquipos ?? stats.total_equipos ?? 0);
-        const disponibles = Number(stats.disponibles ?? stats.total_disponibles ?? 0);
-        const arrendadas = Number(stats.arrendadas ?? stats.en_arriendo ?? stats.en_arriendo ?? 0);
-        const mantenciones = Number(stats.mantenciones_urgentes ?? stats.mantenimiento_urgente ?? stats.total_mantenciones_urgentes ?? 0);
+        const totalMaquinaria = machines.length;
+        const disponibles = machines.filter((item) => item.estado === 'Disponible').length;
+        const arrendadas = machines.filter((item) => item.estado === 'Arrendada').length;
+        const mantencion = machines.filter((item) => item.estado === 'Mantencion').length;
+        const bloqueadas = machines.filter((item) => item.estado === 'Bloqueada').length;
+        const noOperativas = machines.filter((item) => item.estado === 'No Operativa').length;
+        const distinctStates = new Set(machines.map((item) => item.estado).filter(Boolean)).size;
+        const urgentCount = urgent.length || alerts.filter((item) => String(item.estado_alerta || '').toLowerCase() === 'pendiente').length;
 
         // Actualizar tarjetas
-        document.querySelectorAll('.stat-card .stat-value')[0].textContent = totalMaquinaria || '—';
-        const disponiblesEl = document.querySelectorAll('.stat-card .stat-value')[1];
+        const totalMaquinariaEl = document.getElementById('inicioTotalMaquinaria');
+        const totalMaquinariaNoteEl = document.getElementById('inicioTotalMaquinariaNote');
+        const disponiblesEl = document.getElementById('inicioDisponibles');
+        const disponiblesNoteEl = document.getElementById('inicioDisponiblesNote');
+        const arrendEl = document.getElementById('inicioEnArriendo');
+        const arrendNoteEl = document.getElementById('inicioEnArriendoNote');
+        const mantEl = document.getElementById('inicioMantenimientoUrgente');
+        const mantNoteEl = document.getElementById('inicioMantenimientoUrgenteNote');
+
+        if (totalMaquinariaEl) totalMaquinariaEl.textContent = totalMaquinaria || '—';
+        if (totalMaquinariaNoteEl) totalMaquinariaNoteEl.textContent = `${distinctStates} categorías de estado`;
         if (disponiblesEl) disponiblesEl.textContent = disponibles || '—';
-        const arrendEl = document.querySelectorAll('.stat-card .stat-value')[2];
+        if (disponiblesNoteEl) disponiblesNoteEl.textContent = 'Listas para uso';
+        if (disponiblesEl) disponiblesEl.textContent = disponibles || '—';
         if (arrendEl) arrendEl.textContent = arrendadas || '—';
-        const mantEl = document.querySelectorAll('.stat-card .stat-value')[3];
-        if (mantEl) mantEl.textContent = mantenciones || '—';
+        if (arrendNoteEl) arrendNoteEl.textContent = 'Activos hoy';
+        if (mantEl) mantEl.textContent = urgentCount || '—';
+        if (mantNoteEl) mantNoteEl.textContent = urgentCount > 0 ? 'Acción requerida' : 'Sin urgencias';
+
+        const inventarioTotalEl = document.getElementById('inventarioTotal');
+        const inventarioDisponiblesEl = document.getElementById('inventarioDisponibles');
+        const inventarioBloqueadasEl = document.getElementById('inventarioBloqueadas');
+        const inventarioRevisionEl = document.getElementById('inventarioRevision');
+        if (inventarioTotalEl) inventarioTotalEl.textContent = totalMaquinaria || '—';
+        if (inventarioDisponiblesEl) inventarioDisponiblesEl.textContent = disponibles || '—';
+        if (inventarioBloqueadasEl) inventarioBloqueadasEl.textContent = bloqueadas || '—';
+        if (inventarioRevisionEl) inventarioRevisionEl.textContent = noOperativas || mantencion || '—';
 
         // barras de estado (porcentajes)
         const total = Math.max(1, totalMaquinaria);
         const pDisp = Math.round((disponibles / total) * 100);
         const pArr = Math.round((arrendadas / total) * 100);
-        const pMant = Math.round((mantenciones / total) * 100);
+        const pMant = Math.round((mantencion / total) * 100);
 
         const bfDisp = document.getElementById('barFillDisponibles');
         const bfArr = document.getElementById('barFillArriendo');
@@ -3470,10 +3464,42 @@ async function loadInicioKpis() {
         if (bfDisp) bfDisp.style.width = `${pDisp}%`;
         if (bfArr) bfArr.style.width = `${pArr}%`;
         if (bfMant) bfMant.style.width = `${pMant}%`;
+        const labDisp = document.getElementById('barDisponiblesLabel');
         const labArr = document.getElementById('barArriendoLabel');
         const labMant = document.getElementById('barMantencionLabel');
+        if (labDisp) labDisp.textContent = `${disponibles} (${pDisp}%)`;
         if (labArr) labArr.textContent = `${arrendadas} (${pArr}%)`;
-        if (labMant) labMant.textContent = `${mantenciones} (${pMant}%)`;
+        if (labMant) labMant.textContent = `${mantencion} (${pMant}%)`;
+
+        const alertList = document.getElementById('inicioAlertList');
+        if (alertList) {
+            const urgentCards = urgent.map((item) => `
+                <div class="alert-item alert-critical">
+                    <div>⚠</div>
+                    <div>
+                        <strong>${escapeHtml(item.modelo_equipo || `Máquina #${item.id_maquina}`)} — Mantenimiento urgente</strong>
+                        <span>${escapeHtml(Number(item.horas_restantes || 0) <= 0 ? `Umbral superado en ${Math.abs(Number(item.horas_restantes || 0))} hrs` : `Faltan ${formatNumber(item.horas_restantes)} hrs para la revisión`)}</span>
+                    </div>
+                </div>
+            `);
+            const alertCards = alerts.map((item) => `
+                <div class="alert-item ${String(item.estado_alerta).toLowerCase() === 'pendiente' ? 'alert-warning' : 'alert-info'}">
+                    <div>⚡</div>
+                    <div>
+                        <strong>${escapeHtml(`Alerta #${item.id_alerta}`)}${item.maquinaria_id_maquina ? ` — Máquina #${item.maquinaria_id_maquina}` : ''}</strong>
+                        <span>${escapeHtml(`${item.tipo_alerta || 'Alerta'} · ${item.estado_alerta || 'Pendiente'}`)}</span>
+                    </div>
+                </div>
+            `);
+            alertList.innerHTML = urgentCards.concat(alertCards).slice(0, 5).join('') || `
+                <div class="alert-item alert-info">
+                    <div>✓</div>
+                    <div>
+                        <strong>Sin alertas pendientes</strong>
+                        <span>La base de datos no devolvió alertas activas para el período actual.</span>
+                    </div>
+                </div>`;
+        }
 
         // Render chart de top máquinas en Inicio
         if (window.Chart && Array.isArray(top)) {
@@ -3497,6 +3523,79 @@ async function loadInicioKpis() {
     } catch (err) {
         console.error('Error loadInicioKpis:', err);
         setReportStatus('No se pudieron cargar métricas de inicio', 'error');
+    }
+}
+
+async function loadMaintenanceDashboard() {
+    const highlights = document.getElementById('maintenanceHighlights');
+    const pendingEl = document.getElementById('maintenancePendientes');
+    const programadosEl = document.getElementById('maintenanceProgramados');
+    const historialEl = document.getElementById('maintenanceHistorial');
+
+    if (highlights) {
+        highlights.innerHTML = '<article class="section-card machine-card"><div class="machine-body"><div><strong>Cargando…</strong><span>Consultando órdenes y mantenimiento real</span></div></div></article>';
+    }
+
+    try {
+        const headers = getAuthHeaders();
+        const [ordersRes, statsRes, urgentRes] = await Promise.all([
+            fetch('/api/mantenimientos/ordenes/atrasadas', { headers }),
+            fetch('/api/reportes/estadisticas', { headers }),
+            fetch('/api/maquinaria/urgent-maintenance?umbral=0&limit=5', { headers })
+        ]);
+
+        const orders = ordersRes.ok ? await ordersRes.json() : [];
+        const stats = statsRes.ok ? await statsRes.json() : [];
+        const urgent = urgentRes.ok ? await urgentRes.json() : [];
+
+        const pendientes = orders.filter((item) => ['Programada', 'En Progreso'].includes(item.estado_ot)).length;
+        const programados = orders.filter((item) => item.estado_ot === 'Programada').length;
+        const historial = stats.reduce((acc, item) => acc + Number(item.total_mantenciones || 0), 0);
+
+        if (pendingEl) pendingEl.textContent = pendientes || '—';
+        if (programadosEl) programadosEl.textContent = programados || '—';
+        if (historialEl) historialEl.textContent = historial || '—';
+
+        if (highlights) {
+            const cards = (orders.length ? orders : urgent).slice(0, 3).map((item) => {
+                const machineId = item.maquinaria_id_maquina ?? item.id_maquina ?? '';
+                const name = item.modelo_equipo || item.nombre || `Máquina #${machineId || '—'}`;
+                const state = item.estado_ot || item.estado || 'Pendiente';
+                const motive = item.detalle_tecnico || item.motivo_bloqueo || item.tipo_alerta || 'Seguimiento operativo';
+                const subtitle = item.fecha_programada ? `Programada: ${formatCLDate(item.fecha_programada)}` : (item.created_at ? `Actualizado: ${formatCLDate(item.created_at)}` : '');
+                return `
+                    <article class="section-card machine-card" data-maquina-id="${escapeHtml(machineId)}" data-nombre="${escapeHtml(name)}" data-estado="${escapeHtml(state)}" data-motivo="${escapeHtml(motive)}">
+                        <div class="machine-head">
+                            <div class="machine-head-info">
+                                <span class="status-indicator status-warning" title="${escapeHtml(state)}">⚠</span>
+                                <div>
+                                    <div class="machine-name">${escapeHtml(name)} — ${escapeHtml(item.tipo_servicio || item.tipo_alerta || 'Seguimiento')}</div>
+                                    <div class="machine-sub">${escapeHtml(subtitle || 'Datos reales desde la base de datos')}</div>
+                                </div>
+                            </div>
+                            <span class="pill maintenance">${escapeHtml(state)}</span>
+                        </div>
+                        <div class="machine-body">
+                            <div><strong>Detalle</strong><span>${escapeHtml(motive)}</span></div>
+                            <div><strong>ID</strong><span>${escapeHtml(String(machineId || '—'))}</span></div>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+
+            highlights.innerHTML = cards || '<div class="muted">No hay datos reales de mantenimiento para mostrar.</div>';
+            highlights.querySelectorAll('.machine-card[data-maquina-id]').forEach((card) => {
+                card.addEventListener('click', () => {
+                    const maquinaId = card.dataset.maquinaId;
+                    if (maquinaId) focusMaquinariaIncidenciasById(maquinaId);
+                });
+            });
+        }
+    } catch (error) {
+        console.error('Error cargando mantenimiento:', error);
+        if (highlights) {
+            highlights.innerHTML = `<div class="muted">Error al cargar mantenimiento: ${escapeHtml(error.message)}</div>`;
+        }
     }
 }
 
@@ -3560,7 +3659,7 @@ function renderUsersList(users) {
     const container = document.getElementById('usuarios-content');
     const roles = ['Usuario', 'Mecanico', 'Operador', 'Administrador'];
     let html = `<div class="table-wrap"><table class="manage-users-table">
-        <thead><tr><th>ID</th><th>Nombre</th><th>Email</th><th>Rol actual</th><th>Nuevo rol</th><th>Acción</th></tr></thead>
+        <thead><tr><th>ID</th><th>Nombre</th><th>Email</th><th>Rol actual</th><th>Registro</th><th>Nuevo rol</th><th>Acción</th></tr></thead>
         <tbody>`;
     users.forEach(u => {
         html += `<tr>
@@ -3568,6 +3667,7 @@ function renderUsersList(users) {
             <td>${u.nombre_completo}</td>
             <td>${u.email}</td>
             <td><span class="role-badge ${u.rol_acceso.toLowerCase()}">${u.rol_acceso}</span></td>
+            <td>${formatCLDate(u.created_at)}</td>
             <td>
                 <select class="role-select" id="role-select-${u.id_usuario}">
                     ${roles.map(r => `<option value="${r}" ${u.rol_acceso===r?'selected':''}>${r}</option>`).join('')}
@@ -3581,6 +3681,253 @@ function renderUsersList(users) {
     });
     html += `</tbody></table></div>`;
     container.innerHTML = html;
+}
+
+function setArriendoStatus(message, type = 'info') {
+    const status = document.getElementById('arriendoStatus');
+    if (!status) return;
+    const colors = { info: '#2980b9', success: '#1f9d49', warning: '#d97706', error: '#9f2934' };
+    status.textContent = message;
+    status.style.color = colors[type] || colors.info;
+}
+
+function setLogisticaStatus(message, type = 'info') {
+    const status = document.getElementById('logisticaStatus');
+    if (!status) return;
+    const colors = { info: '#2980b9', success: '#1f9d49', warning: '#d97706', error: '#9f2934' };
+    status.textContent = message;
+    status.style.color = colors[type] || colors.info;
+}
+
+function renderArriendosTable(rows) {
+    const container = document.getElementById('arriendosTable');
+    if (!container) return;
+
+    if (!rows.length) {
+        container.innerHTML = '<table><tbody><tr><td colspan="6" class="detail-empty">No hay arriendos registrados.</td></tr></tbody></table>';
+        return;
+    }
+
+    const canDelete = userRole === 'Administrador';
+    container.innerHTML = `
+        <table>
+            <thead><tr><th>Máquina</th><th>Cliente</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody>
+                ${rows.map((item) => `
+                    <tr>
+                        <td>${escapeHtml(item.modelo_equipo || '—')}</td>
+                        <td>${escapeHtml(item.cliente_nombre || 'Sin cliente')}</td>
+                        <td>${formatCLDate(item.fecha_inicio)}</td>
+                        <td>${formatCLDate(item.fecha_fin)}</td>
+                        <td><span class="pill ${String(item.estado_contrato || '').toLowerCase() === 'activo' ? 'success' : 'maintenance'}">${escapeHtml(item.estado_contrato || '—')}</span></td>
+                        <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                            <button class="btn btn-secondary" type="button" onclick="fillArriendoForm(${JSON.stringify(item.maquinaria_id_maquina)}, ${JSON.stringify(item.cliente_id ?? '')})">Editar</button>
+                            <button class="btn btn-danger" type="button" ${canDelete ? `onclick="deleteArriendoById(${JSON.stringify(item.id_contrato)})"` : 'disabled'}>Eliminar</button>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function renderLogisticaTable(rows) {
+    const container = document.getElementById('logisticaTable');
+    if (!container) return;
+
+    if (!rows.length) {
+        container.innerHTML = '<table><tbody><tr><td colspan="7" class="detail-empty">No hay eventos logísticos registrados.</td></tr></tbody></table>';
+        return;
+    }
+
+    const canDelete = userRole === 'Administrador';
+    container.innerHTML = `
+        <table>
+            <thead><tr><th>Título</th><th>Equipo</th><th>Cliente</th><th>Ruta</th><th>Hora</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody>
+                ${rows.map((item) => `
+                    <tr>
+                        <td>${escapeHtml(item.titulo || '—')}</td>
+                        <td>${escapeHtml(item.equipo || '—')}</td>
+                        <td>${escapeHtml(item.cliente || '—')}</td>
+                        <td>${escapeHtml(item.ruta || '—')}</td>
+                        <td>${escapeHtml(item.hora_evento || '—')}</td>
+                        <td><span class="pill ${String(item.estado_evento || '').toLowerCase() === 'confirmado' ? 'success' : 'available'}">${escapeHtml(item.estado_evento || '—')}</span></td>
+                        <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                            <button class="btn btn-danger" type="button" ${canDelete ? `onclick="deleteLogisticaById(${JSON.stringify(item.id_evento)})"` : 'disabled'}>Eliminar</button>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function fillArriendoForm(maquinariaId, clienteId = '') {
+    const maquinaSelect = document.getElementById('arriendoMaquina');
+    const clienteSelect = document.getElementById('arriendoCliente');
+    if (maquinaSelect) maquinaSelect.value = String(maquinariaId || '');
+    if (clienteSelect) clienteSelect.value = String(clienteId || '');
+    setArriendoStatus('Edición preparada. Completa fechas y guarda.', 'info');
+}
+
+async function populateArriendoSelectors() {
+    const maquinaSelect = document.getElementById('arriendoMaquina');
+    const clienteSelect = document.getElementById('arriendoCliente');
+    if (!maquinaSelect || !clienteSelect) return;
+
+    try {
+        const [machines, usersRes] = await Promise.all([
+            loadAvailableMachines(),
+            fetch('/api/usuarios', { headers: getAuthHeaders() })
+        ]);
+
+        maquinaSelect.innerHTML = '<option value="">Selecciona una máquina</option>' + machines.map((m) => `<option value="${m.id_maquina}">${escapeHtml(m.modelo_equipo)} — ${escapeHtml(m.estado || '—')}</option>`).join('');
+
+        if (usersRes.ok) {
+            const users = await usersRes.json();
+            clienteSelect.innerHTML = '<option value="">Sin cliente</option>' + users.map((u) => `<option value="${u.id_usuario}">${escapeHtml(u.nombre_completo)} — ${escapeHtml(u.email)}</option>`).join('');
+        } else {
+            clienteSelect.innerHTML = '<option value="">Sin cliente</option>';
+        }
+    } catch (error) {
+        console.error('Error cargando selectores de arriendo:', error);
+    }
+}
+
+async function loadArriendosDashboard() {
+    const form = document.getElementById('arriendoForm');
+    if (form && !form.dataset.initialized) {
+        form.dataset.initialized = '1';
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const payload = {
+                maquinaria_id_maquina: Number(document.getElementById('arriendoMaquina')?.value || 0),
+                cliente_id: document.getElementById('arriendoCliente')?.value ? Number(document.getElementById('arriendoCliente').value) : null,
+                fecha_inicio: document.getElementById('arriendoFechaInicio')?.value || null,
+                fecha_fin: document.getElementById('arriendoFechaFin')?.value || null,
+                horometro_entrada: document.getElementById('arriendoHorometroEntrada')?.value === '' ? null : Number(document.getElementById('arriendoHorometroEntrada').value),
+                horometro_salida: document.getElementById('arriendoHorometroSalida')?.value === '' ? null : Number(document.getElementById('arriendoHorometroSalida').value),
+                estado_contrato: document.getElementById('arriendoEstado')?.value || 'Activo'
+            };
+
+            if (!payload.maquinaria_id_maquina) {
+                setArriendoStatus('Selecciona una máquina.', 'warning');
+                return;
+            }
+
+            try {
+                setArriendoStatus('Guardando arriendo...', 'info');
+                const res = await fetch('/api/arriendos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                    body: JSON.stringify(payload)
+                });
+                const body = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(body.message || 'No se pudo guardar el arriendo');
+                setArriendoStatus('Arriendo guardado correctamente', 'success');
+                await loadArriendosDashboard();
+            } catch (error) {
+                setArriendoStatus(`Error: ${error.message}`, 'error');
+            }
+        });
+    }
+
+    const container = document.getElementById('arriendosTable');
+    if (container) container.innerHTML = '<table><tbody><tr><td colspan="6" class="detail-empty">Cargando arriendos…</td></tr></tbody></table>';
+    await populateArriendoSelectors();
+    try {
+        const res = await fetch('/api/arriendos', { headers: getAuthHeaders() });
+        if (!res.ok) throw new Error('No se pudieron cargar los arriendos');
+        const rows = await res.json();
+        renderArriendosTable(Array.isArray(rows) ? rows : []);
+    } catch (error) {
+        if (container) container.innerHTML = `<table><tbody><tr><td colspan="6" class="detail-empty">Error: ${escapeHtml(error.message)}</td></tr></tbody></table>`;
+    }
+}
+
+async function deleteArriendoById(idContrato) {
+    if (!confirm('¿Eliminar este contrato de arriendo?')) return;
+    try {
+        const res = await fetch(`/api/arriendos/${idContrato}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        if (!res.ok && res.status !== 204) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.message || 'No se pudo eliminar el arriendo');
+        }
+        await loadArriendosDashboard();
+    } catch (error) {
+        setArriendoStatus(`Error: ${error.message}`, 'error');
+    }
+}
+
+function loadLogisticaDashboard() {
+    const form = document.getElementById('logisticaForm');
+    if (form && !form.dataset.initialized) {
+        form.dataset.initialized = '1';
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const payload = {
+                titulo: document.getElementById('logisticaTitulo')?.value.trim(),
+                equipo: document.getElementById('logisticaEquipo')?.value.trim(),
+                cliente: document.getElementById('logisticaCliente')?.value.trim(),
+                ruta: document.getElementById('logisticaRuta')?.value.trim(),
+                hora_evento: document.getElementById('logisticaHora')?.value.trim(),
+                estado_evento: document.getElementById('logisticaEstado')?.value || 'Pendiente'
+            };
+
+            if (!payload.titulo || !payload.equipo || !payload.cliente || !payload.ruta || !payload.hora_evento) {
+                setLogisticaStatus('Completa todos los campos.', 'warning');
+                return;
+            }
+
+            try {
+                setLogisticaStatus('Guardando evento...', 'info');
+                const res = await fetch('/api/logistica', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                    body: JSON.stringify(payload)
+                });
+                const body = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(body.message || 'No se pudo guardar el evento');
+                setLogisticaStatus('Evento guardado correctamente', 'success');
+                await loadLogisticaDashboard();
+            } catch (error) {
+                setLogisticaStatus(`Error: ${error.message}`, 'error');
+            }
+        });
+    }
+
+    const container = document.getElementById('logisticaTable');
+    if (container) container.innerHTML = '<table><tbody><tr><td colspan="7" class="detail-empty">Cargando eventos…</td></tr></tbody></table>';
+    fetch('/api/logistica', { headers: getAuthHeaders() })
+        .then((res) => {
+            if (!res.ok) throw new Error('No se pudieron cargar los eventos');
+            return res.json();
+        })
+        .then((rows) => renderLogisticaTable(Array.isArray(rows) ? rows : []))
+        .catch((error) => {
+            if (container) container.innerHTML = `<table><tbody><tr><td colspan="7" class="detail-empty">Error: ${escapeHtml(error.message)}</td></tr></tbody></table>`;
+        });
+}
+
+async function deleteLogisticaById(idEvento) {
+    if (!confirm('¿Eliminar este evento logístico?')) return;
+    try {
+        const res = await fetch(`/api/logistica/${idEvento}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        if (!res.ok && res.status !== 204) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.message || 'No se pudo eliminar el evento');
+        }
+        await loadLogisticaDashboard();
+    } catch (error) {
+        setLogisticaStatus(`Error: ${error.message}`, 'error');
+    }
 }
 
 async function changeUserRole(userId) {

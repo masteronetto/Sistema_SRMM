@@ -125,6 +125,7 @@ if (hasDatabaseConfig || hasDatabaseUrl) {
   const notificacionesTiempoRealRoutes = require('./Entities/notificaciones_tiempo_real/notificaciones_tiempo_real.routes');
   const planesMantencionRoutes = require('./Entities/planes_mantencion/planes_mantencion.routes');
   const arriendosRoutes = require('./Entities/arriendos/arriendos.routes');
+  const logisticaRoutes = require('./Entities/logistica/logistica.routes');
   const authRoutes = require('./Entities/auth/auth.routes');
   const roleRequestsRoutes = require('./Entities/role_requests/role_requests.routes');
 
@@ -137,6 +138,7 @@ if (hasDatabaseConfig || hasDatabaseUrl) {
   app.use('/api/notificaciones-tiempo-real', notificacionesTiempoRealRoutes);
   app.use('/api/planes-mantencion', planesMantencionRoutes);
   app.use('/api/arriendos', arriendosRoutes);
+  app.use('/api/logistica', logisticaRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/role-requests', roleRequestsRoutes);
 } else {

@@ -1,8 +1,13 @@
 const { Router } = require('express');
 const controller = require('./arriendos.controller');
+const { verifyToken, requireAdmin } = require('../../middleware/auth');
 
 const router = Router();
 
-router.post('/', controller.createContrato);
+router.use(verifyToken);
+
+router.get('/', controller.listContratos);
+router.post('/', requireAdmin, controller.createContrato);
+router.delete('/:id_contrato', requireAdmin, controller.deleteContrato);
 
 module.exports = router;

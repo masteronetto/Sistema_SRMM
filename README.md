@@ -1,6 +1,6 @@
 # Sistema_SRMM
 
-API para gestión de maquinaria, mantenimiento, disponibilidad operativa, historial de mantenciones, alertas y notificaciones en tiempo real usando Node.js, Express y PostgreSQL.
+API para gestión de maquinaria, mantenimiento, disponibilidad operativa, historial de mantenciones, arriendos, logística, alertas, incidencias y notificaciones en tiempo real usando Node.js, Express y PostgreSQL.
 
 ## Requisitos
 
@@ -52,7 +52,16 @@ DATABASE_URL=postgresql://postgres:TU_PASSWORD_REAL@db.zwsdcardcfxtjngxvsqw.supa
 DB_SSL=true
 ```
 
-## Cambios recientes: Reportes de ingresos y migración de base de datos
+## Cambios recientes: Dashboard real, arriendos y logística
+
+La interfaz principal ahora consume datos reales desde la base y no depende de tarjetas estáticas en Inicio/Reportes/Mantenimiento. Además:
+
+- La barra superior de fechas gobierna el rango visible de Inicio y Reportes.
+- La vista de usuarios muestra la fecha de registro real (`created_at`) ya almacenada en la tabla.
+- Arriendos ya puede listar, crear y eliminar contratos desde la UI.
+- Logística ya cuenta con una tabla real (`logistica_eventos`) y CRUD básico.
+
+### Reportes de ingresos y migración de base de datos
 
 Se añadió soporte para calcular y exportar reportes de ingresos generados por los arriendos de maquinaria. Cambios principales:
 
