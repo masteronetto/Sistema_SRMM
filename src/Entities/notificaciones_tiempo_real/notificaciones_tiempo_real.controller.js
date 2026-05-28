@@ -10,7 +10,7 @@ const notificacionesRepo = require('./notificaciones_tiempo_real.repository');
  */
 async function listNotificacionesAdmin(req, res) {
   try {
-    const adminId = 1; // TODO: Obtener del token JWT
+    const adminId = 1; // Pendiente: resolver el admin autenticado desde el JWT.
     const { solo_no_leidas, limite, offset } = req.query;
 
     const notificaciones = await notificacionesRepo.obtenerNotificacionesAdmin(adminId, {
@@ -44,7 +44,7 @@ async function listNotificacionesAdmin(req, res) {
 async function marcarNotificacionComoLeida(req, res) {
   try {
     const { id } = req.params;
-    const adminId = 1; // TODO: Obtener del token JWT
+    const adminId = 1; // Pendiente: resolver el admin autenticado desde el JWT.
 
     const notificacion = await notificacionesRepo.marcarComoLeida(parseInt(id), adminId);
 
@@ -73,7 +73,7 @@ async function marcarNotificacionComoLeida(req, res) {
  */
 async function marcarTodasComoLeidas(req, res) {
   try {
-    const adminId = 1; // TODO: Obtener del token JWT
+    const adminId = 1; // Pendiente: resolver el admin autenticado desde el JWT.
 
     const cantidad = await notificacionesRepo.marcarTodasComoLeidas(adminId);
 
@@ -97,7 +97,7 @@ async function marcarTodasComoLeidas(req, res) {
 async function deleteNotificacion(req, res) {
   try {
     const { id } = req.params;
-    const adminId = 1; // TODO: Obtener del token JWT
+    const adminId = 1; // Pendiente: resolver el admin autenticado desde el JWT.
 
     const eliminada = await notificacionesRepo.eliminarNotificacion(parseInt(id), adminId);
 

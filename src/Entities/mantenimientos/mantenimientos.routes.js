@@ -4,13 +4,13 @@ const { verifyToken, requireMecanicoOrAdmin } = require('../../middleware/auth')
 
 const router = Router();
 
-// Mantenimientos completados (legacy)
+// Rutas de mantenimiento histórico.
 router.post('/', controller.create);
 router.get('/maquina/:maquinaria_id_maquina', controller.listByMaquina);
 router.get('/maquina/:maquinaria_id_maquina/historial', controller.historialByMaquina);
 router.get('/tipos-servicio', controller.tiposServicio);
 
-// Órdenes de trabajo (SIS-15: Programar mantenimientos preventivos)
+// Órdenes de trabajo para programar mantenimientos preventivos.
 router.post('/programar', controller.programar);
 router.get('/ordenes/atrasadas', controller.listOrdenesAtrasadas);
 router.post('/ordenes/verificar-retrasos', controller.verificarRetrasos);

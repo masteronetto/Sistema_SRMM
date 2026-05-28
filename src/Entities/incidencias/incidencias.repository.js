@@ -118,7 +118,7 @@ async function registrarIncidencia(id_maquina, id_usuario, descripcion, criticid
     const { rows } = await pool.query(queryAnalisis, [id_maquina]);
     const maquinaInfo = rows[0];
 
-    // 2. Subtarea 1: Evaluar si la mantención estaba vencida
+    // Evaluar si la mantención estaba vencida antes de marcar la incidencia.
     const limiteSeguro = Number(maquinaInfo.ultimo_mantenimiento) + Number(maquinaInfo.intervalo_horas);
     const horasExcedidas = maquinaInfo.horometro_actual - limiteSeguro;
     
@@ -127,11 +127,11 @@ async function registrarIncidencia(id_maquina, id_usuario, descripcion, criticid
 
     if (horasExcedidas > 0) {
         vinculada = 1; // 1 = Falla por negligencia/falta de mantención
-        // Subtarea 2: Mostrar advertencia automática
+        // Registrar advertencia automática para el operador.
         advertencia = `⚠️ Advertencia: Esta falla ocurrió ${horasExcedidas} horas después del mantenimiento vencido.`;
     }
 
-    // 3. Subtarea 4: Agregar campo vinculada_mantenimiento al registrar
+    // Guardar la vinculación con mantenimiento cuando exista.
     const insertQuery = `
         INSERT INTO incidencias_maquina 
         (maquinaria_id_maquina, usuarios_id_usuario, fecha, descripcion, criticidad, vinculada_mantenimiento, estado)

@@ -369,3 +369,35 @@ CREATE TABLE IF NOT EXISTS logistica_eventos (
 
 CREATE INDEX IF NOT EXISTS idx_logistica_eventos_created_at ON logistica_eventos (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_logistica_eventos_estado ON logistica_eventos (estado_evento);
+
+-- Migration: Add FK from maquinaria.planes_mantencion_id_plan -> planes_mantencion.id_plan
+-- Backup recommended before running: pg_dump -t maquinaria -t planes_mantencion > backup_maquinaria_planes.sql
+
+BEGIN;
+
+-- Ensure referenced table/column exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'maquinaria' AND column_name = 'planes_mantencion_id_plan'
+    ) THEN
+        RAISE EXCEPTION 'Column maquinaria.planes_mantencion_id_plan does not exist';
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'planes_mantencion' AND column_name = 'id_plan'
+    ) THEN
+        RAISE EXCEPTION 'Column planes_mantencion.id_plan does not exist';
+    END IF;
+END$$;
+
+-- Add the foreign key constraint (use ON DELETE SET NULL to allow plan removal)
+ALTER TABLE maquinaria
+    ADD CONSTRAINT fk_maquinaria_planes_mantencion
+    FOREIGN KEY (planes_mantencion_id_plan)
+    REFERENCES planes_mantencion (id_plan)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+
+COMMIT;

@@ -89,7 +89,7 @@ Response:
 Notas:
 - La API calculará `ingresos = dias_arrendados * tarifa_usada` donde `tarifa_usada = COALESCE(maquinaria.tarifa_diaria, tarifa_query, process.env.ARRIENDO_RATE_DIA, 100000)`.
 - También se añadió un endpoint CSV (`/api/reportes/ingresos/csv`) para descargar directamente el detalle por máquina.
-- Para crear o modificar una maquinaria, usa el panel de administración en la vista de inventario del dashboard legacy; ahí puedes definir la tarifa diaria al alta o modificarla después.
+- Para crear o modificar una maquinaria, usa el panel de administración en la vista de inventario del dashboard; ahí puedes definir la tarifa diaria al alta o modificarla después.
 - La vista React dedicada a maquinaria está en [frontend/scr/components/MaquinariaDashboard.jsx](frontend/scr/components/MaquinariaDashboard.jsx): muestra la lista para todos los roles y deshabilita la edición cuando el rol no es administrador.
 
 
@@ -306,8 +306,8 @@ El sistema expone endpoints para:
 - Disponibilidad y bloqueos de maquinaria
 - Alertas críticas
 - Mantenimientos y órdenes de trabajo
-- Historial detallado de mantenciones
-- Planes de mantención
+- Historial detallado de mantenimiento
+- Planes de mantenimiento
 - Notificaciones en tiempo real
 - **Sistema de incidencias y alertas operativas**
 - **Registro de fallas por máquina con operador responsable**
@@ -564,9 +564,9 @@ Ejemplo JSON para orden programada:
 }
 ```
 
-El historial de mantenciones por máquina permite filtrar por rango de fechas, tipo de servicio y paginación. La respuesta incluye el detalle técnico, fecha, horómetro, responsable y la máquina asociada para facilitar la trazabilidad operativa.
+El historial de mantenimiento por máquina permite filtrar por rango de fechas, tipo de servicio y paginación. La respuesta incluye el detalle técnico, fecha, horómetro, responsable y la máquina asociada para facilitar la trazabilidad operativa.
 
-### Planes de mantención
+### Planes de mantenimiento
 
 - GET /api/planes-mantencion
 - GET /api/planes-mantencion/:id
@@ -851,7 +851,7 @@ Colección sugerida:
 - Historial de uso
 - Alertas críticas
 - Mantenimientos
-- Planes de mantención
+- Planes de mantenimiento
 - Notificaciones
 
 ## Pruebas automatizadas
@@ -860,14 +860,14 @@ Se recomienda usar Jest y Supertest para validar endpoints críticos, especialme
 
 - Registro de horometros
 - Bloqueo crítico de máquinas
-- Asignación de planes de mantención
+- Asignación de planes de mantenimiento
 - Programación de órdenes de trabajo
 - Consulta de notificaciones
 
 ## Notas de uso
 
 - El sistema ya incluye control de alertas, bloqueos, órdenes y notificaciones.
-- Los planes de mantención se usan para calcular intervalos y prioridades.
+- Los planes de mantenimiento se usan para calcular intervalos y prioridades.
 - Si se requieren detalles de implementación, están en el código fuente.
 
 ## Codespaces

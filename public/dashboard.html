@@ -1638,7 +1638,7 @@ function mapMaquinariaItem(item) {
         estado: getMaquinariaValue(item, ['estado']),
         horometro: getMaquinariaValue(item, ['horometro_actual', 'horometro']),
         tarifa_diaria: getMaquinariaValue(item, ['tarifa_diaria', 'tarifa']),
-        plan_mantenimiento_id: getMaquinariaValue(item, ['plan_mantenimiento_id', 'id_plan_mantencion']),
+        planes_mantencion_id_plan: getMaquinariaValue(item, ['planes_mantencion_id_plan']),
         especificaciones: getMaquinariaValue(item, ['especificaciones', 'descripcion'])
     };
 }
@@ -1675,7 +1675,7 @@ function renderAdminMaquinaria(rows) {
             <td>${maquina.estado || '—'}</td>
             <td>${maquina.horometro ?? '—'}</td>
             <td>${formatCurrency(maquina.tarifa_diaria || 0)}</td>
-            <td>${maquina.plan_mantenimiento_id || '—'}</td>
+            <td>${maquina.planes_mantencion_id_plan || '—'}</td>
             <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
                 <button class="btn btn-edit" data-id="${maquina.id ?? ''}">Editar</button>
                 <button class="btn btn-secondary btn-incidencias" data-id="${maquina.id ?? ''}">Incidencias</button>
@@ -1751,7 +1751,7 @@ function editMaquinariaById(maquinaId) {
     if (horometroInput) horometroInput.value = maquina.horometro ?? '';
     if (estadoInput) estadoInput.value = maquina.estado || 'Disponible';
     if (tarifaInput) tarifaInput.value = maquina.tarifa_diaria ?? '';
-    renderMaintenancePlanOptions(maquina.plan_mantenimiento_id ?? '');
+    renderMaintenancePlanOptions(maquina.planes_mantencion_id_plan ?? '');
     if (specsInput) specsInput.value = maquina.especificaciones || '';
 
     setMaquinariaStatus(`Editando maquinaria #${maquina.id}`, 'warning');

@@ -32,7 +32,7 @@ async function getHistorialUnificado(id_maquina, fecha_inicio, fecha_fin) {
   return rows;
 }
 
-// Subtarea D: Top Máquinas
+// Ranking de máquinas con mayor horómetro acumulado.
 async function getTopMaquinas() {
   const query = `
     SELECT id_maquina, modelo_equipo, horometro_actual 
@@ -44,7 +44,7 @@ async function getTopMaquinas() {
   return rows;
 }
 
-// Subtareas B y C: Estadísticas de mantenciones vs fallas
+// Estadísticas comparativas de mantenciones y fallas por máquina.
 async function getEstadisticas() {
   const query = `
     SELECT 
@@ -67,7 +67,7 @@ async function getEstadisticas() {
   return rows;
 }
 
-// Subtarea A: Historial para el gráfico
+// Serie histórica de horómetro para graficar la evolución de uso.
 async function getUsoHistorico(id_maquina) {
   const query = `
     SELECT fecha_registro, valor_horas 
