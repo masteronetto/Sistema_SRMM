@@ -850,6 +850,21 @@
     </style>
 </head>
 <body>
+    <!-- Confirm Modal -->
+    <div id="confirmModal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;"> 
+        <div id="confirmModalOverlay" style="position:absolute;inset:0;background:rgba(0,0,0,0.45);"></div>
+        <div id="confirmModalContent" role="dialog" aria-modal="true" style="position:relative;max-width:520px;width:90%;background:#fff;border-radius:8px;padding:1rem;box-shadow:0 8px 30px rgba(0,0,0,0.2);"> 
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                <strong id="confirmModalTitle">Confirmar acción</strong>
+                <button id="confirmModalClose" aria-label="Cerrar" style="background:none;border:none;font-size:18px;">✕</button>
+            </div>
+            <div id="confirmModalBody" style="margin-bottom:1rem;color:#333;">¿Confirmar?</div>
+            <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+                <button id="confirmModalCancel" class="btn btn-secondary">Cancelar</button>
+                <button id="confirmModalOk" class="top-button primary">Confirmar</button>
+            </div>
+        </div>
+    </div>
 <div class="shell">
 
     <!-- ═══════════════ SIDEBAR ═══════════════ -->
@@ -1063,6 +1078,7 @@
                                 <div class="block-title">Datos básicos</div>
                                 <div class="incident-grid">
                                     <label>Modelo<input id="adminMaquinaModelo" type="text" required placeholder="Ej. Excavadora CAT 320"></label>
+                                        <div id="err-adminMaquinaModelo" class="field-error" style="color:#c0392b;font-size:0.85rem;margin-top:0.25rem;"></div>
                                     <label>Estado
                                         <select id="adminMaquinaEstado" required>
                                             <option value="Disponible">Disponible</option>
@@ -1071,6 +1087,7 @@
                                             <option value="Bloqueada">Bloqueada</option>
                                             <option value="No Operativa">No Operativa</option>
                                         </select>
+                                    <div id="err-adminMaquinaEstado" class="field-error" style="color:#c0392b;font-size:0.85rem;margin-top:0.25rem;"></div>
                                     </label>
                                 </div>
                             </div>
@@ -1078,6 +1095,7 @@
                                 <div class="block-title">Operación</div>
                                 <div class="incident-grid">
                                     <label>Horómetro actual<input id="adminMaquinaHorometro" type="number" min="0" step="0.01" required></label>
+                                    <div id="err-adminMaquinaHorometro" class="field-error" style="color:#c0392b;font-size:0.85rem;margin-top:0.25rem;"></div>
                                     <label>Tarifa diaria (CLP)<input id="adminMaquinaTarifa" type="number" min="0" step="0.01" placeholder="100000"></label>
                                 </div>
                             </div>
@@ -1096,6 +1114,7 @@
                         </div>
                         <div class="maquinaria-form-actions">
                             <button type="submit" class="top-button primary">Guardar maquinaria</button>
+                            <span id="maquinariaSpinner" style="display:none;margin-left:0.6rem;">⏳ Guardando…</span>
                             <button type="button" id="adminMaquinariaResetBtn" class="top-button secondary">Limpiar</button>
                             <button type="button" id="adminMaquinariaCancelBtn" class="top-button secondary">Cancelar</button>
                         </div>
@@ -1129,6 +1148,18 @@
                     </section>
 
                     <section id="maintenanceHighlights" class="mini-grid"></section>
+
+                    <section id="maintenanceOrdersList" class="section-card" style="margin-top:1rem;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div class="section-title">Órdenes de mantenimiento</div>
+                            <div style="display:flex;gap:0.6rem;align-items:center;">
+                                <button id="ordersPrevBtn" class="btn" type="button">Anterior</button>
+                                <span id="ordersPageInfo" class="muted">—</span>
+                                <button id="ordersNextBtn" class="btn" type="button">Siguiente</button>
+                            </div>
+                        </div>
+                        <div id="ordersTableContainer" style="margin-top:0.6rem;"></div>
+                    </section>
 
                     <section class="section-card">
                         <div class="section-title">Registrar incidencia</div>
@@ -1544,6 +1575,15 @@ function initAdminMaquinariaPanel() {
     }
 
     loadAdminMaquinaria();
+    // Bind validation for form UX
+    const submitBtn = document.querySelector('#adminMaquinariaForm .top-button.primary');
+    const inputsToWatch = ['adminMaquinaModelo','adminMaquinaHorometro','adminMaquinaEstado'];
+    inputsToWatch.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', validateMaquinariaForm);
+    });
+    // initial validation
+    validateMaquinariaForm();
 }
 
 function showMaquinariaForm(forceVisible = false) {
@@ -1613,6 +1653,7 @@ function renderAdminMaquinaria(rows) {
             <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
                 <button class="btn" onclick="editMaquinariaById(${JSON.stringify(maquina.id ?? null)})">Editar</button>
                 <button class="btn btn-secondary" onclick="focusMaquinariaIncidenciasById(${JSON.stringify(maquina.id ?? null)})">Incidencias</button>
+                ${userRole === 'Administrador' ? `<button class="btn btn-danger" onclick="deleteMaquinariaById(${JSON.stringify(maquina.id ?? null)})">Eliminar</button>` : ''}
             </td>
         </tr>`;
     }).join('');
@@ -1744,6 +1785,11 @@ async function saveAdminMaquinaria(event) {
         const isEdit = Boolean(idInput?.value);
         const url = isEdit ? `/api/maquinaria/${idInput.value}` : '/api/maquinaria';
         const method = isEdit ? 'PUT' : 'POST';
+        // UI: show spinner & disable
+        const submitBtn = document.querySelector('#adminMaquinariaForm .top-button.primary');
+        const spinner = document.getElementById('maquinariaSpinner');
+        if (submitBtn) submitBtn.disabled = true;
+        if (spinner) spinner.style.display = 'inline-block';
 
         const res = await fetch(url, {
             method,
@@ -1762,6 +1808,82 @@ async function saveAdminMaquinaria(event) {
     } catch (err) {
         setMaquinariaStatus(`Error: ${err.message}`, 'error');
     }
+    finally {
+        const submitBtn = document.querySelector('#adminMaquinariaForm .top-button.primary');
+        const spinner = document.getElementById('maquinariaSpinner');
+        if (submitBtn) submitBtn.disabled = false;
+        if (spinner) spinner.style.display = 'none';
+    }
+}
+
+function validateMaquinariaForm() {
+    const modelo = document.getElementById('adminMaquinaModelo')?.value.trim();
+    const horometro = document.getElementById('adminMaquinaHorometro')?.value;
+    const estado = document.getElementById('adminMaquinaEstado')?.value;
+    const submitBtn = document.querySelector('#adminMaquinariaForm .top-button.primary');
+
+    const warnings = [];
+    if (!modelo) warnings.push('El modelo es obligatorio.');
+    const hnum = Number(horometro);
+    if (horometro === '' || !Number.isFinite(hnum) || hnum < 0) warnings.push('Horómetro debe ser número ≥ 0.');
+    if (!estado) warnings.push('Selecciona un estado.');
+
+    if (warnings.length) {
+        setMaquinariaStatus(warnings.join(' '), 'warning');
+        if (submitBtn) submitBtn.disabled = true;
+        return false;
+    }
+
+    setMaquinariaStatus('Formulario listo', 'success');
+    if (submitBtn) submitBtn.disabled = false;
+    return true;
+}
+
+// Confirm modal helpers
+function showConfirmModal(title, message, onConfirm) {
+    const modal = document.getElementById('confirmModal');
+    if (!modal) return;
+    const titleEl = document.getElementById('confirmModalTitle');
+    const bodyEl = document.getElementById('confirmModalBody');
+    const okBtn = document.getElementById('confirmModalOk');
+    const cancelBtn = document.getElementById('confirmModalCancel');
+    const closeBtn = document.getElementById('confirmModalClose');
+
+    titleEl.textContent = title || 'Confirmar acción';
+    bodyEl.textContent = message || '';
+    modal.style.display = 'flex';
+
+    const cleanup = () => {
+        okBtn.onclick = null;
+        cancelBtn.onclick = null;
+        closeBtn.onclick = null;
+        modal.style.display = 'none';
+    };
+
+    okBtn.onclick = () => {
+        try { onConfirm && onConfirm(); } finally { cleanup(); }
+    };
+    cancelBtn.onclick = closeBtn.onclick = () => { cleanup(); };
+    // close on overlay click
+    document.getElementById('confirmModalOverlay').onclick = () => { cleanup(); };
+}
+
+async function deleteMaquinariaById(maquinaId) {
+    if (!maquinaId) return setMaquinariaStatus('ID de máquina inválido', 'warning');
+    showConfirmModal(`Eliminar maquinaria #${maquinaId}`, `¿Deseas eliminar la maquinaria #${maquinaId}? Esta acción no se puede deshacer.`, async () => {
+        try {
+            setMaquinariaStatus('Eliminando maquinaria...', 'info');
+            const res = await fetch(`/api/maquinaria/${maquinaId}`, { method: 'DELETE', headers: getAuthHeaders() });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.message || 'No se pudo eliminar la maquinaria');
+            }
+            setMaquinariaStatus('Maquinaria eliminada', 'success');
+            await loadAdminMaquinaria();
+        } catch (err) {
+            setMaquinariaStatus(`Error: ${err.message}`, 'error');
+        }
+    });
 }
 
 function clearAuthToken() {
@@ -1931,6 +2053,7 @@ function showView(viewName, push = true) {
 
     if (target === 'mantenimiento') {
         loadMaintenanceDashboard();
+        loadMaintenanceOrders();
     }
 
     if (target === 'reportes') {
@@ -3304,9 +3427,12 @@ function setGlobalRangeDays(days) {
     if (rEnd) rEnd.value = end;
 
     updateActiveRangeLabel();
-    if (document.getElementById('reportes') && document.querySelector('.view.active')?.id === 'reportes') {
-        // refresh report view
+    const activeView = document.querySelector('.view.active')?.id;
+    if (document.getElementById('reportes') && activeView === 'reportes') {
         loadReportesDashboard();
+    }
+    if (activeView === 'inicio' || activeView === 'inventario' || activeView === 'mantenimiento') {
+        loadInicioKpis();
     }
 }
 
@@ -3373,14 +3499,18 @@ function initGlobalDateControls() {
         const rStart = document.getElementById('reportStartDate');
         if (rStart) rStart.value = gStart.value;
         updateActiveRangeLabel();
-        if (document.querySelector('.view.active')?.id === 'reportes') loadReportesDashboard();
+        const activeView = document.querySelector('.view.active')?.id;
+        if (activeView === 'reportes') loadReportesDashboard();
+        if (activeView === 'inicio' || activeView === 'inventario' || activeView === 'mantenimiento') loadInicioKpis();
     });
 
     gEnd.addEventListener('change', () => {
         const rEnd = document.getElementById('reportEndDate');
         if (rEnd) rEnd.value = gEnd.value;
         updateActiveRangeLabel();
-        if (document.querySelector('.view.active')?.id === 'reportes') loadReportesDashboard();
+        const activeView = document.querySelector('.view.active')?.id;
+        if (activeView === 'reportes') loadReportesDashboard();
+        if (activeView === 'inicio' || activeView === 'inventario' || activeView === 'mantenimiento') loadInicioKpis();
     });
 }
 
@@ -3392,8 +3522,7 @@ async function loadInicioKpis() {
         setReportStatus('Cargando métricas iniciales...', 'info');
 
         const headers = getAuthHeaders();
-        const [statsRes, topRes] = await Promise.all([
-            fetch('/api/reportes/estadisticas', { headers }),
+        const [topRes] = await Promise.all([
             fetch('/api/reportes/top-maquinas', { headers })
         ]);
 
@@ -3403,7 +3532,6 @@ async function loadInicioKpis() {
             fetch('/api/maquinaria/urgent-maintenance?umbral=0&limit=5', { headers })
         ]);
 
-        if (!statsRes.ok) throw new Error('No se pudieron cargar estadísticas');
         if (!topRes.ok) throw new Error('No se pudieron cargar top máquinas');
 
         const machines = machinesRes.ok ? await machinesRes.json() : [];
@@ -3411,7 +3539,6 @@ async function loadInicioKpis() {
         const urgent = urgentRes.ok ? await urgentRes.json() : [];
         availableMachines = Array.isArray(machines) ? machines : [];
 
-        const stats = await statsRes.json();
         const top = await topRes.json();
 
         const totalMaquinaria = machines.length;
@@ -3437,7 +3564,6 @@ async function loadInicioKpis() {
         if (totalMaquinariaNoteEl) totalMaquinariaNoteEl.textContent = `${distinctStates} categorías de estado`;
         if (disponiblesEl) disponiblesEl.textContent = disponibles || '—';
         if (disponiblesNoteEl) disponiblesNoteEl.textContent = 'Listas para uso';
-        if (disponiblesEl) disponiblesEl.textContent = disponibles || '—';
         if (arrendEl) arrendEl.textContent = arrendadas || '—';
         if (arrendNoteEl) arrendNoteEl.textContent = 'Activos hoy';
         if (mantEl) mantEl.textContent = urgentCount || '—';
@@ -3599,6 +3725,65 @@ async function loadMaintenanceDashboard() {
     }
 }
 
+/* ═══════════════════════════════════════════════════
+   MANTENIMIENTO: LISTA PAGINADA DE ORDENES
+   ═══════════════════════════════════════════════════ */
+let maintenanceOrdersPage = 1;
+let maintenanceOrdersPerPage = 10;
+
+async function loadMaintenanceOrders(page = 1) {
+    maintenanceOrdersPage = page || 1;
+    const container = document.getElementById('ordersTableContainer');
+    const pageInfo = document.getElementById('ordersPageInfo');
+    const prevBtn = document.getElementById('ordersPrevBtn');
+    const nextBtn = document.getElementById('ordersNextBtn');
+    if (container) container.innerHTML = '<div class="muted">Cargando órdenes…</div>';
+
+    try {
+        const res = await fetch(`/api/mantenimientos/ordenes?page=${maintenanceOrdersPage}&perPage=${maintenanceOrdersPerPage}`, { headers: getAuthHeaders() });
+        if (!res.ok) throw new Error('No se pudieron cargar las órdenes');
+        const body = await res.json();
+
+        // body can be array or {rows, total, page, perPage}
+        let rows = Array.isArray(body) ? body : (body.rows || []);
+        const total = body.total || (Array.isArray(body) ? rows.length : (body.total || 0));
+
+        renderMaintenanceOrders(rows, maintenanceOrdersPage, maintenanceOrdersPerPage, total);
+
+        if (pageInfo) pageInfo.textContent = `Página ${maintenanceOrdersPage}`;
+        if (prevBtn) prevBtn.disabled = maintenanceOrdersPage <= 1;
+        if (nextBtn) nextBtn.disabled = rows.length < maintenanceOrdersPerPage;
+
+        prevBtn.onclick = () => { if (maintenanceOrdersPage > 1) loadMaintenanceOrders(maintenanceOrdersPage - 1); };
+        nextBtn.onclick = () => { if (rows.length >= maintenanceOrdersPerPage) loadMaintenanceOrders(maintenanceOrdersPage + 1); };
+    } catch (err) {
+        if (container) container.innerHTML = `<div class="muted">Error: ${escapeHtml(err.message)}</div>`;
+    }
+}
+
+function renderMaintenanceOrders(rows, page, perPage, total = null) {
+    const container = document.getElementById('ordersTableContainer');
+    if (!container) return;
+    if (!rows || !rows.length) {
+        container.innerHTML = '<table><tbody><tr><td class="detail-empty">No hay órdenes disponibles.</td></tr></tbody></table>';
+        return;
+    }
+
+    const html = [`<div class="table-wrap"><table><thead><tr><th>ID</th><th>Máquina</th><th>Tipo</th><th>Programada</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>`];
+    rows.forEach(o => {
+        html.push(`<tr>
+            <td>${o.id_orden || o.id}</td>
+            <td>${escapeHtml(o.modelo_equipo || o.nombre_maquina || '—')}</td>
+            <td>${escapeHtml(o.tipo_servicio || o.tipo)}</td>
+            <td>${formatCLDate(o.fecha_programada || o.fecha_servicio)}</td>
+            <td>${escapeHtml(o.estado_ot || o.estado || '—')}</td>
+            <td><button class="btn" onclick="openMaintenanceById(${o.id_orden || o.id})">Ver</button></td>
+        </tr>`);
+    });
+    html.push(`</tbody></table></div>`);
+    container.innerHTML = html.join('');
+}
+
 async function loadRoleRequests() {
     const container = document.getElementById('role-requests-content');
     container.innerHTML = '<p class="muted">Cargando solicitudes…</p>';
@@ -3638,21 +3823,22 @@ async function loadRoleRequests() {
 }
 
 async function deleteRoleRequest(requestId) {
-    if (!confirm('¿Eliminar esta solicitud de rol? Esta acción no se puede deshacer.')) return;
-    try {
-        const res = await fetch(`/api/role-requests/${requestId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!res.ok) {
-            const e = await res.json().catch(() => ({ message: res.statusText }));
-            throw new Error(e.message || 'Error eliminando solicitud');
+    showConfirmModal('Eliminar solicitud', '¿Eliminar esta solicitud de rol? Esta acción no se puede deshacer.', async () => {
+        try {
+            const res = await fetch(`/api/role-requests/${requestId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) {
+                const e = await res.json().catch(() => ({ message: res.statusText }));
+                throw new Error(e.message || 'Error eliminando solicitud');
+            }
+            alert('✅ Solicitud eliminada');
+            loadRoleRequests();
+        } catch (err) {
+            alert(`❌ Error: ${err.message}`);
         }
-        alert('✅ Solicitud eliminada');
-        loadRoleRequests();
-    } catch (err) {
-        alert(`❌ Error: ${err.message}`);
-    }
+    });
 }
 
 function renderUsersList(users) {
@@ -3847,20 +4033,21 @@ async function loadArriendosDashboard() {
 }
 
 async function deleteArriendoById(idContrato) {
-    if (!confirm('¿Eliminar este contrato de arriendo?')) return;
-    try {
-        const res = await fetch(`/api/arriendos/${idContrato}`, {
-            method: 'DELETE',
-            headers: getAuthHeaders()
-        });
-        if (!res.ok && res.status !== 204) {
-            const body = await res.json().catch(() => ({}));
-            throw new Error(body.message || 'No se pudo eliminar el arriendo');
+    showConfirmModal('Eliminar arriendo', '¿Eliminar este contrato de arriendo?', async () => {
+        try {
+            const res = await fetch(`/api/arriendos/${idContrato}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            if (!res.ok && res.status !== 204) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.message || 'No se pudo eliminar el arriendo');
+            }
+            await loadArriendosDashboard();
+        } catch (error) {
+            setArriendoStatus(`Error: ${error.message}`, 'error');
         }
-        await loadArriendosDashboard();
-    } catch (error) {
-        setArriendoStatus(`Error: ${error.message}`, 'error');
-    }
+    });
 }
 
 function loadLogisticaDashboard() {
@@ -3914,20 +4101,21 @@ function loadLogisticaDashboard() {
 }
 
 async function deleteLogisticaById(idEvento) {
-    if (!confirm('¿Eliminar este evento logístico?')) return;
-    try {
-        const res = await fetch(`/api/logistica/${idEvento}`, {
-            method: 'DELETE',
-            headers: getAuthHeaders()
-        });
-        if (!res.ok && res.status !== 204) {
-            const body = await res.json().catch(() => ({}));
-            throw new Error(body.message || 'No se pudo eliminar el evento');
+    showConfirmModal('Eliminar evento', '¿Eliminar este evento logístico?', async () => {
+        try {
+            const res = await fetch(`/api/logistica/${idEvento}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            if (!res.ok && res.status !== 204) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.message || 'No se pudo eliminar el evento');
+            }
+            await loadLogisticaDashboard();
+        } catch (error) {
+            setLogisticaStatus(`Error: ${error.message}`, 'error');
         }
-        await loadLogisticaDashboard();
-    } catch (error) {
-        setLogisticaStatus(`Error: ${error.message}`, 'error');
-    }
+    });
 }
 
 async function changeUserRole(userId) {
@@ -3948,21 +4136,22 @@ async function changeUserRole(userId) {
 }
 
 async function deleteUser(userId) {
-    if (!confirm('¿Eliminar usuario? Esta acción es irreversible.')) return;
-    try {
-        const res = await fetch(`/api/usuarios/${userId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!res.ok) {
-            const e = await res.json().catch(()=>({message:res.statusText}));
-            throw new Error(e.message || 'Error eliminando usuario');
+    showConfirmModal('Eliminar usuario', '¿Eliminar usuario? Esta acción es irreversible.', async () => {
+        try {
+            const res = await fetch(`/api/usuarios/${userId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) {
+                const e = await res.json().catch(()=>({message:res.statusText}));
+                throw new Error(e.message || 'Error eliminando usuario');
+            }
+            alert('✅ Usuario eliminado');
+            loadUsersList();
+        } catch (err) {
+            alert(`❌ Error: ${err.message}`);
         }
-        alert('✅ Usuario eliminado');
-        loadUsersList();
-    } catch (err) {
-        alert(`❌ Error: ${err.message}`);
-    }
+    });
 }
 
 function showAddUserForm() {
@@ -4174,14 +4363,15 @@ async function openMaintenanceById(idOrden) {
                     btnComplete.className = 'btn btn-secondary';
                     btnComplete.textContent = 'Completar orden';
                     btnComplete.addEventListener('click', async () => {
-                        if (!confirm('¿Confirmar completar la orden?')) return;
-                        btnComplete.disabled = true;
-                        try {
-                            await completeMaintenanceOrder(orden.id_orden);
-                            await openMaintenanceById(orden.id_orden);
-                        } catch (e) {
-                            alert('Error completando orden: ' + e.message);
-                        } finally { btnComplete.disabled = false; }
+                        showConfirmModal('Completar orden', `¿Confirmar completar la orden #${orden.id_orden}?`, async () => {
+                            btnComplete.disabled = true;
+                            try {
+                                await completeMaintenanceOrder(orden.id_orden);
+                                await openMaintenanceById(orden.id_orden);
+                            } catch (e) {
+                                alert('Error completando orden: ' + e.message);
+                            } finally { btnComplete.disabled = false; }
+                        });
                     });
                     actions.appendChild(btnComplete);
                 }
