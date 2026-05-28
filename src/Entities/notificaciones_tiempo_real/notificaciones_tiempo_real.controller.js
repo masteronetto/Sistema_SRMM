@@ -10,7 +10,10 @@ const notificacionesRepo = require('./notificaciones_tiempo_real.repository');
  */
 async function listNotificacionesAdmin(req, res) {
   try {
-    const adminId = 1; // Pendiente: resolver el admin autenticado desde el JWT.
+    const adminId = Number(req.user?.id_usuario);
+    if (!Number.isFinite(adminId)) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
     const { solo_no_leidas, limite, offset } = req.query;
 
     const notificaciones = await notificacionesRepo.obtenerNotificacionesAdmin(adminId, {
@@ -44,7 +47,9 @@ async function listNotificacionesAdmin(req, res) {
 async function marcarNotificacionComoLeida(req, res) {
   try {
     const { id } = req.params;
-    const adminId = 1; // Pendiente: resolver el admin autenticado desde el JWT.
+    const adminId = Number(req.user?.id_usuario);
+    if (!Number.isFinite(adminId)) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
 
     const notificacion = await notificacionesRepo.marcarComoLeida(parseInt(id), adminId);
 
@@ -73,7 +78,10 @@ async function marcarNotificacionComoLeida(req, res) {
  */
 async function marcarTodasComoLeidas(req, res) {
   try {
-    const adminId = 1; // Pendiente: resolver el admin autenticado desde el JWT.
+    const adminId = Number(req.user?.id_usuario);
+    if (!Number.isFinite(adminId)) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
 
     const cantidad = await notificacionesRepo.marcarTodasComoLeidas(adminId);
 
@@ -97,7 +105,10 @@ async function marcarTodasComoLeidas(req, res) {
 async function deleteNotificacion(req, res) {
   try {
     const { id } = req.params;
-    const adminId = 1; // Pendiente: resolver el admin autenticado desde el JWT.
+    const adminId = Number(req.user?.id_usuario);
+    if (!Number.isFinite(adminId)) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
 
     const eliminada = await notificacionesRepo.eliminarNotificacion(parseInt(id), adminId);
 
