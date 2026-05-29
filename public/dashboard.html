@@ -765,9 +765,11 @@
         }
 
         .report-machine-select {
-            min-height: 118px;
-            min-width: 240px;
-            flex: 0 1 260px;
+            min-height: 92px;
+            min-width: 0;
+            flex: 1 1 auto;
+            font-size: 0.95rem;
+            line-height: 1.25;
         }
 
         .report-date {
@@ -790,13 +792,16 @@
         }
 
         .report-machine-bar {
+            display: grid;
+            grid-template-columns: minmax(320px, 1.35fr) minmax(280px, 1fr);
             gap: 0.9rem;
+            align-items: stretch;
         }
 
         .report-machine-panel {
             display: grid;
-            grid-template-rows: auto minmax(92px, 1fr) auto;
-            gap: 0.45rem;
+            grid-template-rows: auto auto auto;
+            gap: 0.35rem;
             min-width: 0;
         }
 
@@ -830,10 +835,12 @@
 
         .report-machine-actions {
             flex: 1 1 0;
-            min-width: 260px;
+            min-width: 0;
+            align-content: flex-start;
         }
 
         @media (max-width: 900px) {
+            .report-machine-bar { grid-template-columns: 1fr; }
             .report-filters { align-items: stretch; }
             .report-filters > label { width: 100%; }
             .report-actions { width: 100%; }
@@ -1365,7 +1372,7 @@
                         </div>
 
                         <div id="reportesFilters" class="report-filters report-machine-bar" style="align-items:stretch;">
-                            <label class="report-machine-panel" style="min-width:0;flex:1 1 560px;">
+                            <label class="report-machine-panel" style="min-width:0;">
                                 <div class="report-machine-header">
                                     <span class="small muted">Máquinas</span>
                                     <button type="button" id="toggleMultiSelectBtn" class="btn btn-secondary report-machine-toggle">Seleccionar varias</button>
@@ -1373,7 +1380,7 @@
                                 <select id="reportMachineSelect" size="3" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-machine-select"></select>
                                 <span id="reportMultiHelp" class="small muted report-machine-help">El rango de fechas se toma desde la barra superior del dashboard.</span>
                             </label>
-                            <div class="report-actions report-machine-actions" style="align-self:stretch;display:flex;flex-wrap:wrap;align-content:flex-start;gap:0.55rem;">
+                            <div class="report-actions report-machine-actions" style="align-self:stretch;display:flex;flex-wrap:wrap;align-content:flex-start;gap:0.55rem;min-width:0;">
                                 <button id="reportRefreshBtn" class="btn">Actualizar reporte</button>
                                 <button id="reportExportBtn" class="btn btn-secondary">Generar CSV</button>
                                 <button id="reportExportIngresosBtn" class="btn btn-secondary">CSV ingresos</button>
