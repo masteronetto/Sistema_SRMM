@@ -778,17 +778,23 @@
         }
 
         .report-actions {
-            display: flex;
-            gap: 0.5rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.45rem;
             flex: 1 1 auto;
-            justify-content: flex-start;
-            flex-wrap: wrap;
+            justify-content: stretch;
+            align-content: start;
+            min-width: 0;
         }
 
         .report-actions .btn {
-            min-width: 120px;
+            min-width: 0;
+            width: 100%;
             flex: 0 1 auto;
-            height: 44px;
+            height: 38px;
+            padding: 0.45rem 0.75rem;
+            white-space: nowrap;
+            line-height: 1;
         }
 
         .report-machine-bar {
@@ -837,6 +843,7 @@
             flex: 1 1 0;
             min-width: 0;
             align-content: flex-start;
+            align-self: stretch;
         }
 
         @media (max-width: 900px) {
@@ -1380,7 +1387,7 @@
                                 <select id="reportMachineSelect" size="3" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-machine-select"></select>
                                 <span id="reportMultiHelp" class="small muted report-machine-help">El rango de fechas se toma desde la barra superior del dashboard.</span>
                             </label>
-                            <div class="report-actions report-machine-actions" style="align-self:stretch;display:flex;flex-wrap:wrap;align-content:flex-start;gap:0.55rem;min-width:0;">
+                            <div class="report-actions report-machine-actions">
                                 <button id="reportRefreshBtn" class="btn">Actualizar reporte</button>
                                 <button id="reportExportBtn" class="btn btn-secondary">Generar CSV</button>
                                 <button id="reportExportIngresosBtn" class="btn btn-secondary">CSV ingresos</button>
