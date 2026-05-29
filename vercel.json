@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "buildCommand": "npm install",
   "regions": ["iad1"],
   "cleanUrls": true,
@@ -23,7 +24,7 @@
     }
   ],
   "rewrites": [
-    { "source": "/", "destination": "/screenshot-login.html" },
-    { "source": "/((?!api|.*\\..*).*)", "destination": "/screenshot-login.html" }
+    { "source": "/", "destination": "/login.html" },
+    { "source": "/((?!api|.*\\..*).*)", "destination": "/login.html" }
   ]
 }
