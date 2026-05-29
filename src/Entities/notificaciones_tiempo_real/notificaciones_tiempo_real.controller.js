@@ -50,6 +50,7 @@ async function marcarNotificacionComoLeida(req, res) {
     const adminId = Number(req.user?.id_usuario);
     if (!Number.isFinite(adminId)) {
       return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
 
     const notificacion = await notificacionesRepo.marcarComoLeida(parseInt(id), adminId);
 
