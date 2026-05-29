@@ -108,8 +108,8 @@ export default function HistorialMantenciones({ maquinaId = null }) {
                 return;
             }
             const payload = await res.json();
-            setRows(payload.historial || payload.data || payload);
-            setTotal(payload.cantidad || payload.total || (payload.length || 0));
+            setRows(Array.isArray(payload.data) ? payload.data : []);
+            setTotal(payload.total || payload.cantidad || 0);
         } catch (error) {
             console.error('Error fetch historial', error);
         } finally {

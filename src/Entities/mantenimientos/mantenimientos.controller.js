@@ -80,6 +80,13 @@ function buildHistorialCsv(rows) {
   return lines.join('\n');
 }
 
+function successPayload(data, extras = {}) {
+  return {
+    data,
+    ...extras,
+  };
+}
+
 function validatePayload(payload) {
   const tipo_servicio = payload.tipo_servicio;
   const horometro_registro = toNumberOrNull(payload.horometro_registro);
@@ -132,7 +139,7 @@ async function create(req, res, next) {
     }
 
     const data = await mantenimientosRepo.createMantenimiento(parsed);
-    return res.status(201).json(data);
+    return res.status(201).json(successPayload(data));
   } catch (error) {
     if (error.code === '23503') {
       return res.status(400).json({ message: 'Referencia invalida en maquinaria o usuarios' });
@@ -149,7 +156,7 @@ async function listByMaquina(req, res, next) {
     }
 
     const data = await mantenimientosRepo.listMantenimientosByMaquina(maquinaria_id_maquina);
-    return res.json(data);
+    return res.json(successPayload(data, { cantidad: data.length }));
   } catch (error) {
     return next(error);
   }
@@ -227,7 +234,7 @@ async function historialByMaquina(req, res, next) {
       return res.status(200).send(`\uFEFF${csv}`);
     }
 
-    return res.json({
+    return res.json(successPayload(historialResult.rows, {
       maquinaria_id_maquina,
       filtros: {
         fecha_inicio,
@@ -242,7 +249,7 @@ async function historialByMaquina(req, res, next) {
       cantidad: historialResult.rows.length,
       total: historialResult.total,
       historial: historialResult.rows
-    });
+    }));
   } catch (error) {
     return next(error);
   }
@@ -251,7 +258,7 @@ async function historialByMaquina(req, res, next) {
 async function tiposServicio(req, res, next) {
   try {
     const tipos = await mantenimientosRepo.listTiposServicio();
-    return res.json({ data: tipos });
+    return res.json(successPayload(tipos, { cantidad: tipos.length }));
   } catch (error) {
     return next(error);
   }
@@ -322,10 +329,9 @@ async function programar(req, res, next) {
       ]
     );
 
-    return res.status(201).json({
-      message: 'Mantenimiento programado exitosamente. Máquina cambiada a estado "En Mantencion"',
-      orden
-    });
+    return res.status(201).json(successPayload(orden, {
+      message: 'Mantenimiento programado exitosamente. Máquina cambiada a estado "En Mantencion"'
+    }));
   } catch (error) {
     if (error.code === '23503') {
       return res.status(400).json({ message: 'Referencia inválida en maquinaria o usuarios' });
@@ -342,7 +348,7 @@ async function listOrdenesMaquina(req, res, next) {
     }
 
     const ordenes = await mantenimientosRepo.listOrdenesByMaquina(maquinaria_id_maquina);
-    return res.json(ordenes);
+    return res.json(successPayload(ordenes, { cantidad: ordenes.length }));
   } catch (error) {
     return next(error);
   }
@@ -357,7 +363,7 @@ async function listOrdenesMecanico(req, res, next) {
 
     const estado = req.query.estado || null; // e.g., 'Programada', 'En Progreso'
     const ordenes = await mantenimientosRepo.listOrdenesByMecanico(mecanico_id, estado);
-    return res.json(ordenes);
+    return res.json(successPayload(ordenes, { cantidad: ordenes.length }));
   } catch (error) {
     return next(error);
   }
@@ -375,10 +381,9 @@ async function iniciar(req, res, next) {
       return res.status(404).json({ message: 'Orden no encontrada o ya fue iniciada' });
     }
 
-    return res.json({
-      message: 'Orden de trabajo iniciada',
-      orden
-    });
+    return res.json(successPayload(orden, {
+      message: 'Orden de trabajo iniciada'
+    }));
   } catch (error) {
     return next(error);
   }
@@ -403,7 +408,9 @@ async function completar(req, res, next) {
       return res.status(404).json({ message: 'Orden no encontrada o no se pudo completar' });
     }
 
-    return res.json({ message: 'Orden completada', orden });
+    return res.json(successPayload(orden, {
+      message: 'Orden completada'
+    }));
   } catch (error) {
     return next(error);
   }
@@ -412,10 +419,7 @@ async function completar(req, res, next) {
 async function listOrdenesAtrasadas(req, res, next) {
   try {
     const ordenes = await mantenimientosRepo.listOrdenesAtrasadas();
-    return res.json({
-      cantidad: ordenes.length,
-      ordenes,
-    });
+    return res.json(successPayload(ordenes, { cantidad: ordenes.length }));
   } catch (error) {
     return next(error);
   }
@@ -425,7 +429,7 @@ async function verificarRetrasos(req, res, next) {
   try {
     const resultado = await procesarRetrasos(req.app.get('io'));
 
-    return res.status(200).json(resultado);
+    return res.status(200).json(successPayload(resultado));
   } catch (error) {
     return next(error);
   }
@@ -447,7 +451,7 @@ async function getOrdenById(req, res, next) {
       return res.status(404).json({ message: 'Orden de trabajo no encontrada' });
     }
 
-    return res.json(orden);
+    return res.json(successPayload(orden));
   } catch (error) {
     return next(error);
   }
@@ -505,11 +509,11 @@ async function procesarRetrasos(io) {
     notificadas.push(orden.id_orden);
   }
 
-  return {
+  return successPayload({
     cantidad_detectadas: ordenes.length,
     cantidad_notificadas: notificadas.length,
     ids_notificados: notificadas,
-  };
+  });
 }
 
 module.exports = {

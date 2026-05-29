@@ -3414,9 +3414,11 @@ async function loadMaintenanceDashboard() {
             fetch('/api/maquinaria/urgent-maintenance?umbral=0&limit=5', { headers })
         ]);
 
-        const orders = ordersRes.ok ? await ordersRes.json() : [];
+        const ordersBody = ordersRes.ok ? await ordersRes.json() : [];
         const stats = statsRes.ok ? await statsRes.json() : [];
         const urgent = urgentRes.ok ? await urgentRes.json() : [];
+
+        const orders = ordersBody.data || [];
 
         const pendientes = orders.filter((item) => ['Programada', 'En Progreso'].includes(item.estado_ot)).length;
         const programados = orders.filter((item) => item.estado_ot === 'Programada').length;
@@ -3488,9 +3490,8 @@ async function loadMaintenanceOrders(page = 1) {
         if (!res.ok) throw new Error('No se pudieron cargar las órdenes');
         const body = await res.json();
 
-        // body can be array or {rows, total, page, perPage}
-        let rows = Array.isArray(body) ? body : (body.rows || []);
-        const total = body.total || (Array.isArray(body) ? rows.length : (body.total || 0));
+        let rows = body.data || [];
+        const total = body.total || rows.length;
 
         renderMaintenanceOrders(rows, maintenanceOrdersPage, maintenanceOrdersPerPage, total);
 
@@ -4064,7 +4065,8 @@ async function openMaintenanceById(idOrden) {
             }
             throw new Error('No se pudo cargar la orden');
         }
-        const orden = await res.json();
+        const payload = await res.json();
+        const orden = payload.data;
 
         if (detailEl) {
             detailEl.innerHTML = `<div style="padding:0.6rem;background:#fff;border:1px solid #e2e8f0;border-radius:6px;">
