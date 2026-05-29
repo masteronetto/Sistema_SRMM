@@ -789,11 +789,57 @@
             height: 44px;
         }
 
+        .report-machine-bar {
+            gap: 0.9rem;
+        }
+
+        .report-machine-panel {
+            display: grid;
+            grid-template-rows: auto minmax(92px, 1fr) auto;
+            gap: 0.45rem;
+            min-width: 0;
+        }
+
+        .report-machine-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .report-machine-toggle {
+            padding: 0.35rem 0.7rem;
+            font-weight: 700;
+            min-width: 128px;
+            height: 36px;
+            white-space: nowrap;
+        }
+
+        .report-machine-select {
+            width: 100%;
+            min-height: 92px;
+            height: 100%;
+            padding-top: 0.65rem;
+            padding-bottom: 0.65rem;
+        }
+
+        .report-machine-help {
+            margin-top: 0.05rem;
+            line-height: 1.35;
+        }
+
+        .report-machine-actions {
+            flex: 1 1 0;
+            min-width: 260px;
+        }
+
         @media (max-width: 900px) {
             .report-filters { align-items: stretch; }
             .report-filters > label { width: 100%; }
             .report-actions { width: 100%; }
             .report-actions .btn { flex: 1 1 auto; min-width: 0; }
+            .report-machine-header { align-items: flex-start; flex-direction: column; }
+            .report-machine-toggle { width: 100%; min-width: 0; }
         }
 
         /* Estilos para inputs de fecha más visibles */
@@ -1318,16 +1364,16 @@
                             <div id="reportesStatus" class="role-badge" style="background:rgba(52,152,219,0.14);color:#2980b9;">Listo</div>
                         </div>
 
-                        <div id="reportesFilters" class="report-filters" style="align-items:start;">
-                            <label style="min-width:200px;">
-                                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                        <div id="reportesFilters" class="report-filters report-machine-bar" style="align-items:stretch;">
+                            <label class="report-machine-panel" style="min-width:0;flex:1 1 560px;">
+                                <div class="report-machine-header">
                                     <span class="small muted">Máquinas</span>
-                                    <button type="button" id="toggleMultiSelectBtn" class="btn btn-secondary" style="padding:4px 10px;font-weight:700;min-width:140px;">Seleccionar varias</button>
+                                    <button type="button" id="toggleMultiSelectBtn" class="btn btn-secondary report-machine-toggle">Seleccionar varias</button>
                                 </div>
-                                <select id="reportMachineSelect" size="4" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-machine-select"></select>
-                                <span id="reportMultiHelp" class="small muted">El rango de fechas se toma desde la barra superior del dashboard.</span>
+                                <select id="reportMachineSelect" size="3" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-machine-select"></select>
+                                <span id="reportMultiHelp" class="small muted report-machine-help">El rango de fechas se toma desde la barra superior del dashboard.</span>
                             </label>
-                            <div class="report-actions" style="align-self:stretch;display:flex;flex-wrap:wrap;align-content:flex-start;gap:0.55rem;">
+                            <div class="report-actions report-machine-actions" style="align-self:stretch;display:flex;flex-wrap:wrap;align-content:flex-start;gap:0.55rem;">
                                 <button id="reportRefreshBtn" class="btn">Actualizar reporte</button>
                                 <button id="reportExportBtn" class="btn btn-secondary">Generar CSV</button>
                                 <button id="reportExportIngresosBtn" class="btn btn-secondary">CSV ingresos</button>
