@@ -1311,43 +1311,26 @@
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
                             <div>
                                 <div class="section-title">Visualización de reportes históricos</div>
-                                <div class="muted">Consulta uso histórico, mantenciones y estado operativo filtrando por máquina y rango de fechas.</div>
+                                <div class="muted">La barra superior define el rango global. Aquí eliges máquinas y exportas la vista activa.</div>
                             </div>
                             <div id="reportesStatus" class="role-badge" style="background:rgba(52,152,219,0.14);color:#2980b9;">Listo</div>
                         </div>
 
-                        <div id="reportesFilters" class="report-filters">
-                            <label>
+                        <div id="reportesFilters" class="report-filters" style="align-items:start;">
+                            <label style="min-width:260px;">
                                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
                                     <span class="small muted">Máquinas</span>
                                     <button type="button" id="toggleMultiSelectBtn" class="btn btn-secondary" style="padding:4px 10px;font-weight:700;min-width:140px;">Seleccionar varias</button>
                                 </div>
                                 <select id="reportMachineSelect" size="4" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-machine-select"></select>
-                                <span id="reportMultiHelp" class="small muted">Pulsa 'Seleccionar varias' para activar multiselección.</span>
+                                <span id="reportMultiHelp" class="small muted">El rango de fechas se toma desde la barra superior del dashboard.</span>
                             </label>
-                            <div style="display:flex;flex-direction:column;gap:8px;">
-                                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                                    <div class="small muted">Rango de fechas</div>
-                                    <button id="reportToggleCustomDatesBtn" type="button" class="btn btn-secondary" style="padding:6px 10px;min-width:140px;">Usar rango personalizado</button>
-                                </div>
-                                <div id="reportDateGlobalNotice" class="muted small">Usando rango global (barra superior). Pulsa "Usar rango personalizado" para elegir fechas específicas.</div>
-                                <div id="reportDateCustom" style="display:none;gap:8px;align-items:center;">
-                                    <label style="display:flex;flex-direction:column;">
-                                        <span class="small muted">Fecha inicio</span>
-                                        <input id="reportStartDate" type="date" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-date nice-date">
-                                    </label>
-                                    <label style="display:flex;flex-direction:column;">
-                                        <span class="small muted">Fecha fin</span>
-                                        <input id="reportEndDate" type="date" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 report-date nice-date">
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="report-actions">
+                            <div class="report-actions" style="align-self:stretch;display:flex;flex-wrap:wrap;align-content:flex-start;gap:0.55rem;">
                                 <button id="reportRefreshBtn" class="btn">Actualizar reporte</button>
                                 <button id="reportExportBtn" class="btn btn-secondary">Generar CSV</button>
-                                <button id="reportExportIngresosBtn" class="btn btn-secondary">Descargar CSV Ingresos</button>
+                                <button id="reportExportIngresosBtn" class="btn btn-secondary">CSV ingresos</button>
                                 <button id="reportPdfBtn" class="btn btn-secondary">Generar PDF</button>
-                                <button id="reportPrintBtn" class="btn btn-secondary">Exportar imprimible</button>
+                                <button id="reportPrintBtn" class="btn btn-secondary">Imprimir</button>
                             </div>
                         </div>
                     </section>
@@ -1384,8 +1367,8 @@
                                 <div id="reportFallasStatus" class="role-badge" style="background:rgba(217,119,6,0.14);color:#d97706;">Listo</div>
                             </div>
 
-                            <div id="reportFallasFilters" style="display:grid;grid-template-columns:minmax(240px,1fr) 130px 130px 140px auto auto;gap:0.5rem;margin-top:1rem;align-items:end;column-gap:0.75rem;">
-                                <label style="display:grid;gap:0.35rem;">
+                            <div id="reportFallasFilters" style="display:grid;grid-template-columns:minmax(220px,1fr) 120px 120px 135px auto auto;gap:0.45rem;margin-top:0.9rem;align-items:end;column-gap:0.65rem;">
+                                <label style="display:grid;gap:0.3rem;">
                                     <span class="small muted">Período</span>
                                     <select id="reportFallasPeriodo" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                         <option value="semanal">Semanal</option>
@@ -1394,15 +1377,15 @@
                                         <option value="personalizado">Personalizado</option>
                                     </select>
                                 </label>
-                                <label style="display:none;gap:0.35rem;">
+                                <label style="display:none;gap:0.3rem;">
                                     <span class="small muted">Fecha inicio</span>
                                     <input id="reportFallasStartDate" type="date" style="display:none;max-width:130px;box-sizing:border-box;" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 </label>
-                                <label style="display:none;gap:0.35rem;">
+                                <label style="display:none;gap:0.3rem;">
                                     <span class="small muted">Fecha fin</span>
                                     <input id="reportFallasEndDate" type="date" style="display:none;max-width:130px;box-sizing:border-box;" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 </label>
-                                <label style="display:grid;gap:0.35rem;">
+                                <label style="display:grid;gap:0.3rem;">
                                     <span class="small muted">Criticidad</span>
                                     <select id="reportFallasCriticidad" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                         <option value="">Todas</option>
@@ -1411,15 +1394,15 @@
                                         <option value="Baja">Baja</option>
                                     </select>
                                 </label>
-                                <label style="display:flex;gap:0.5rem;align-items:center;font-weight:700;color:#5f5048;">
+                                <label style="display:flex;gap:0.45rem;align-items:center;font-weight:700;color:#5f5048;white-space:nowrap;">
                                     <input id="reportFallasShowWarning" type="checkbox" />
                                     Mostrar advertencia
                                 </label>
-                                <button id="reportFallasRefreshBtn" class="btn" style="height:48px;white-space:nowrap;">Actualizar fallas</button>
-                                <button id="reportFallasPrintBtn" class="btn btn-secondary" style="height:48px;white-space:nowrap;">Imprimir fallas</button>
+                                <button id="reportFallasRefreshBtn" class="btn" style="height:44px;white-space:nowrap;">Actualizar fallas</button>
+                                <button id="reportFallasPrintBtn" class="btn btn-secondary" style="height:44px;white-space:nowrap;">Imprimir fallas</button>
                             </div>
 
-                            <div class="mini-grid" style="margin-top:1rem;">
+                            <div class="mini-grid" style="margin-top:0.85rem;gap:0.85rem;">
                                 <article class="section-card">
                                     <div class="section-title">Total fallas</div>
                                     <div id="reportFallasTotal" class="text-3xl font-bold text-slate-800">—</div>
@@ -1439,28 +1422,28 @@
                                 </article>
                             </div>
 
-                            <div class="mini-grid" style="margin-top:1rem;">
+                            <div class="mini-grid" style="margin-top:0.85rem;gap:0.85rem;">
                                 <article class="section-card">
                                     <div class="section-title">Fallas por criticidad</div>
-                                    <div class="relative h-72 w-full mt-3"><canvas id="reportFallasCriticidadChart"></canvas></div>
+                                    <div class="relative h-64 w-full mt-2"><canvas id="reportFallasCriticidadChart"></canvas></div>
                                 </article>
                                 <article class="section-card">
                                     <div class="section-title">Fallas por período</div>
-                                    <div class="relative h-72 w-full mt-3"><canvas id="reportFallasPeriodoChart"></canvas></div>
+                                    <div class="relative h-64 w-full mt-2"><canvas id="reportFallasPeriodoChart"></canvas></div>
                                 </article>
                             </div>
 
-                            <section class="section-card" style="margin-top:1rem;">
-                                <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <details class="section-card" style="margin-top:0.85rem; padding:1rem 1rem 0.75rem;">
+                                <summary style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:1rem;list-style:none;">
                                     <div>
                                         <div class="section-title">Incidencias (detalle global)</div>
                                         <div class="muted">Lista detallada de incidencias filtrable por los mismos criterios del reporte.</div>
                                     </div>
-                                </div>
+                                </summary>
                                 <div id="reportIncidenciasGlobal" class="overflow-x-auto mt-4"></div>
-                            </section>
+                            </details>
 
-                            <div id="reportFallasTable" class="overflow-x-auto mt-4"></div>
+                            <div id="reportFallasTable" class="overflow-x-auto mt-3"></div>
                         </section>
 
                     <div class="mini-grid">
@@ -2965,11 +2948,9 @@ async function loadSelectedMachinesReport(machineIds, fechaInicio, fechaFin) {
 
 async function loadReportesDashboard() {
     const machineSelect = document.getElementById('reportMachineSelect');
-    const startDateInput = document.getElementById('reportStartDate');
-    const endDateInput = document.getElementById('reportEndDate');
     const selectedLabel = document.getElementById('reportSelectedMachineLabel');
 
-    if (!machineSelect || !startDateInput || !endDateInput) return;
+    if (!machineSelect) return;
 
     setReportStatus('Cargando reportes...', 'info');
 
@@ -2984,15 +2965,6 @@ async function loadReportesDashboard() {
         Array.from(machineSelect.options).forEach((option) => {
             option.selected = initialIds.includes(String(option.value));
         });
-
-        const today = new Date();
-        const defaultEnd = today.toISOString().slice(0, 10);
-        const past = new Date(today);
-        past.setDate(past.getDate() - 30);
-        const defaultStart = past.toISOString().slice(0, 10);
-
-        if (!startDateInput.value) startDateInput.value = defaultStart;
-        if (!endDateInput.value) endDateInput.value = defaultEnd;
 
         const headers = getAuthHeaders();
         const [topRes, statsRes] = await Promise.all([
@@ -3063,24 +3035,15 @@ async function loadReportesDashboard() {
     }
 }
 
-// Devuelve el rango de fechas efectivo para reportes: usa el rango global a menos que
-// el panel de fechas personalizado esté visible.
+// Devuelve el rango de fechas efectivo para reportes usando la barra superior.
 function getEffectiveReportDates() {
-    const customPanel = document.getElementById('reportDateCustom');
-    const startEl = document.getElementById('reportStartDate');
-    const endEl = document.getElementById('reportEndDate');
-    const globalStart = document.getElementById('globalStartDate') ? document.getElementById('globalStartDate').value : '';
-    const globalEnd = document.getElementById('globalEndDate') ? document.getElementById('globalEndDate').value : '';
-    const useCustom = customPanel && getComputedStyle(customPanel).display !== 'none';
-    const start = useCustom ? (startEl?.value || globalStart) : (globalStart || startEl?.value || '');
-    const end = useCustom ? (endEl?.value || globalEnd) : (globalEnd || endEl?.value || '');
-    return { start, end, useCustom };
+    const start = document.getElementById('globalStartDate')?.value || '';
+    const end = document.getElementById('globalEndDate')?.value || '';
+    return { start, end, useCustom: false };
 }
 
 function initReportesDashboard() {
     const machineSelect = document.getElementById('reportMachineSelect');
-    const startDateInput = document.getElementById('reportStartDate');
-    const endDateInput = document.getElementById('reportEndDate');
     const fallasPeriodoSelect = document.getElementById('reportFallasPeriodo');
     const fallasStartDateInput = document.getElementById('reportFallasStartDate');
     const fallasEndDateInput = document.getElementById('reportFallasEndDate');
@@ -3093,7 +3056,7 @@ function initReportesDashboard() {
     const fallasRefreshBtn = document.getElementById('reportFallasRefreshBtn');
     const fallasPrintBtn = document.getElementById('reportFallasPrintBtn');
 
-    if (!machineSelect || !startDateInput || !endDateInput || !refreshBtn || !exportBtn || !pdfBtn) return;
+    if (!machineSelect || !refreshBtn || !exportBtn || !pdfBtn) return;
 
     if (!reportsInitialized) {
         reportsInitialized = true;
@@ -3429,21 +3392,6 @@ function initReportesDashboard() {
             });
         }
 
-        const reloadSelected = async () => {
-            const selectedIds = getSelectedReportMachineIds(machineSelect);
-            if (!selectedIds.length) return;
-            try {
-                await loadSelectedMachinesReport(selectedIds, startDateInput.value, endDateInput.value);
-                await loadReportFallasDashboard();
-                setReportStatus('Filtros aplicados', 'success');
-            } catch (error) {
-                console.error(error);
-                setReportStatus('No se pudo filtrar el historial', 'error');
-            }
-        };
-
-        startDateInput.addEventListener('change', reloadSelected);
-        endDateInput.addEventListener('change', reloadSelected);
     }
 
     loadReportesDashboard();
@@ -3468,16 +3416,6 @@ function setGlobalRangeDays(days) {
     if (gStart) gStart.value = start;
     if (gEnd) gEnd.value = end;
 
-    // Mirror into report inputs only when report is not using a custom range
-    const rStart = document.getElementById('reportStartDate');
-    const rEnd = document.getElementById('reportEndDate');
-    const customPanel = document.getElementById('reportDateCustom');
-    const reportUsesCustom = customPanel && getComputedStyle(customPanel).display !== 'none';
-    if (!reportUsesCustom) {
-        if (rStart) rStart.value = start;
-        if (rEnd) rEnd.value = end;
-    }
-
     updateActiveRangeLabel();
     const activeView = document.querySelector('.view.active')?.id;
     if (document.getElementById('reportes') && activeView === 'reportes') {
@@ -3489,12 +3427,10 @@ function setGlobalRangeDays(days) {
 }
 
 function updateActiveRangeLabel() {
-    const rStart = document.getElementById('reportStartDate');
-    const rEnd = document.getElementById('reportEndDate');
     const label = document.getElementById('reportActiveRangeLabel');
     if (!label) return;
-    const start = rStart?.value || document.getElementById('globalStartDate')?.value || '';
-    const end = rEnd?.value || document.getElementById('globalEndDate')?.value || '';
+    const start = document.getElementById('globalStartDate')?.value || '';
+    const end = document.getElementById('globalEndDate')?.value || '';
     if (!start || !end) {
         label.textContent = 'Rango: —';
         return;
@@ -3520,14 +3456,6 @@ function initGlobalDateControls() {
     if (!gStart.value) gStart.value = formatIsoDate(past);
     if (!gEnd.value) gEnd.value = formatIsoDate(today);
 
-    // Sync initial values into report inputs if present
-    const rStart = document.getElementById('reportStartDate');
-    const rEnd = document.getElementById('reportEndDate');
-    if (rStart && rEnd && (!rStart.value || !rEnd.value)) {
-        rStart.value = gStart.value;
-        rEnd.value = gEnd.value;
-    }
-
     updateActiveRangeLabel();
 
     quicks.forEach((btn) => {
@@ -3548,10 +3476,6 @@ function initGlobalDateControls() {
     });
 
     gStart.addEventListener('change', () => {
-        const rStart = document.getElementById('reportStartDate');
-        const customPanel = document.getElementById('reportDateCustom');
-        const reportUsesCustom = customPanel && getComputedStyle(customPanel).display !== 'none';
-        if (rStart && !reportUsesCustom) rStart.value = gStart.value;
         updateActiveRangeLabel();
         const activeView = document.querySelector('.view.active')?.id;
         if (activeView === 'reportes') loadReportesDashboard();
@@ -3559,10 +3483,6 @@ function initGlobalDateControls() {
     });
 
     gEnd.addEventListener('change', () => {
-        const rEnd = document.getElementById('reportEndDate');
-        const customPanel = document.getElementById('reportDateCustom');
-        const reportUsesCustom = customPanel && getComputedStyle(customPanel).display !== 'none';
-        if (rEnd && !reportUsesCustom) rEnd.value = gEnd.value;
         updateActiveRangeLabel();
         const activeView = document.querySelector('.view.active')?.id;
         if (activeView === 'reportes') loadReportesDashboard();
@@ -3699,26 +3619,6 @@ async function loadInicioKpis() {
                     options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{color:'#6b7280'}}, x:{ticks:{color:'#6b7280'}}} }
                 });
             }
-        }
-
-        // Toggle para usar rango de fechas personalizado dentro de Reportes
-        const toggleCustomBtn = document.getElementById('reportToggleCustomDatesBtn');
-        const dateCustomPanel = document.getElementById('reportDateCustom');
-        const dateNotice = document.getElementById('reportDateGlobalNotice');
-        if (toggleCustomBtn && dateCustomPanel && dateNotice) {
-            toggleCustomBtn.addEventListener('click', () => {
-                const isHidden = getComputedStyle(dateCustomPanel).display === 'none';
-                dateCustomPanel.style.display = isHidden ? 'flex' : 'none';
-                if (isHidden) {
-                    toggleCustomBtn.textContent = 'Usar rango global';
-                    dateNotice.textContent = 'Usando rango personalizado para reportes.';
-                } else {
-                    toggleCustomBtn.textContent = 'Usar rango personalizado';
-                    dateNotice.textContent = 'Usando rango global (barra superior). Pulsa "Usar rango personalizado" para elegir fechas específicas.';
-                }
-                // recargar para reflejar nuevo rango
-                loadReportesDashboard();
-            });
         }
 
         setReportStatus('Métricas cargadas', 'success');
