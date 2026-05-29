@@ -299,6 +299,26 @@
         .section-card { padding: clamp(0.9rem, 1vw, 1rem); }
         .section-title { font-size: clamp(1rem, 0.6vw + 0.9rem, 1.08rem); font-weight: 800; margin-bottom: 0.9rem; }
 
+        .compact-report-card {
+            padding: 0.8rem 0.9rem;
+            min-height: 0;
+        }
+
+        .compact-report-card .section-title {
+            margin-bottom: 0.45rem;
+            font-size: 0.93rem;
+        }
+
+        .compact-report-card .text-3xl {
+            font-size: clamp(1.45rem, 1vw + 1rem, 1.8rem);
+            line-height: 1;
+        }
+
+        .compact-report-card .muted {
+            margin-top: 0.35rem !important;
+            line-height: 1.35;
+        }
+
         /* ── ALERTAS ── */
         .alert-list  { display: grid; gap: 0.7rem; }
         .alert-item  {
@@ -846,6 +866,46 @@
             align-self: stretch;
         }
 
+        .report-fallas-filters {
+            display: grid;
+            grid-template-columns: minmax(220px, 1.15fr) minmax(120px, 130px) minmax(120px, 130px) minmax(135px, 145px) minmax(180px, 1fr);
+            gap: 0.55rem 0.65rem;
+            margin-top: 0.9rem;
+            align-items: end;
+        }
+
+        .report-fallas-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.55rem;
+            margin-top: 0.75rem;
+            justify-content: flex-end;
+            align-items: stretch;
+        }
+
+        .report-fallas-actions .btn {
+            min-width: 160px;
+            height: 40px;
+            white-space: nowrap;
+        }
+
+        .report-fallas-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem 1rem;
+            flex-wrap: wrap;
+        }
+
+        .report-fallas-header .section-title {
+            margin-bottom: 0.1rem;
+        }
+
+        .report-fallas-header .muted {
+            max-width: 52rem;
+            line-height: 1.35;
+        }
+
         @media (max-width: 900px) {
             .report-machine-bar { grid-template-columns: 1fr; }
             .report-filters { align-items: stretch; }
@@ -854,6 +914,10 @@
             .report-actions .btn { flex: 1 1 auto; min-width: 0; }
             .report-machine-header { align-items: flex-start; flex-direction: column; }
             .report-machine-toggle { width: 100%; min-width: 0; }
+            .report-fallas-filters { grid-template-columns: 1fr 1fr; }
+            .report-fallas-actions { justify-content: stretch; }
+            .report-fallas-actions .btn { flex: 1 1 160px; min-width: 0; }
+            .report-fallas-header { align-items: flex-start; }
         }
 
         /* Estilos para inputs de fecha más visibles */
@@ -908,6 +972,9 @@
             .detail-toolbar .btn,
             .detail-toolbar .top-button { flex: 1 1 auto; }
             .table-wrap table { min-width: 560px; }
+            .report-fallas-filters { grid-template-columns: 1fr; }
+            .report-fallas-actions { flex-direction: column; }
+            .report-fallas-actions .btn { width: 100%; }
         }
     </style>
 </head>
@@ -1421,7 +1488,7 @@
                 </div>
 
                         <section class="section-card">
-                            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+                            <div class="report-fallas-header">
                                 <div>
                                     <div class="section-title">Reporte de fallas</div>
                                     <div class="muted">Agrupa fallas por máquina, período y criticidad, con estadísticas clave e impresión limpia.</div>
@@ -1429,7 +1496,7 @@
                                 <div id="reportFallasStatus" class="role-badge" style="background:rgba(217,119,6,0.14);color:#d97706;">Listo</div>
                             </div>
 
-                            <div id="reportFallasFilters" style="display:grid;grid-template-columns:minmax(220px,1fr) 120px 120px 135px auto auto;gap:0.45rem;margin-top:0.9rem;align-items:end;column-gap:0.65rem;">
+                            <div id="reportFallasFilters" class="report-fallas-filters">
                                 <label style="display:grid;gap:0.3rem;">
                                     <span class="small muted">Período</span>
                                     <select id="reportFallasPeriodo" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -1460,25 +1527,27 @@
                                     <input id="reportFallasShowWarning" type="checkbox" />
                                     Mostrar advertencia
                                 </label>
+                            </div>
+                            <div class="report-fallas-actions">
                                 <button id="reportFallasRefreshBtn" class="btn" style="height:44px;white-space:nowrap;">Actualizar fallas</button>
                                 <button id="reportFallasPrintBtn" class="btn btn-secondary" style="height:44px;white-space:nowrap;">Imprimir fallas</button>
                             </div>
 
                             <div class="mini-grid" style="margin-top:0.85rem;gap:0.85rem;">
-                                <article class="section-card">
+                                <article class="section-card compact-report-card">
                                     <div class="section-title">Total fallas</div>
                                     <div id="reportFallasTotal" class="text-3xl font-bold text-slate-800">—</div>
                                     <div id="reportFallasInterpretation" class="muted small" style="margin-top:6px;display:none;"></div>
                                 </article>
-                                <article class="section-card">
+                                <article class="section-card compact-report-card">
                                     <div class="section-title">Máquina con más fallas</div>
                                     <div id="reportFallasTopMachine" class="text-3xl font-bold text-slate-800">—</div>
                                 </article>
-                                <article class="section-card">
+                                <article class="section-card compact-report-card">
                                     <div class="section-title">Tiempo promedio resolución</div>
                                     <div id="reportFallasAvgResolution" class="text-3xl font-bold text-slate-800">—</div>
                                 </article>
-                                <article class="section-card">
+                                <article class="section-card compact-report-card">
                                     <div class="section-title">Pendientes</div>
                                     <div id="reportFallasPending" class="text-3xl font-bold text-slate-800">—</div>
                                 </article>
