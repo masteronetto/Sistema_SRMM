@@ -354,6 +354,34 @@ async function listOrdenesMaquina(req, res, next) {
   }
 }
 
+async function listOrdenes(req, res, next) {
+  try {
+    const page = req.query.page === undefined || req.query.page === null || req.query.page === ''
+      ? 1
+      : toNumberOrNull(req.query.page);
+    const perPage = req.query.perPage === undefined || req.query.perPage === null || req.query.perPage === ''
+      ? 10
+      : toNumberOrNull(req.query.perPage);
+
+    if (page === null || perPage === null) {
+      return res.status(400).json({ message: 'page y perPage deben ser numéricos' });
+    }
+
+    const limit = Math.max(1, perPage);
+    const offset = (Math.max(1, page) - 1) * limit;
+    const result = await mantenimientosRepo.listOrdenes({ limit, offset });
+
+    return res.json(successPayload(result.rows, {
+      cantidad: result.rows.length,
+      total: result.total,
+      page: Math.max(1, page),
+      perPage: limit,
+    }));
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function listOrdenesMecanico(req, res, next) {
   try {
     const mecanico_id = toNumberOrNull(req.params.mecanico_id);
@@ -522,6 +550,7 @@ module.exports = {
   historialByMaquina,
   tiposServicio,
   programar,
+  listOrdenes,
   listOrdenesMaquina,
   listOrdenesMecanico,
   iniciar,

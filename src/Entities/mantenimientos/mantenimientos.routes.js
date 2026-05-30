@@ -12,6 +12,7 @@ router.get('/tipos-servicio', controller.tiposServicio);
 
 // Órdenes de trabajo para programar mantenimientos preventivos.
 router.post('/programar', controller.programar);
+router.get('/ordenes', verifyToken, controller.listOrdenes);
 router.get('/ordenes/atrasadas', controller.listOrdenesAtrasadas);
 router.post('/ordenes/verificar-retrasos', controller.verificarRetrasos);
 router.get('/ordenes/maquina/:maquinaria_id_maquina', controller.listOrdenesMaquina);

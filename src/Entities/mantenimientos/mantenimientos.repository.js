@@ -209,6 +209,45 @@ async function listOrdenesByMecanico(mecanico_asignado, estado = null) {
   let query = `
     SELECT id_orden, tipo_servicio, detalle_tecnico, fecha_programada, maquinaria_id_maquina, mecanico_asignado, estado_ot, alerta_retraso_enviada, estado_maquina_al_bloquear, created_at, updated_at
     FROM ordenes_trabajo
+
+async function listOrdenes({ limit = 10, offset = 0 } = {}) {
+  const safeLimit = Number.isFinite(Number(limit)) && Number(limit) > 0 ? Number(limit) : 10;
+  const safeOffset = Number.isFinite(Number(offset)) && Number(offset) >= 0 ? Number(offset) : 0;
+
+  const dataQuery = `
+    SELECT
+      ot.id_orden,
+      ot.tipo_servicio,
+      ot.detalle_tecnico,
+      ot.fecha_programada,
+      ot.maquinaria_id_maquina,
+      ot.mecanico_asignado,
+      ot.estado_ot,
+      ot.alerta_retraso_enviada,
+      ot.estado_maquina_al_bloquear,
+      ot.created_at,
+      ot.updated_at,
+      maq.modelo_equipo,
+      u.nombre_completo AS mecanico_nombre
+    FROM ordenes_trabajo ot
+    INNER JOIN maquinaria maq ON maq.id_maquina = ot.maquinaria_id_maquina
+    LEFT JOIN usuarios u ON u.id_usuario = ot.mecanico_asignado
+    ORDER BY ot.fecha_programada DESC, ot.id_orden DESC
+    LIMIT $1 OFFSET $2
+  `;
+
+  const countQuery = `SELECT COUNT(1) AS total FROM ordenes_trabajo`;
+
+  const [dataResult, countResult] = await Promise.all([
+    pool.query(dataQuery, [safeLimit, safeOffset]),
+    pool.query(countQuery)
+  ]);
+
+  return {
+    rows: dataResult.rows,
+    total: Number(countResult.rows[0]?.total || 0),
+  };
+}
     WHERE mecanico_asignado = $1
   `;
   const params = [mecanico_asignado];
@@ -237,6 +276,7 @@ async function iniciarOrdenTrabajo(id_orden) {
 }
 
 async function completarOrdenTrabajo(id_orden, horometro_registro) {
+  listOrdenes,
   const query = `
     UPDATE ordenes_trabajo
     SET estado_ot = 'Completada',

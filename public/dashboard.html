@@ -4076,9 +4076,7 @@ async function openMaintenanceById(idOrden) {
                 <div style="margin-top:0.35rem;"><strong>Estado:</strong> ${orden.estado_ot || '—'}</div>
                 <div style="margin-top:0.25rem;"><strong>Mecánico asignado:</strong> ${orden.mecanico_asignado ? ('#' + orden.mecanico_asignado) : '—'}</div>
                 <div class="muted small" style="margin-top:0.35rem;">Creada: ${formatCLDate(orden.created_at)} — Actualizada: ${formatCLDate(orden.updated_at)}</div>
-                <div style="margin-top:0.5rem;">
-                    <a class="btn btn-secondary" href="/mantenimientos/ordenes/${orden.id_orden}" target="_blank" rel="noopener">Ver orden completa</a>
-                </div>
+                <div class="muted small" style="margin-top:0.5rem;">Detalle completo visible en este panel.</div>
             </div>`;
             // Añadir botones de acción según rol y estado
             const canAct = (typeof userRole !== 'undefined') && (userRole === 'Mecanico' || userRole === 'Administrador');
