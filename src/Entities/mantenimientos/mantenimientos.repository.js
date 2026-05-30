@@ -351,6 +351,7 @@ module.exports = {
   programarMantenimiento,
   getOrdenTrabajoById,
   listOrdenesByMaquina,
+  listOrdenes,
   listOrdenesByMecanico,
   listOrdenesAtrasadas,
   marcarRetrasoNotificado,
