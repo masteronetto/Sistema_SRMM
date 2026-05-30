@@ -3377,11 +3377,11 @@ async function loadInicioKpis() {
             const values = top.map(t => Number(t.horometro_actual ?? t.horometro ?? 0));
             const canvas = document.getElementById('inicioTopChart');
             if (canvas) {
-                if (window.inicioTopChart) {
-                    window.inicioTopChart.destroy();
-                    window.inicioTopChart = null;
+                if (window.inicioTopChartInstance && typeof window.inicioTopChartInstance.destroy === 'function') {
+                    window.inicioTopChartInstance.destroy();
+                    window.inicioTopChartInstance = null;
                 }
-                window.inicioTopChart = new Chart(canvas, {
+                window.inicioTopChartInstance = new Chart(canvas, {
                     type: 'bar',
                     data: { labels, datasets: [{ label: 'Horas acumuladas', data: values, backgroundColor: 'rgba(109,81,65,0.8)', borderColor: '#6d5141', borderWidth:1, borderRadius:8 }] },
                     options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{color:'#6b7280'}}, x:{ticks:{color:'#6b7280'}}} }
