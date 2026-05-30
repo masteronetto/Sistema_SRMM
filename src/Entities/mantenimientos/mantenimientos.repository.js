@@ -209,6 +209,19 @@ async function listOrdenesByMecanico(mecanico_asignado, estado = null) {
   let query = `
     SELECT id_orden, tipo_servicio, detalle_tecnico, fecha_programada, maquinaria_id_maquina, mecanico_asignado, estado_ot, alerta_retraso_enviada, estado_maquina_al_bloquear, created_at, updated_at
     FROM ordenes_trabajo
+    WHERE mecanico_asignado = $1
+  `;
+  const params = [mecanico_asignado];
+
+  if (estado) {
+    query += ` AND estado_ot = $2`;
+    params.push(estado);
+  }
+
+  query += ` ORDER BY fecha_programada DESC, id_orden DESC`;
+  const { rows } = await pool.query(query, params);
+  return rows;
+}
 
 async function listOrdenes({ limit = 10, offset = 0 } = {}) {
   const safeLimit = Number.isFinite(Number(limit)) && Number(limit) > 0 ? Number(limit) : 10;
@@ -248,19 +261,6 @@ async function listOrdenes({ limit = 10, offset = 0 } = {}) {
     total: Number(countResult.rows[0]?.total || 0),
   };
 }
-    WHERE mecanico_asignado = $1
-  `;
-  const params = [mecanico_asignado];
-
-  if (estado) {
-    query += ` AND estado_ot = $2`;
-    params.push(estado);
-  }
-
-  query += ` ORDER BY fecha_programada DESC, id_orden DESC`;
-  const { rows } = await pool.query(query, params);
-  return rows;
-}
 
 async function iniciarOrdenTrabajo(id_orden) {
   const query = `
@@ -276,7 +276,6 @@ async function iniciarOrdenTrabajo(id_orden) {
 }
 
 async function completarOrdenTrabajo(id_orden, horometro_registro) {
-  listOrdenes,
   const query = `
     UPDATE ordenes_trabajo
     SET estado_ot = 'Completada',
