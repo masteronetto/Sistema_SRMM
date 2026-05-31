@@ -220,6 +220,9 @@
 
       updateReportKpis(summary);
       await loadReportFallasDashboard();
+      if (!isOperator) {
+        await loadReportMantenimientosDashboard();
+      }
       setReportStatus('Reportes actualizados', 'success');
     } catch (error) {
       console.error('Error cargando reportes históricos:', error);

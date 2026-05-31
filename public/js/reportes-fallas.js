@@ -310,7 +310,9 @@
       const showWarning = shouldShowReportWarningColumn();
       if (showWarning) q.append('mostrar_advertencia', 'true');
 
-      const res = await fetch(`/api/reportes/fallas?${q.toString()}`, { headers: getAuthHeaders() });
+      const currentRole = typeof userRole !== 'undefined' ? userRole : '';
+      const endpoint = currentRole === 'Operador' ? '/api/reportes/fallas/propias' : '/api/reportes/fallas';
+      const res = await fetch(`${endpoint}?${q.toString()}`, { headers: getAuthHeaders() });
       if (!res.ok) {
         const e = await res.json().catch(() => ({ message: res.statusText }));
         throw new Error(e.message || 'No se pudo cargar el reporte de fallas');
