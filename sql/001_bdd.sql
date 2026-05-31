@@ -359,6 +359,7 @@ COMMIT;
 
 CREATE TABLE IF NOT EXISTS logistica_eventos (
     id_evento BIGSERIAL PRIMARY KEY,
+    maquinaria_id_maquina BIGINT NULL,
     titulo VARCHAR(160) NOT NULL,
     equipo VARCHAR(160) NOT NULL,
     cliente VARCHAR(160) NOT NULL,
@@ -367,11 +368,37 @@ CREATE TABLE IF NOT EXISTS logistica_eventos (
     estado_evento VARCHAR(30) NOT NULL DEFAULT 'Pendiente',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_logistica_maquinaria
+        FOREIGN KEY (maquinaria_id_maquina)
+        REFERENCES maquinaria (id_maquina)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL,
     CONSTRAINT chk_logistica_estado CHECK (estado_evento IN ('Pendiente', 'Confirmado', 'En Ruta', 'Completado', 'Cancelado'))
 );
 
+ALTER TABLE IF EXISTS logistica_eventos
+    ADD COLUMN IF NOT EXISTS maquinaria_id_maquina BIGINT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_logistica_eventos_created_at ON logistica_eventos (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_logistica_eventos_estado ON logistica_eventos (estado_evento);
+CREATE INDEX IF NOT EXISTS idx_logistica_eventos_maquinaria ON logistica_eventos (maquinaria_id_maquina);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_name = 'fk_logistica_maquinaria'
+          AND table_name = 'logistica_eventos'
+    ) THEN
+        ALTER TABLE logistica_eventos
+            ADD CONSTRAINT fk_logistica_maquinaria
+            FOREIGN KEY (maquinaria_id_maquina)
+            REFERENCES maquinaria (id_maquina)
+            ON UPDATE CASCADE
+            ON DELETE SET NULL;
+    END IF;
+END $$;
 
 -- Migration: Add FK from maquinaria.planes_mantencion_id_plan -> planes_mantencion.id_plan
 -- Backup recommended before running: pg_dump -t maquinaria -t planes_mantencion > backup_maquinaria_planes.sql

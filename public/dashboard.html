@@ -325,6 +325,10 @@
             display: none !important;
         }
 
+        .operator-view #inventario .hero-grid {
+            display: none;
+        }
+
         /* ── ALERTAS ── */
         .alert-list  { display: grid; gap: 0.7rem; }
         .alert-item  {
@@ -1184,9 +1188,9 @@
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
                         <div>
                             <div class="section-title">Maquinaria</div>
-                            <div class="muted">Gestiona el inventario, tarifas y registros desde la misma vista del dashboard.</div>
+                            <div id="inventarioSubtitle" class="muted">Gestiona el inventario, tarifas y registros desde la misma vista del dashboard.</div>
                         </div>
-                        <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+                        <div id="inventarioActions" style="display:flex;gap:0.6rem;flex-wrap:wrap;">
                             <button type="button" id="adminMaquinariaRefreshBtn" class="btn">Refrescar listado</button>
                             <button type="button" id="adminMaquinariaNewBtn" class="btn btn-secondary">Nueva maquinaria</button>
                         </div>
@@ -1401,10 +1405,12 @@
             <!-- ══ LOGÍSTICA ══ -->
             <section id="logistica" class="view">
                 <div class="section-stack">
-                    <section class="section-card">
+                    <section id="logisticaFormPanel" class="section-card admin-only">
                         <div class="section-title">Logística de entrega</div>
+                        <div class="muted">Registra entregas, recepciones o traslados y, si corresponde, vincúlalos a una máquina.</div>
                         <form id="logisticaForm" class="incident-form" style="margin-top:1rem;">
                             <div class="incident-grid">
+                                <label>Máquina<select id="logisticaMaquina"><option value="">Sin vincular</option></select></label>
                                 <label>Título<input id="logisticaTitulo" type="text" required placeholder="Entrega a obra / recepción / traslado"></label>
                                 <label>Equipo<input id="logisticaEquipo" type="text" required placeholder="Ej. Komatsu PC200"></label>
                                 <label>Cliente<input id="logisticaCliente" type="text" required placeholder="Cliente / obra"></label>
@@ -1419,11 +1425,17 @@
                         </form>
                     </section>
                     <section class="section-card">
+                        <div id="logisticaSummary" class="mini-grid" style="margin-bottom:1rem;">
+                            <article class="section-card compact-report-card"><div class="section-title">Eventos</div><div id="logisticaTotalEventos" class="text-3xl font-bold text-slate-800">—</div></article>
+                            <article class="section-card compact-report-card"><div class="section-title">Pendientes</div><div id="logisticaPendientes" class="text-3xl font-bold text-slate-800">—</div></article>
+                            <article class="section-card compact-report-card"><div class="section-title">En ruta</div><div id="logisticaEnRuta" class="text-3xl font-bold text-slate-800">—</div></article>
+                        </div>
                         <div class="section-title">Eventos logísticos</div>
+                        <div id="logisticaSubtitle" class="muted"></div>
                         <div id="logisticaTable" class="table-wrap">
                             <table>
-                                <thead><tr><th>Título</th><th>Equipo</th><th>Cliente</th><th>Ruta</th><th>Hora</th><th>Estado</th><th>Acciones</th></tr></thead>
-                                <tbody><tr><td colspan="7" class="detail-empty">Cargando eventos…</td></tr></tbody>
+                                <thead><tr><th>Máquina</th><th>Título</th><th>Equipo</th><th>Cliente</th><th>Ruta</th><th>Hora</th><th>Estado</th><th>Acciones</th></tr></thead>
+                                <tbody><tr><td colspan="8" class="detail-empty">Cargando eventos…</td></tr></tbody>
                             </table>
                         </div>
                     </section>
@@ -1720,10 +1732,14 @@ function initAdminMaquinariaPanel() {
     const refreshBtn = document.getElementById('adminMaquinariaRefreshBtn');
     const newBtn = document.getElementById('adminMaquinariaNewBtn');
     const formPanel = document.getElementById('adminMaquinariaFormPanel');
+    const subtitle = document.getElementById('inventarioSubtitle');
+    const actions = document.getElementById('inventarioActions');
 
     if (!refreshBtn) return;
 
     adminMaquinariaInitialized = true;
+
+    const isAdmin = userRole === 'Administrador';
 
     if (form) {
         form.addEventListener('submit', saveAdminMaquinaria);
@@ -1748,7 +1764,12 @@ function initAdminMaquinariaPanel() {
 
     loadMaintenancePlans();
 
-    if (userRole !== 'Administrador' && formPanel) {
+    if (!isAdmin) {
+        if (subtitle) subtitle.textContent = 'Consulta las máquinas asignadas a tu contrato activo.';
+        if (actions) actions.style.display = 'none';
+    }
+
+    if (!isAdmin && formPanel) {
         formPanel.style.display = 'none';
         if (newBtn) newBtn.style.display = 'none';
     }
@@ -1760,6 +1781,7 @@ function initAdminMaquinariaPanel() {
         rowsContainer.addEventListener('click', (e) => {
             const btn = e.target.closest('button');
             if (!btn) return;
+            if (!isAdmin) return;
             const id = btn.dataset.id;
             if (btn.classList.contains('btn-edit')) {
                 editMaquinariaById(id);
@@ -1805,11 +1827,14 @@ function mapMaquinariaItem(item) {
     return {
         id: getMaquinariaValue(item, ['id_maquina', 'id']),
         modelo: getMaquinariaValue(item, ['modelo_equipo', 'modelo']),
-        estado: getMaquinariaValue(item, ['estado']),
+        estado: getMaquinariaValue(item, ['estado', 'estado_contrato']),
         horometro: getMaquinariaValue(item, ['horometro_actual', 'horometro']),
         tarifa_diaria: getMaquinariaValue(item, ['tarifa_diaria', 'tarifa']),
         planes_mantencion_id_plan: getMaquinariaValue(item, ['planes_mantencion_id_plan']),
-        especificaciones: getMaquinariaValue(item, ['especificaciones', 'descripcion'])
+        especificaciones: getMaquinariaValue(item, ['especificaciones', 'descripcion']),
+        contrato_inicio: getMaquinariaValue(item, ['fecha_inicio']),
+        contrato_fin: getMaquinariaValue(item, ['fecha_fin']),
+        cliente_nombre: getMaquinariaValue(item, ['cliente_nombre'])
     };
 }
 
@@ -1832,48 +1857,95 @@ function renderAdminMaquinaria(rows) {
     const container = document.getElementById('adminMaquinariaRows');
     if (!container) return;
 
+    const isAdmin = userRole === 'Administrador';
+
     if (!rows.length) {
-        container.innerHTML = '<tr><td colspan="7" class="detail-empty">No hay maquinaria registrada.</td></tr>';
+        container.innerHTML = isAdmin
+            ? '<tr><td colspan="7" class="detail-empty">No hay maquinaria registrada.</td></tr>'
+            : '<tr><td colspan="6" class="detail-empty">No tienes máquinas asignadas.</td></tr>';
         return;
     }
 
-    container.innerHTML = rows.map((item) => {
-        const maquina = mapMaquinariaItem(item);
-        return `<tr>
-            <td>${maquina.id ?? '—'}</td>
-            <td>${maquina.modelo || '—'}</td>
-            <td>${maquina.estado || '—'}</td>
-            <td>${maquina.horometro ?? '—'}</td>
-            <td>${formatCurrency(maquina.tarifa_diaria || 0)}</td>
-            <td>${maquina.planes_mantencion_id_plan || '—'}</td>
-            <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-                <button class="btn btn-edit" data-id="${maquina.id ?? ''}">Editar</button>
-                <button class="btn btn-secondary btn-incidencias" data-id="${maquina.id ?? ''}">Incidencias</button>
-                ${userRole === 'Administrador' ? `<button class="btn btn-danger btn-delete" data-id="${maquina.id ?? ''}">Eliminar</button>` : ''}
-            </td>
-        </tr>`;
-    }).join('');
+    if (!isAdmin) {
+        container.innerHTML = `
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Modelo</th><th>Estado</th><th>Horómetro</th><th>Contrato</th><th>Vigencia</th></tr>
+                </thead>
+                <tbody>
+                    ${rows.map((item) => {
+                        const maquina = mapMaquinariaItem(item);
+                        const vigencia = `${formatCLDate(maquina.contrato_inicio)}${maquina.contrato_fin ? ` → ${formatCLDate(maquina.contrato_fin)}` : ' → Activo'}`;
+                        return `<tr>
+                            <td>${maquina.id ?? '—'}</td>
+                            <td>${maquina.modelo || '—'}</td>
+                            <td><span class="pill success">${escapeHtml(maquina.estado || 'Asignada')}</span></td>
+                            <td>${maquina.horometro ?? '—'}</td>
+                            <td>${escapeHtml(maquina.cliente_nombre || '—')}</td>
+                            <td>${escapeHtml(vigencia)}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <table>
+            <thead>
+                <tr><th>ID</th><th>Modelo</th><th>Estado</th><th>Horómetro</th><th>Tarifa diaria</th><th>Plan</th><th>Acciones</th></tr>
+            </thead>
+            <tbody>
+                ${rows.map((item) => {
+                    const maquina = mapMaquinariaItem(item);
+                    return `<tr>
+                        <td>${maquina.id ?? '—'}</td>
+                        <td>${maquina.modelo || '—'}</td>
+                        <td>${maquina.estado || '—'}</td>
+                        <td>${maquina.horometro ?? '—'}</td>
+                        <td>${formatCurrency(maquina.tarifa_diaria || 0)}</td>
+                        <td>${maquina.planes_mantencion_id_plan || '—'}</td>
+                        <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                            <button class="btn btn-edit" data-id="${maquina.id ?? ''}">Editar</button>
+                            <button class="btn btn-secondary btn-incidencias" data-id="${maquina.id ?? ''}">Incidencias</button>
+                            <button class="btn btn-danger btn-delete" data-id="${maquina.id ?? ''}">Eliminar</button>
+                        </td>
+                    </tr>`;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
 }
 
 async function loadAdminMaquinaria() {
     const container = document.getElementById('adminMaquinariaRows');
     if (!container) return;
 
-    container.innerHTML = '<tr><td colspan="7" class="detail-empty">Cargando maquinaria…</td></tr>';
-    setMaquinariaStatus('Cargando maquinaria...', 'info');
+    const isAdmin = userRole === 'Administrador';
+    container.innerHTML = isAdmin
+        ? '<tr><td colspan="7" class="detail-empty">Cargando maquinaria…</td></tr>'
+        : '<tr><td colspan="6" class="detail-empty">Cargando máquinas asignadas…</td></tr>';
+    setMaquinariaStatus(isAdmin ? 'Cargando maquinaria...' : 'Cargando máquinas asignadas...', 'info');
 
     try {
-        const res = await fetch('/api/maquinaria', { headers: getAuthHeaders() });
-        if (!res.ok) {
-            throw new Error('No se pudo cargar la maquinaria');
-        }
+        const items = isAdmin
+            ? await (async () => {
+                const res = await fetch('/api/maquinaria', { headers: getAuthHeaders() });
+                if (!res.ok) {
+                    throw new Error('No se pudo cargar la maquinaria');
+                }
+                return res.json();
+            })()
+            : await loadAvailableMachines();
 
-        const items = await res.json();
         availableMachines = Array.isArray(items) ? items : [];
         renderAdminMaquinaria(availableMachines);
-        setMaquinariaStatus('Maquinaria actualizada', 'success');
+        setMaquinariaStatus(isAdmin ? 'Maquinaria actualizada' : 'Máquinas asignadas actualizadas', 'success');
     } catch (err) {
-        container.innerHTML = `<tr><td colspan="7" class="detail-empty">Error: ${err.message}</td></tr>`;
+        container.innerHTML = isAdmin
+            ? `<tr><td colspan="7" class="detail-empty">Error: ${err.message}</td></tr>`
+            : `<tr><td colspan="6" class="detail-empty">Error: ${err.message}</td></tr>`;
         setMaquinariaStatus(`Error: ${err.message}`, 'error');
     }
 }
@@ -3808,31 +3880,44 @@ function renderArriendosTable(rows) {
     `;
 }
 
-function renderLogisticaTable(rows) {
+function renderLogisticaTable(rows, { canDelete = false, operatorContext = false } = {}) {
     const container = document.getElementById('logisticaTable');
     if (!container) return;
+    const showActions = Boolean(canDelete);
+    const emptyColspan = showActions ? 8 : 7;
+
+    const totalEventos = rows.length;
+    const pendientes = rows.filter((item) => String(item.estado_evento || '').toLowerCase() === 'pendiente').length;
+    const enRuta = rows.filter((item) => String(item.estado_evento || '').toLowerCase() === 'en ruta').length;
+
+    const totalEl = document.getElementById('logisticaTotalEventos');
+    const pendientesEl = document.getElementById('logisticaPendientes');
+    const enRutaEl = document.getElementById('logisticaEnRuta');
+    if (totalEl) totalEl.textContent = String(totalEventos);
+    if (pendientesEl) pendientesEl.textContent = String(pendientes);
+    if (enRutaEl) enRutaEl.textContent = String(enRuta);
 
     if (!rows.length) {
-        container.innerHTML = '<table><tbody><tr><td colspan="7" class="detail-empty">No hay eventos logísticos registrados.</td></tr></tbody></table>';
+        container.innerHTML = operatorContext
+            ? `<table><tbody><tr><td colspan="${emptyColspan}" class="detail-empty">No hay eventos asociados a tus máquinas asignadas.</td></tr></tbody></table>`
+            : `<table><tbody><tr><td colspan="${emptyColspan}" class="detail-empty">No hay eventos logísticos registrados.</td></tr></tbody></table>`;
         return;
     }
 
-    const canDelete = userRole === 'Administrador';
     container.innerHTML = `
         <table>
-            <thead><tr><th>Título</th><th>Equipo</th><th>Cliente</th><th>Ruta</th><th>Hora</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Máquina</th><th>Título</th><th>Equipo</th><th>Cliente</th><th>Ruta</th><th>Hora</th><th>Estado</th>${showActions ? '<th>Acciones</th>' : ''}</tr></thead>
             <tbody>
                 ${rows.map((item) => `
                     <tr>
+                        <td>${escapeHtml(item.maquinaria_modelo || '—')}</td>
                         <td>${escapeHtml(item.titulo || '—')}</td>
                         <td>${escapeHtml(item.equipo || '—')}</td>
                         <td>${escapeHtml(item.cliente || '—')}</td>
                         <td>${escapeHtml(item.ruta || '—')}</td>
                         <td>${escapeHtml(item.hora_evento || '—')}</td>
                         <td><span class="pill ${String(item.estado_evento || '').toLowerCase() === 'confirmado' ? 'success' : 'available'}">${escapeHtml(item.estado_evento || '—')}</span></td>
-                        <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-                            <button class="btn btn-danger" type="button" ${canDelete ? `onclick="deleteLogisticaById(${JSON.stringify(item.id_evento)})"` : 'disabled'}>Eliminar</button>
-                        </td>
+                        ${showActions ? `<td style="display:flex;gap:0.5rem;flex-wrap:wrap;"><button class="btn btn-danger" type="button" onclick="deleteLogisticaById(${JSON.stringify(item.id_evento)})">Eliminar</button></td>` : ''}
                     </tr>
                 `).join('')}
             </tbody>
@@ -3953,12 +4038,26 @@ async function deleteArriendoById(idContrato) {
 }
 
 function loadLogisticaDashboard() {
+    const isAdmin = userRole === 'Administrador';
     const form = document.getElementById('logisticaForm');
-    if (form && !form.dataset.initialized) {
+    const formPanel = document.getElementById('logisticaFormPanel');
+    if (formPanel) {
+        formPanel.style.display = isAdmin ? '' : 'none';
+    }
+
+    const subtitle = document.getElementById('logisticaSubtitle');
+    if (subtitle) {
+        subtitle.textContent = isAdmin
+            ? 'Admin puede registrar eventos y asociarlos a una máquina. Operador ve solo eventos de sus contratos activos.'
+            : 'Eventos filtrados por tus máquinas asignadas.';
+    }
+
+    if (form && isAdmin && !form.dataset.initialized) {
         form.dataset.initialized = '1';
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
             const payload = {
+                maquinaria_id_maquina: document.getElementById('logisticaMaquina')?.value ? Number(document.getElementById('logisticaMaquina').value) : null,
                 titulo: document.getElementById('logisticaTitulo')?.value.trim(),
                 equipo: document.getElementById('logisticaEquipo')?.value.trim(),
                 cliente: document.getElementById('logisticaCliente')?.value.trim(),
@@ -3990,15 +4089,45 @@ function loadLogisticaDashboard() {
     }
 
     const container = document.getElementById('logisticaTable');
-    if (container) container.innerHTML = '<table><tbody><tr><td colspan="7" class="detail-empty">Cargando eventos…</td></tr></tbody></table>';
-    fetch('/api/logistica', { headers: getAuthHeaders() })
-        .then((res) => {
+    const loadingColspan = isAdmin ? 8 : 7;
+    if (container) container.innerHTML = `<table><tbody><tr><td colspan="${loadingColspan}" class="detail-empty">Cargando eventos…</td></tr></tbody></table>`;
+
+    const loadRows = async () => {
+        if (isAdmin) {
+            if (form && !form.dataset.machineOptionsLoaded) {
+                try {
+                    const machines = await loadAvailableMachines();
+                    const select = document.getElementById('logisticaMaquina');
+                    if (select) {
+                        select.innerHTML = '<option value="">Sin vincular</option>' + (Array.isArray(machines) ? machines.map((machine) => `<option value="${machine.id_maquina}">${escapeHtml(machine.modelo_equipo || 'Máquina')} — ${escapeHtml(machine.estado || '—')}</option>`).join('') : '');
+                    }
+                    form.dataset.machineOptionsLoaded = '1';
+                } catch (error) {
+                    console.error('Error cargando máquinas para logística:', error);
+                }
+            }
+            const res = await fetch('/api/logistica', { headers: getAuthHeaders() });
             if (!res.ok) throw new Error('No se pudieron cargar los eventos');
             return res.json();
+        }
+
+        const machines = await loadAvailableMachines();
+        const ids = Array.isArray(machines) ? machines.map((machine) => machine.id_maquina).filter((value) => Number.isFinite(Number(value)) && Number(value) > 0) : [];
+        if (!ids.length) {
+            return [];
+        }
+        const query = ids.length ? `?maquinaria_ids=${encodeURIComponent(ids.join(','))}` : '';
+        const res = await fetch(`/api/logistica${query}`, { headers: getAuthHeaders() });
+        if (!res.ok) throw new Error('No se pudieron cargar los eventos');
+        return res.json();
+    };
+
+    loadRows()
+        .then((res) => {
+            renderLogisticaTable(Array.isArray(res) ? res : [], { canDelete: isAdmin, operatorContext: !isAdmin });
         })
-        .then((rows) => renderLogisticaTable(Array.isArray(rows) ? rows : []))
         .catch((error) => {
-            if (container) container.innerHTML = `<table><tbody><tr><td colspan="7" class="detail-empty">Error: ${escapeHtml(error.message)}</td></tr></tbody></table>`;
+            if (container) container.innerHTML = `<table><tbody><tr><td colspan="8" class="detail-empty">Error: ${escapeHtml(error.message)}</td></tr></tbody></table>`;
         });
 }
 

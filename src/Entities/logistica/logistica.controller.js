@@ -1,6 +1,10 @@
+const maquinariaRepo = require('../maquinaria/maquinaria.repository');
 const logisticaRepo = require('./logistica.repository');
 
 function validateEventoPayload(payload) {
+  const maquinaria_id_maquina = payload.maquinaria_id_maquina === undefined || payload.maquinaria_id_maquina === null || payload.maquinaria_id_maquina === ''
+    ? null
+    : Number(payload.maquinaria_id_maquina);
   const titulo = payload.titulo ? String(payload.titulo).trim() : '';
   const equipo = payload.equipo ? String(payload.equipo).trim() : '';
   const cliente = payload.cliente ? String(payload.cliente).trim() : '';
@@ -12,12 +16,20 @@ function validateEventoPayload(payload) {
     return { error: 'Campos obligatorios: titulo, equipo, cliente, ruta, hora_evento', parsed: null };
   }
 
-  return { error: null, parsed: { titulo, equipo, cliente, ruta, hora_evento, estado_evento } };
+  if (maquinaria_id_maquina !== null && !Number.isFinite(maquinaria_id_maquina)) {
+    return { error: 'maquinaria_id_maquina debe ser numerico si se envia', parsed: null };
+  }
+
+  return { error: null, parsed: { titulo, equipo, cliente, ruta, hora_evento, estado_evento, maquinaria_id_maquina } };
 }
 
 async function list(req, res, next) {
   try {
-    const rows = await logisticaRepo.listEventos();
+    const maquinariaIds = typeof req.query.maquinaria_ids === 'string' && req.query.maquinaria_ids.trim() !== ''
+      ? req.query.maquinaria_ids.split(',').map((value) => Number(value.trim())).filter((value) => Number.isFinite(value) && value > 0)
+      : [];
+
+    const rows = await logisticaRepo.listEventos({ maquinariaIds });
     return res.json(rows);
   } catch (error) {
     return next(error);
@@ -29,6 +41,13 @@ async function create(req, res, next) {
     const { error, parsed } = validateEventoPayload(req.body);
     if (error) {
       return res.status(400).json({ message: error });
+    }
+
+    if (parsed.maquinaria_id_maquina !== null) {
+      const maquina = await maquinariaRepo.getMaquinariaById(parsed.maquinaria_id_maquina);
+      if (!maquina) {
+        return res.status(404).json({ message: 'La máquina asociada no existe' });
+      }
     }
 
     const evento = await logisticaRepo.createEvento(parsed);
