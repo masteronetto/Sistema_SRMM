@@ -293,6 +293,9 @@ CREATE TABLE IF NOT EXISTS arriendos (
 
 CREATE INDEX IF NOT EXISTS idx_arriendos_maquina ON arriendos (maquinaria_id_maquina);
 CREATE INDEX IF NOT EXISTS idx_arriendos_cliente ON arriendos (cliente_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_arriendos_unico_activo_por_maquina
+ON arriendos (maquinaria_id_maquina)
+WHERE estado_contrato = 'Activo';
 
 -- Tabla para solicitudes de cambio de rol (por usuarios)
 CREATE TABLE IF NOT EXISTS role_requests (

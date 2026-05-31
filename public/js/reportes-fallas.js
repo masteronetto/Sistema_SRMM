@@ -348,10 +348,18 @@
       renderReportFallasCharts(resumen);
       renderReportFallasTable(rows);
 
-      try {
-        await loadGlobalIncidencias();
-      } catch (e) {
-        console.error('No se pudo cargar incidencias globales:', e);
+      const currentRole = typeof userRole !== 'undefined' ? userRole : '';
+      if (currentRole !== 'Operador') {
+        try {
+          await loadGlobalIncidencias();
+        } catch (e) {
+          console.error('No se pudo cargar incidencias globales:', e);
+        }
+      } else {
+        const globalIncidencias = document.getElementById('reportIncidenciasGlobal');
+        if (globalIncidencias) {
+          globalIncidencias.innerHTML = '';
+        }
       }
 
       if (statusBadge) {

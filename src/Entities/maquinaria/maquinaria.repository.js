@@ -320,6 +320,19 @@ async function updateMaquinaria(id_maquina, { modelo_equipo, horometro_actual, e
   return rows[0] || null;
 }
 
+async function updateMaquinariaEstado(id_maquina, estado, db = pool) {
+  const query = `
+    UPDATE maquinaria
+    SET estado = $2,
+        updated_at = NOW()
+    WHERE id_maquina = $1
+    RETURNING id_maquina, modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan, tarifa_diaria, created_at, updated_at
+  `;
+
+  const { rows } = await db.query(query, [id_maquina, estado]);
+  return rows[0] || null;
+}
+
 async function updateHorometroActual(id_maquina, horometro_actual) {
   const query = `
     UPDATE maquinaria
@@ -434,6 +447,7 @@ module.exports = {
   getHorasAcumuladasByMaquina,
   createMaquinaria,
   updateMaquinaria,
+  updateMaquinariaEstado,
   updateHorometroActual,
   listMaquinasConMantenimientoUrgente,
   listIncidenciasByMaquina,

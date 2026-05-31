@@ -551,6 +551,11 @@
             gap: 0.75rem;
         }
 
+        .operator-view .mecanico-only,
+        .mecanico-view .operator-only {
+            display: none;
+        }
+
         /* ── PLACEHOLDER ── */
         .placeholder-card {
             padding: 1rem; min-height: 180px;
@@ -1364,9 +1369,10 @@
                 <div class="section-stack">
                     <section class="section-card">
                         <div class="section-title">Arriendos reales</div>
+                        <div class="muted">Selecciona una o más máquinas para crear contratos en lote para el mismo usuario.</div>
                         <form id="arriendoForm" class="incident-form" style="margin-top:1rem;">
                             <div class="incident-grid">
-                                <label>Máquina<select id="arriendoMaquina" required><option value="">Cargando máquinas…</option></select></label>
+                                <label>Máquinas<select id="arriendoMaquina" multiple size="5" required><option value="">Cargando máquinas…</option></select></label>
                                 <label>Cliente<select id="arriendoCliente"><option value="">Sin cliente</option></select></label>
                                 <label>Fecha inicio<input id="arriendoFechaInicio" type="date"></label>
                                 <label>Fecha fin<input id="arriendoFechaFin" type="date"></label>
@@ -1480,7 +1486,7 @@
                         </div>
                     </section>
 
-                    <section id="operatorResumenCard" class="section-card" style="display:none;">
+                    <section id="operatorResumenCard" class="section-card operator-only" style="display:none;">
                         <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
                             <div>
                                 <div class="section-title">Resumen operativo del operador</div>
@@ -1589,7 +1595,7 @@
                                     <div id="reportFallasTotal" class="text-3xl font-bold text-slate-800">—</div>
                                     <div id="reportFallasInterpretation" class="muted small" style="margin-top:6px;display:none;"></div>
                                 </article>
-                                <article class="section-card compact-report-card">
+                                <article class="section-card compact-report-card mecanico-only">
                                     <div class="section-title">Máquina con más fallas</div>
                                     <div id="reportFallasTopMachine" class="text-3xl font-bold text-slate-800">—</div>
                                 </article>
@@ -1614,7 +1620,7 @@
                                 </article>
                             </div>
 
-                            <details class="section-card" style="margin-top:0.85rem; padding:1rem 1rem 0.75rem;">
+                            <details class="section-card mecanico-only" style="margin-top:0.85rem; padding:1rem 1rem 0.75rem;">
                                 <summary style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:1rem;list-style:none;">
                                     <div>
                                         <div class="section-title">Incidencias (detalle global)</div>
@@ -1627,7 +1633,7 @@
                             <div id="reportFallasTable" class="overflow-x-auto mt-3"></div>
                         </section>
 
-                    <div class="mini-grid">
+                    <div class="mini-grid mecanico-only">
                         <article class="section-card">
                             <div class="section-title">Top máquinas por horómetro</div>
                             <div class="relative h-72 w-full mt-3"><canvas id="reportTopChart"></canvas></div>
@@ -1638,7 +1644,7 @@
                         </article>
                     </div>
 
-                    <section class="section-card">
+                    <section class="section-card mecanico-only">
                         <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
                             <div>
                                 <div class="section-title">Historial unificado</div>
@@ -3753,22 +3759,49 @@ function renderArriendosTable(rows) {
     }
 
     const canDelete = userRole === 'Administrador';
+    const groups = rows.reduce((acc, item) => {
+        const key = String(item.cliente_id ?? item.cliente_nombre ?? 'sin-cliente');
+        if (!acc[key]) {
+            acc[key] = {
+                key,
+                cliente_id: item.cliente_id,
+                cliente_nombre: item.cliente_nombre || 'Sin cliente',
+                rows: []
+            };
+        }
+        acc[key].rows.push(item);
+        return acc;
+    }, {});
+
+    const groupList = Object.values(groups).sort((a, b) => {
+        if (a.cliente_nombre === 'Sin cliente') return 1;
+        if (b.cliente_nombre === 'Sin cliente') return -1;
+        return a.cliente_nombre.localeCompare(b.cliente_nombre, 'es');
+    });
+
     container.innerHTML = `
         <table>
             <thead><tr><th>Máquina</th><th>Cliente</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody>
-                ${rows.map((item) => `
-                    <tr>
-                        <td>${escapeHtml(item.modelo_equipo || '—')}</td>
-                        <td>${escapeHtml(item.cliente_nombre || 'Sin cliente')}</td>
-                        <td>${formatCLDate(item.fecha_inicio)}</td>
-                        <td>${formatCLDate(item.fecha_fin)}</td>
-                        <td><span class="pill ${String(item.estado_contrato || '').toLowerCase() === 'activo' ? 'success' : 'maintenance'}">${escapeHtml(item.estado_contrato || '—')}</span></td>
-                        <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-                            <button class="btn btn-secondary" type="button" onclick="fillArriendoForm(${JSON.stringify(item.maquinaria_id_maquina)}, ${JSON.stringify(item.cliente_id ?? '')})">Editar</button>
-                            <button class="btn btn-danger" type="button" ${canDelete ? `onclick="deleteArriendoById(${JSON.stringify(item.id_contrato)})"` : 'disabled'}>Eliminar</button>
+                ${groupList.map((group) => `
+                    <tr class="detail-empty">
+                        <td colspan="6" style="text-align:left;font-weight:700;background:rgba(109,81,65,0.04);">
+                            ${escapeHtml(group.cliente_nombre)} · ${group.rows.length} máquina(s) asignada(s)
                         </td>
                     </tr>
+                    ${group.rows.map((item) => `
+                        <tr>
+                            <td>${escapeHtml(item.modelo_equipo || '—')}</td>
+                            <td>${escapeHtml(item.cliente_nombre || 'Sin cliente')}</td>
+                            <td>${formatCLDate(item.fecha_inicio)}</td>
+                            <td>${formatCLDate(item.fecha_fin)}</td>
+                            <td><span class="pill ${String(item.estado_contrato || '').toLowerCase() === 'activo' ? 'success' : 'maintenance'}">${escapeHtml(item.estado_contrato || '—')}</span></td>
+                            <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                                <button class="btn btn-secondary" type="button" onclick="fillArriendoForm(${JSON.stringify(item.maquinaria_id_maquina)}, ${JSON.stringify(item.cliente_id ?? '')})">Editar</button>
+                                <button class="btn btn-danger" type="button" ${canDelete ? `onclick="deleteArriendoById(${JSON.stringify(item.id_contrato)})"` : 'disabled'}>Eliminar</button>
+                            </td>
+                        </tr>
+                    `).join('')}
                 `).join('')}
             </tbody>
         </table>
@@ -3810,7 +3843,12 @@ function renderLogisticaTable(rows) {
 function fillArriendoForm(maquinariaId, clienteId = '') {
     const maquinaSelect = document.getElementById('arriendoMaquina');
     const clienteSelect = document.getElementById('arriendoCliente');
-    if (maquinaSelect) maquinaSelect.value = String(maquinariaId || '');
+    if (maquinaSelect) {
+        const ids = Array.isArray(maquinariaId) ? maquinariaId.map((value) => String(value)) : [String(maquinariaId || '')];
+        Array.from(maquinaSelect.options).forEach((option) => {
+            option.selected = ids.includes(String(option.value));
+        });
+    }
     if (clienteSelect) clienteSelect.value = String(clienteId || '');
     setArriendoStatus('Edición preparada. Completa fechas y guarda.', 'info');
 }
@@ -3826,7 +3864,9 @@ async function populateArriendoSelectors() {
             fetch('/api/usuarios', { headers: getAuthHeaders() })
         ]);
 
-        maquinaSelect.innerHTML = '<option value="">Selecciona una máquina</option>' + machines.map((m) => `<option value="${m.id_maquina}">${escapeHtml(m.modelo_equipo)} — ${escapeHtml(m.estado || '—')}</option>`).join('');
+        maquinaSelect.innerHTML = machines.length
+            ? machines.map((m) => `<option value="${m.id_maquina}">${escapeHtml(m.modelo_equipo)} — ${escapeHtml(m.estado || '—')}</option>`).join('')
+            : '<option value="">No hay máquinas disponibles</option>';
 
         if (usersRes.ok) {
             const users = await usersRes.json();
@@ -3845,8 +3885,12 @@ async function loadArriendosDashboard() {
         form.dataset.initialized = '1';
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
+            const selectedMachines = Array.from(document.getElementById('arriendoMaquina')?.selectedOptions || [])
+                .map((option) => Number(option.value))
+                .filter((value) => Number.isFinite(value) && value > 0);
+
             const payload = {
-                maquinaria_id_maquina: Number(document.getElementById('arriendoMaquina')?.value || 0),
+                maquinaria_ids: selectedMachines,
                 cliente_id: document.getElementById('arriendoCliente')?.value ? Number(document.getElementById('arriendoCliente').value) : null,
                 fecha_inicio: document.getElementById('arriendoFechaInicio')?.value || null,
                 fecha_fin: document.getElementById('arriendoFechaFin')?.value || null,
@@ -3855,8 +3899,8 @@ async function loadArriendosDashboard() {
                 estado_contrato: document.getElementById('arriendoEstado')?.value || 'Activo'
             };
 
-            if (!payload.maquinaria_id_maquina) {
-                setArriendoStatus('Selecciona una máquina.', 'warning');
+            if (!payload.maquinaria_ids.length) {
+                setArriendoStatus('Selecciona una o más máquinas.', 'warning');
                 return;
             }
 
