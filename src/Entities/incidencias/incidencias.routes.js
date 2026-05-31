@@ -4,8 +4,8 @@ const { verifyToken, requireMecanicoOperadorOrAdmin } = require('../../middlewar
 
 const router = Router();
 
-// Listar incidencias (GET /api/incidencias) - requiere usuario autenticado
-router.get('/', verifyToken, incidenciasController.listarIncidencias);
+// Listar incidencias (GET /api/incidencias) - solo Mecanico/Operador/Administrador
+router.get('/', verifyToken, requireMecanicoOperadorOrAdmin, incidenciasController.listarIncidencias);
 
 // Registrar una incidencia (POST /api/incidencias) - solo Mecanico/Operador/Administrador
 router.post('/', verifyToken, requireMecanicoOperadorOrAdmin, incidenciasController.crearIncidencia);

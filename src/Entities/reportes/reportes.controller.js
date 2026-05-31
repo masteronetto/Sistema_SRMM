@@ -155,6 +155,55 @@ async function obtenerReporteFallas(req, res, next) {
   }
 }
 
+async function obtenerReporteFallasPropias(req, res, next) {
+  try {
+    const operadorId = Number(req.user?.id_usuario);
+    if (!Number.isFinite(operadorId)) {
+      return res.status(400).json({ message: 'No se pudo identificar al usuario autenticado' });
+    }
+
+    const periodo = typeof req.query.periodo === 'string' && req.query.periodo.trim() !== ''
+      ? req.query.periodo.trim()
+      : 'mensual';
+    const criticidad = typeof req.query.criticidad === 'string' && req.query.criticidad.trim() !== ''
+      ? req.query.criticidad.trim()
+      : null;
+    const mostrarAdvertencia = String(req.query.mostrar_advertencia || '').toLowerCase() === 'true';
+    const maquinariaIds = typeof req.query.maquinaria_ids === 'string' && req.query.maquinaria_ids.trim() !== ''
+      ? req.query.maquinaria_ids.split(',').map((value) => Number(value.trim())).filter((value) => Number.isFinite(value))
+      : [];
+    const fechaInicio = typeof req.query.fecha_inicio === 'string' && req.query.fecha_inicio.trim() !== ''
+      ? req.query.fecha_inicio.trim()
+      : null;
+    const fechaFin = typeof req.query.fecha_fin === 'string' && req.query.fecha_fin.trim() !== ''
+      ? req.query.fecha_fin.trim()
+      : null;
+
+    const data = await reportesRepo.getReporteFallas({
+      periodo,
+      criticidad,
+      mostrar_advertencia: mostrarAdvertencia,
+      maquinaria_ids: maquinariaIds,
+      fecha_inicio: fechaInicio,
+      fecha_fin: fechaFin,
+      operador_id: operadorId
+    });
+
+    return res.json(data);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function obtenerReporteMantenimientos(req, res, next) {
+  try {
+    const data = await reportesRepo.getReporteMantenimientos();
+    return res.json(data);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   obtenerHistorialMaquina,
   obtenerTopMaquinas,
@@ -164,5 +213,7 @@ module.exports = {
   obtenerActividadPorAutor,
   obtenerIngresos,
   obtenerIngresosCsv,
-  obtenerReporteFallas
+  obtenerReporteFallas,
+  obtenerReporteFallasPropias,
+  obtenerReporteMantenimientos
 };

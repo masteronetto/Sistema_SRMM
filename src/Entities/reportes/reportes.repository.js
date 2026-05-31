@@ -194,7 +194,7 @@ async function getActividadPorAutor({ fecha_inicio = null, fecha_fin = null } = 
   }));
 }
 
-function buildReporteFallasFilters({ maquinaria_ids = [], fecha_inicio = null, fecha_fin = null, criticidad = null } = {}) {
+function buildReporteFallasFilters({ maquinaria_ids = [], fecha_inicio = null, fecha_fin = null, criticidad = null, operador_id = null } = {}) {
   const conditions = [];
   const values = [];
   let paramIndex = 0;
@@ -221,6 +221,12 @@ function buildReporteFallasFilters({ maquinaria_ids = [], fecha_inicio = null, f
     paramIndex += 1;
     conditions.push(`i.criticidad = $${paramIndex}`);
     values.push(criticidad);
+  }
+
+  if (operador_id !== null && operador_id !== undefined) {
+    paramIndex += 1;
+    conditions.push(`i.operador_id = $${paramIndex}`);
+    values.push(Number(operador_id));
   }
 
   return {
@@ -254,10 +260,11 @@ async function getReporteFallas(filtros = {}) {
     fecha_inicio = null,
     fecha_fin = null,
     criticidad = null,
-    mostrar_advertencia = false
+    mostrar_advertencia = false,
+    operador_id = null
   } = filtros;
 
-  const { whereClause, values } = buildReporteFallasFilters({ maquinaria_ids, fecha_inicio, fecha_fin, criticidad });
+  const { whereClause, values } = buildReporteFallasFilters({ maquinaria_ids, fecha_inicio, fecha_fin, criticidad, operador_id });
   const periodoExpr = getReporteFallasPeriodoExpr(periodo);
 
   const groupedQuery = `
@@ -334,7 +341,8 @@ async function getReporteFallas(filtros = {}) {
       maquinaria_ids: Array.isArray(maquinaria_ids) ? maquinaria_ids.map((item) => Number(item)).filter((item) => Number.isFinite(item)) : [],
       fecha_inicio,
       fecha_fin,
-      criticidad
+      criticidad,
+      operador_id: operador_id !== null && operador_id !== undefined ? Number(operador_id) : null
     },
     resumen: {
       total_fallas: totalFallas,
@@ -358,10 +366,35 @@ module.exports = {
   getUsoHistorico,
   getResumenOperador,
   getActividadPorAutor,
-  getReporteFallas
+  getReporteFallas,
+  getReporteMantenimientos
 };
 
 module.exports.computePorcentajeVinculadas = computePorcentajeVinculadas;
+
+async function getReporteMantenimientos() {
+  const query = `
+    SELECT
+      m.id_maquina AS maquinaria_id_maquina,
+      m.modelo_equipo,
+      COUNT(*)::int AS total_mantenimientos,
+      MAX(fecha_servicio) AS ultima_fecha_servicio,
+      COUNT(*) FILTER (WHERE tipo_servicio IS NOT NULL)::int AS total_servicios_registrados
+    FROM mantenimiento mt
+    INNER JOIN maquinaria m ON m.id_maquina = mt.maquinaria_id_maquina
+    GROUP BY m.id_maquina, m.modelo_equipo
+    ORDER BY total_mantenimientos DESC, m.modelo_equipo ASC
+  `;
+
+  const { rows } = await pool.query(query);
+  return rows.map((row) => ({
+    maquinaria_id_maquina: Number(row.maquinaria_id_maquina),
+    modelo_equipo: row.modelo_equipo,
+    total_mantenimientos: Number(row.total_mantenimientos || 0),
+    ultima_fecha_servicio: row.ultima_fecha_servicio,
+    total_servicios_registrados: Number(row.total_servicios_registrados || 0)
+  }));
+}
 
 // Ingresos por arriendos
 async function getIngresosPorArriendos(fecha_inicio, fecha_fin, tarifa_diaria_fallback) {

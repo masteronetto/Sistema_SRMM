@@ -38,7 +38,7 @@ async function registrarIncidencia(id_maquina, id_usuario, descripcion, criticid
     return { incidencia: nueva.rows[0], mensaje_advertencia: advertencia };
 }
 
-async function listIncidencias({ maquinaria_ids = [], fecha_inicio = null, fecha_fin = null, criticidad = null, solo_no_resueltas = false } = {}) {
+async function listIncidencias({ maquinaria_ids = [], fecha_inicio = null, fecha_fin = null, criticidad = null, solo_no_resueltas = false, operador_id = null } = {}) {
     const conditions = [];
     const values = [];
     let idx = 1;
@@ -61,6 +61,11 @@ async function listIncidencias({ maquinaria_ids = [], fecha_inicio = null, fecha
     if (criticidad) {
         conditions.push(`i.criticidad = $${idx}`);
         values.push(criticidad);
+        idx++;
+    }
+    if (operador_id !== null && operador_id !== undefined) {
+        conditions.push(`i.operador_id = $${idx}`);
+        values.push(Number(operador_id));
         idx++;
     }
     if (solo_no_resueltas) {

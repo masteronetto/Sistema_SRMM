@@ -10,7 +10,9 @@ router.get('/estadisticas', verifyToken, controller.obtenerEstadisticas);
 router.get('/uso-historico/:id_maquina', verifyToken, controller.obtenerUsoHistorico);
 router.get('/operador/resumen', verifyToken, requireMecanicoOperadorOrAdmin, controller.obtenerResumenOperador);
 router.get('/autores', verifyToken, requireMecanicoOrAdmin, controller.obtenerActividadPorAutor);
-router.get('/fallas', verifyToken, controller.obtenerReporteFallas);
+router.get('/fallas/propias', verifyToken, requireMecanicoOperadorOrAdmin, controller.obtenerReporteFallasPropias);
+router.get('/fallas', verifyToken, requireMecanicoOrAdmin, controller.obtenerReporteFallas);
+router.get('/mantenimientos', verifyToken, requireMecanicoOrAdmin, controller.obtenerReporteMantenimientos);
 router.get('/ingresos', verifyToken, requireAdmin, controller.obtenerIngresos);
 router.get('/ingresos/csv', verifyToken, requireAdmin, controller.obtenerIngresosCsv);
 
