@@ -7,6 +7,7 @@ const router = Router();
 router.use(verifyToken);
 
 router.get('/', controller.listContratos);
+router.get('/mis-contratos', controller.listMisContratos);
 router.post('/', requireAdmin, controller.createContrato);
 router.delete('/:id_contrato', requireAdmin, controller.deleteContrato);
 

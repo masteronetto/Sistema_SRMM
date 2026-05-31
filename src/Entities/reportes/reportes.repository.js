@@ -79,6 +79,121 @@ async function getUsoHistorico(id_maquina) {
   return rows;
 }
 
+async function getResumenOperador(id_usuario) {
+  const query = `
+    SELECT
+      COALESCE((SELECT COUNT(*)::int FROM arriendos a WHERE a.cliente_id = $1), 0) AS total_contratos,
+      COALESCE((SELECT COUNT(*)::int FROM arriendos a WHERE a.cliente_id = $1 AND a.estado_contrato = 'Activo'), 0) AS contratos_activos,
+      COALESCE((SELECT COUNT(DISTINCT a.maquinaria_id_maquina)::int FROM arriendos a WHERE a.cliente_id = $1), 0) AS maquinas_asignadas,
+      COALESCE((SELECT SUM(h.valor_horas)::numeric FROM historial_horometro h WHERE h.id_usuario = $1), 0) AS horas_registradas,
+      COALESCE((SELECT COUNT(*)::int FROM incidencias_maquina i WHERE i.operador_id = $1), 0) AS incidencias_registradas,
+      (
+        SELECT json_build_object(
+          'id_contrato', a.id_contrato,
+          'maquinaria_id_maquina', a.maquinaria_id_maquina,
+          'modelo_equipo', m.modelo_equipo,
+          'estado_contrato', a.estado_contrato,
+          'fecha_inicio', a.fecha_inicio,
+          'fecha_fin', a.fecha_fin
+        )
+        FROM arriendos a
+        INNER JOIN maquinaria m ON m.id_maquina = a.maquinaria_id_maquina
+        WHERE a.cliente_id = $1
+          AND a.estado_contrato = 'Activo'
+        ORDER BY a.fecha_inicio DESC, a.id_contrato DESC
+        LIMIT 1
+      ) AS contrato_activo
+  `;
+
+  const { rows } = await pool.query(query, [id_usuario]);
+  const row = rows[0] || {};
+
+  return {
+    total_contratos: Number(row.total_contratos || 0),
+    contratos_activos: Number(row.contratos_activos || 0),
+    maquinas_asignadas: Number(row.maquinas_asignadas || 0),
+    horas_registradas: Number(row.horas_registradas || 0),
+    incidencias_registradas: Number(row.incidencias_registradas || 0),
+    contrato_activo: row.contrato_activo || null
+  };
+}
+
+async function getActividadPorAutor({ fecha_inicio = null, fecha_fin = null } = {}) {
+  const conditions = [];
+  const values = [];
+  let idx = 1;
+
+  if (fecha_inicio) {
+    conditions.push(`fecha_evento >= $${idx}`);
+    values.push(fecha_inicio);
+    idx += 1;
+  }
+
+  if (fecha_fin) {
+    conditions.push(`fecha_evento <= $${idx}`);
+    values.push(fecha_fin);
+    idx += 1;
+  }
+
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const query = `
+    WITH actividad AS (
+      SELECT
+        u.id_usuario AS autor_id,
+        u.nombre_completo AS autor_nombre,
+        u.rol_acceso AS autor_rol,
+        'Historial' AS tipo_actividad,
+        h.fecha_registro::date AS fecha_evento,
+        h.maquinaria_id_maquina,
+        m.modelo_equipo,
+        h.valor_horas::numeric AS valor_horas
+      FROM historial_horometro h
+      INNER JOIN usuarios u ON u.id_usuario = h.id_usuario
+      INNER JOIN maquinaria m ON m.id_maquina = h.maquinaria_id_maquina
+      UNION ALL
+      SELECT
+        u.id_usuario AS autor_id,
+        u.nombre_completo AS autor_nombre,
+        u.rol_acceso AS autor_rol,
+        'Incidencia' AS tipo_actividad,
+        i.fecha::date AS fecha_evento,
+        i.maquinaria_id_maquina,
+        m.modelo_equipo,
+        NULL::numeric AS valor_horas
+      FROM incidencias_maquina i
+      INNER JOIN usuarios u ON u.id_usuario = i.operador_id
+      INNER JOIN maquinaria m ON m.id_maquina = i.maquinaria_id_maquina
+    )
+    SELECT
+      autor_id,
+      autor_nombre,
+      autor_rol,
+      COUNT(*) FILTER (WHERE tipo_actividad = 'Historial')::int AS total_registros_horometro,
+      COUNT(*) FILTER (WHERE tipo_actividad = 'Incidencia')::int AS total_incidencias,
+      COUNT(DISTINCT maquinaria_id_maquina)::int AS maquinas_distintas,
+      COALESCE(SUM(valor_horas), 0)::numeric AS horas_registradas,
+      MAX(fecha_evento) AS ultimo_evento
+    FROM actividad
+    ${whereClause}
+    GROUP BY autor_id, autor_nombre, autor_rol
+    ORDER BY ultimo_evento DESC NULLS LAST, autor_nombre ASC
+  `;
+
+  const { rows } = await pool.query(query, values);
+
+  return rows.map((row) => ({
+    autor_id: Number(row.autor_id),
+    autor_nombre: row.autor_nombre,
+    autor_rol: row.autor_rol,
+    total_registros_horometro: Number(row.total_registros_horometro || 0),
+    total_incidencias: Number(row.total_incidencias || 0),
+    maquinas_distintas: Number(row.maquinas_distintas || 0),
+    horas_registradas: Number(row.horas_registradas || 0),
+    ultimo_evento: row.ultimo_evento
+  }));
+}
+
 function buildReporteFallasFilters({ maquinaria_ids = [], fecha_inicio = null, fecha_fin = null, criticidad = null } = {}) {
   const conditions = [];
   const values = [];
@@ -241,6 +356,8 @@ module.exports = {
   getTopMaquinas,
   getEstadisticas,
   getUsoHistorico,
+  getResumenOperador,
+  getActividadPorAutor,
   getReporteFallas
 };
 

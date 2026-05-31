@@ -319,6 +319,12 @@
             line-height: 1.35;
         }
 
+        .user-view .admin-only,
+        .mecanico-view .admin-only,
+        .operator-view .admin-only {
+            display: none !important;
+        }
+
         /* ── ALERTAS ── */
         .alert-list  { display: grid; gap: 0.7rem; }
         .alert-item  {
@@ -1105,7 +1111,7 @@
                         <div id="inicioDisponibles" class="stat-value text-[#1f9d49]">—</div>
                         <div id="inicioDisponiblesNote" class="stat-note">Listas para uso</div>
                     </article>
-                    <article class="stat-card">
+                    <article class="stat-card admin-only">
                         <div class="stat-label">En arriendo</div>
                         <div id="inicioEnArriendo" class="stat-value text-[#f5a623]">—</div>
                         <div id="inicioEnArriendoNote" class="stat-note">Activos hoy</div>
@@ -1138,7 +1144,7 @@
                             <div class="bar-track"><div id="barFillDisponibles" class="bar-fill" style="width:0%"></div></div>
                             <div id="barDisponiblesLabel" class="text-right font-semibold">—</div>
                         </div>
-                        <div class="bar-row">
+                        <div class="bar-row admin-only">
                             <div>En arriendo</div>
                             <div class="bar-track"><div id="barFillArriendo" class="bar-fill" style="width:0%"></div></div>
                             <div id="barArriendoLabel" class="text-right font-semibold">—</div>
@@ -1457,7 +1463,7 @@
                             <div class="report-actions report-machine-actions">
                                 <button id="reportRefreshBtn" class="btn">Actualizar reporte</button>
                                 <button id="reportExportBtn" class="btn btn-secondary">Generar CSV</button>
-                                <button id="reportExportIngresosBtn" class="btn btn-secondary">CSV ingresos</button>
+                                <button id="reportExportIngresosBtn" class="btn btn-secondary admin-only">CSV ingresos</button>
                                 <button id="reportPdfBtn" class="btn btn-secondary">Generar PDF</button>
                                 <button id="reportPrintBtn" class="btn btn-secondary">Imprimir</button>
                             </div>
@@ -1475,7 +1481,7 @@
                             <div id="reportTotalMantenciones" class="text-3xl font-bold text-slate-800">—</div>
                             <div class="muted text-sm mt-2">Registros de intervenciones preventivas y correctivas en el rango seleccionado.</div>
                         </article>
-                        <article class="section-card">
+                        <article class="section-card admin-only">
                             <div class="section-title">Ingresos por arriendo</div>
                             <div id="reportTotalIngresos" class="text-3xl font-bold text-slate-800">—</div>
                             <div class="muted text-sm mt-2">Ingresos estimados según contratos de arriendo en el rango seleccionado.</div>
@@ -2112,6 +2118,9 @@ function applyRolePermissions() {
     const allowed = ROLE_PERMISSIONS[userRole] || ['inicio'];
 
     document.body.classList.toggle('user-view', userRole === 'Usuario');
+    document.body.classList.toggle('mecanico-view', userRole === 'Mecanico');
+    document.body.classList.toggle('operator-view', userRole === 'Operador');
+    document.body.classList.toggle('admin-view', userRole === 'Administrador');
 
     // Mostrar solo los botones de menú permitidos
     document.querySelectorAll('.nav-link[data-role-required]').forEach(btn => {
@@ -2183,6 +2192,7 @@ function showView(viewName, push = true) {
     views.forEach(v => v.classList.toggle('active', v.id === target));
     viewButtons.forEach(b => b.classList.toggle('active', b.dataset.view === target));
     pageTitle.textContent = VIEW_LABELS[target] || 'Dashboard';
+    updateGlobalDateControlsVisibility(target);
 
     if (push) history.replaceState(null, '', `#${target}`);
 
@@ -2208,6 +2218,15 @@ function showView(viewName, push = true) {
     if (target === 'logistica') {
         loadLogisticaDashboard();
     }
+}
+
+function updateGlobalDateControlsVisibility(activeView = document.querySelector('.view.active')?.id) {
+    const controls = document.getElementById('globalDateControls');
+    const label = document.getElementById('reportActiveRangeLabel');
+    const shouldShow = ['inicio', 'inventario', 'mantenimiento', 'reportes'].includes(activeView);
+
+    if (controls) controls.style.display = shouldShow ? 'flex' : 'none';
+    if (label) label.style.display = shouldShow ? 'block' : 'none';
 }
 
 function initNavigation() {
@@ -2383,7 +2402,33 @@ async function refreshIncidentDetailPanelIfNeeded(maquinaId) {
 }
 
 async function loadAvailableMachines() {
-    if (availableMachines.length > 0) {
+    const role = typeof userRole !== 'undefined' ? userRole : (currentUser?.rol_acceso || '');
+    const isOperator = role === 'Operador';
+
+    if (!isOperator && availableMachines.length > 0) {
+        return availableMachines;
+    }
+
+    if (isOperator) {
+        const res = await fetch('/api/arriendos/mis-contratos', { headers: getAuthHeaders() });
+        if (!res.ok) {
+            throw new Error('No se pudieron cargar las máquinas asignadas');
+        }
+
+        const contracts = await res.json();
+        const machines = (Array.isArray(contracts) ? contracts : []).map((contract) => ({
+            id_maquina: contract.maquinaria_id_maquina,
+            modelo_equipo: contract.modelo_equipo,
+            horometro_actual: contract.horometro_entrada ?? contract.horometro_salida ?? 0,
+            cliente_id: contract.cliente_id,
+            cliente_nombre: contract.cliente_nombre,
+            id_contrato: contract.id_contrato,
+            estado_contrato: contract.estado_contrato,
+            fecha_fin: contract.fecha_fin,
+            fecha_inicio: contract.fecha_inicio
+        }));
+
+        availableMachines = machines;
         return availableMachines;
     }
 
@@ -3216,6 +3261,8 @@ function initGlobalDateControls() {
     const quicks = Array.from(document.querySelectorAll('#globalDateControls .quick-range'));
 
     if (!gStart || !gEnd || !quicks.length) return;
+
+    updateGlobalDateControlsVisibility();
 
     // Set defaults (últimos 30 días)
     const today = new Date();

@@ -35,9 +35,23 @@ function getUserRole() {
     }
 }
 
+function getCurrentUser() {
+    try {
+        const token = localStorage.getItem('srmm_token') || '';
+        if (!token || !token.includes('.')) return null;
+        const payload = token.split('.')[1];
+        return JSON.parse(atob(payload));
+    } catch (error) {
+        console.error('Error leyendo usuario autenticado', error);
+        return null;
+    }
+}
+
 export default function ReportesDashboard() {
     const [topMaquinas, setTopMaquinas] = useState([]);
     const [estadisticas, setEstadisticas] = useState([]);
+    const [actividadAutores, setActividadAutores] = useState([]);
+    const [operadorResumen, setOperadorResumen] = useState(null);
     const [ingresosDetalle, setIngresosDetalle] = useState([]);
     const [ingresosTotal, setIngresosTotal] = useState(0);
     const [maquinaSeleccionada, setMaquinaSeleccionada] = useState('');
@@ -68,20 +82,24 @@ export default function ReportesDashboard() {
         setIngresosPage(1);
     };
 
+    const loadOperadorResumen = async (headers) => {
+        const response = await fetch('/api/reportes/operador/resumen', { headers });
+        if (!response.ok) {
+            throw new Error('No se pudo cargar el resumen operativo');
+        }
+
+        const payload = await response.json();
+        setOperadorResumen(payload);
+    };
+
     const loadDatos = async () => {
         setLoading(true);
         setStatusMessage('');
         try {
             const headers = getAuthHeaders();
-            setCurrentRole(getUserRole());
-
-            const [resTop, resStats] = await Promise.all([
-                fetch('/api/reportes/top-maquinas', { headers }),
-                fetch('/api/reportes/estadisticas', { headers })
-            ]);
-
-            if (resTop.ok) setTopMaquinas(await resTop.json());
-            if (resStats.ok) setEstadisticas(await resStats.json());
+            const user = getCurrentUser();
+            const role = user?.rol_acceso || getUserRole();
+            setCurrentRole(role);
 
             const today = new Date();
             const end = today.toISOString().slice(0, 10);
@@ -90,7 +108,72 @@ export default function ReportesDashboard() {
             const start = past.toISOString().slice(0, 10);
             setFechaInicioFiltro(start);
             setFechaFinFiltro(end);
-            await loadIngresosReport(headers, start, end);
+
+            const canSeeIncome = role === 'Administrador';
+            const canSeeAuthorActivity = role === 'Administrador' || role === 'Mecanico';
+            const isOperator = role === 'Operador';
+
+            const requests = [
+                fetch('/api/reportes/estadisticas', { headers })
+            ];
+
+            if (isOperator) {
+                requests.push(fetch('/api/arriendos/mis-contratos', { headers }));
+            } else {
+                requests.push(fetch('/api/reportes/top-maquinas', { headers }));
+            }
+
+            if (canSeeAuthorActivity) {
+                requests.push(fetch(`/api/reportes/autores?fecha_inicio=${start}&fecha_fin=${end}`, { headers }));
+            }
+
+            const responses = await Promise.all(requests);
+            const [resStats, resMachines, resAuthors] = responses;
+
+            if (resStats.ok) setEstadisticas(await resStats.json());
+
+            if (resMachines.ok) {
+                const payload = await resMachines.json();
+                const normalizedMachines = isOperator
+                    ? (Array.isArray(payload) ? payload : []).map((contract) => ({
+                        id_maquina: contract.maquinaria_id_maquina,
+                        modelo_equipo: contract.modelo_equipo,
+                        horometro_actual: contract.horometro_entrada ?? contract.horometro_salida ?? 0,
+                        estado_contrato: contract.estado_contrato,
+                        fecha_fin: contract.fecha_fin
+                    }))
+                    : (Array.isArray(payload) ? payload : []);
+                setTopMaquinas(normalizedMachines);
+                if (isOperator && normalizedMachines.length === 0) {
+                    setStatusMessage('No tienes maquinaria asignada por contrato.');
+                }
+            }
+
+            if (resAuthors && resAuthors.ok) {
+                const authorsPayload = await resAuthors.json();
+                setActividadAutores(Array.isArray(authorsPayload) ? authorsPayload : []);
+            } else {
+                setActividadAutores([]);
+            }
+
+            if (isOperator) {
+                try {
+                    await loadOperadorResumen(headers);
+                } catch (summaryError) {
+                    console.error('Error cargando resumen operativo:', summaryError);
+                    setOperadorResumen(null);
+                }
+            } else {
+                setOperadorResumen(null);
+            }
+
+            if (canSeeIncome) {
+                await loadIngresosReport(headers, start, end);
+            } else {
+                setIngresosDetalle([]);
+                setIngresosTotal(0);
+                setIngresosPage(1);
+            }
         } catch (error) {
             console.error('Error cargando reportes:', error);
             setStatusMessage('Error al cargar reportes');
@@ -199,6 +282,11 @@ export default function ReportesDashboard() {
     const ingresosStartIndex = (ingresosPage - 1) * ingresosPerPage;
     const ingresosPageRows = ingresosDetalle.slice(ingresosStartIndex, ingresosStartIndex + ingresosPerPage);
     const isAdmin = currentRole === 'Administrador';
+    const isOperator = currentRole === 'Operador';
+    const isMechanic = currentRole === 'Mecanico';
+    const machineSectionTitle = isOperator ? 'Maquinaria asignada' : 'Máquinas más utilizadas';
+    const canSeeAuthorActivity = isAdmin || isMechanic;
+    const operatorContract = operadorResumen?.contrato_activo || null;
 
     return (
         <div className="max-w-7xl mx-auto p-6 space-y-8 animate-fadeIn">
@@ -218,9 +306,55 @@ export default function ReportesDashboard() {
                 </div>
             ) : null}
 
+            {isOperator ? (
+                <section className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-white to-indigo-50 p-6 shadow-sm">
+                    <div className="flex items-center justify-between gap-3 flex-wrap mb-5">
+                        <div>
+                            <h3 className="text-2xl font-bold text-slate-800">Resumen operativo</h3>
+                            <p className="text-sm text-slate-500 mt-1">Indicadores propios del operador: actividad registrada, incidencias y contrato activo.</p>
+                        </div>
+                        <div className="rounded-full bg-indigo-600 text-white px-4 py-2 text-sm font-semibold">
+                            {operadorResumen?.contratos_activos ? 'Contrato activo' : 'Sin contrato activo'}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <article className="rounded-2xl bg-white border border-slate-100 p-4 shadow-sm">
+                            <div className="text-sm text-slate-500">Horas registradas</div>
+                            <div className="mt-2 text-3xl font-bold text-slate-800">{formatNumber(operadorResumen?.horas_registradas, ' hrs')}</div>
+                        </article>
+                        <article className="rounded-2xl bg-white border border-slate-100 p-4 shadow-sm">
+                            <div className="text-sm text-slate-500">Incidencias</div>
+                            <div className="mt-2 text-3xl font-bold text-slate-800">{formatNumber(operadorResumen?.incidencias_registradas)}</div>
+                        </article>
+                        <article className="rounded-2xl bg-white border border-slate-100 p-4 shadow-sm">
+                            <div className="text-sm text-slate-500">Máquinas asignadas</div>
+                            <div className="mt-2 text-3xl font-bold text-slate-800">{formatNumber(operadorResumen?.maquinas_asignadas)}</div>
+                        </article>
+                        <article className="rounded-2xl bg-white border border-slate-100 p-4 shadow-sm">
+                            <div className="text-sm text-slate-500">Contratos activos</div>
+                            <div className="mt-2 text-3xl font-bold text-slate-800">{formatNumber(operadorResumen?.contratos_activos)}</div>
+                        </article>
+                    </div>
+
+                    <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+                        <div className="font-semibold text-slate-700 mb-1">Contrato activo actual</div>
+                        {operatorContract ? (
+                            <div className="flex flex-wrap gap-3 items-center">
+                                <span className="font-medium text-slate-800">{operatorContract.modelo_equipo}</span>
+                                <span className="text-slate-400">·</span>
+                                <span>Vigente desde {operatorContract.fecha_inicio || '—'} hasta {operatorContract.fecha_fin || '—'}</span>
+                            </div>
+                        ) : (
+                            <div className="text-slate-500">No hay contrato activo para la sesión actual.</div>
+                        )}
+                    </div>
+                </section>
+            ) : null}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-2xl shadow border border-slate-100">
-                    <h3 className="text-xl font-bold text-slate-800 mb-4">Máquinas más utilizadas</h3>
+                    <h3 className="text-xl font-bold text-slate-800 mb-4">{machineSectionTitle}</h3>
                     <div className="overflow-x-auto max-h-80">
                         <table className="w-full min-w-full text-left border-collapse table-auto">
                             <thead>
@@ -298,6 +432,51 @@ export default function ReportesDashboard() {
                 </div>
             </div>
 
+            {canSeeAuthorActivity ? (
+                <div className="bg-white p-6 rounded-2xl shadow border border-slate-100">
+                    <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+                        <div>
+                            <h3 className="text-xl font-bold text-slate-800 mb-1">Actividad por autor</h3>
+                            <p className="text-sm text-slate-500">Resumen de registros de horómetro e incidencias para separar el trabajo por usuario.</p>
+                        </div>
+                        <div className="text-sm text-slate-500">{actividadAutores.length} autor(es)</div>
+                    </div>
+                    <div className="overflow-x-auto max-h-80">
+                        <table className="w-full min-w-full text-left border-collapse table-auto">
+                            <thead>
+                                <tr className="border-b border-slate-200 text-sm text-slate-500 uppercase">
+                                    <th className="pb-3 px-2">Autor</th>
+                                    <th className="pb-3 px-2">Rol</th>
+                                    <th className="pb-3 px-2 text-center">Horómetros</th>
+                                    <th className="pb-3 px-2 text-center">Incidencias</th>
+                                    <th className="pb-3 px-2 text-center">Máquinas</th>
+                                    <th className="pb-3 px-2 text-right">Horas registradas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {actividadAutores.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="6" className="py-4 text-center text-slate-500">No hay actividad por autor en el rango seleccionado.</td>
+                                    </tr>
+                                ) : (
+                                    actividadAutores.map((item) => (
+                                        <tr key={item.autor_id} className="border-b border-slate-100 hover:bg-slate-50 transition">
+                                            <td className="py-3 px-2 font-semibold text-slate-700">{item.autor_nombre}</td>
+                                            <td className="py-3 px-2 text-slate-500">{item.autor_rol}</td>
+                                            <td className="py-3 px-2 text-center">{formatNumber(item.total_registros_horometro)}</td>
+                                            <td className="py-3 px-2 text-center">{formatNumber(item.total_incidencias)}</td>
+                                            <td className="py-3 px-2 text-center">{formatNumber(item.maquinas_distintas)}</td>
+                                            <td className="py-3 px-2 text-right font-bold text-indigo-600">{formatNumber(item.horas_registradas, ' hrs')}</td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            ) : null}
+
+            {isAdmin ? (
             <div className="bg-white p-6 rounded-2xl shadow border border-slate-100">
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
                     <div>
@@ -367,10 +546,9 @@ export default function ReportesDashboard() {
                     </div>
                 </div>
             </div>
-
-            {isAdmin ? null : (
+            ) : (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
-                    Tu rol actual no permite editar tarifas desde esta vista. La consulta y descarga de reportes permanece habilitada.
+                    Tu rol actual puede consultar reportes de máquinas, fallas y mantenciones, pero no ver ingresos por arriendo.
                 </div>
             )}
         </div>

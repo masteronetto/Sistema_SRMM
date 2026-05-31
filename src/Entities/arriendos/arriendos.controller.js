@@ -53,6 +53,20 @@ async function listContratos(req, res, next) {
     }
 }
 
+async function listMisContratos(req, res, next) {
+    try {
+        const clienteId = Number(req.user?.id_usuario);
+        if (!Number.isFinite(clienteId)) {
+            return res.status(400).json({ message: 'No se pudo identificar al usuario autenticado' });
+        }
+
+        const rows = await arriendosRepo.listArriendosByCliente(clienteId);
+        return res.json(rows);
+    } catch (error) {
+        next(error);
+    }
+}
+
 async function deleteContrato(req, res, next) {
     try {
         const id = Number(req.params.id_contrato);
@@ -74,5 +88,6 @@ async function deleteContrato(req, res, next) {
 module.exports = {
     createContrato,
     listContratos,
+    listMisContratos,
     deleteContrato
 };

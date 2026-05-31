@@ -101,15 +101,17 @@
       });
 
       const headers = getAuthHeaders();
-      const [topRes, statsRes] = await Promise.all([
-        fetch('/api/reportes/top-maquinas', { headers }),
-        fetch('/api/reportes/estadisticas', { headers })
-      ]);
+      const role = typeof userRole !== 'undefined' ? userRole : '';
+      const isOperator = role === 'Operador';
+      const isAdmin = role === 'Administrador';
+      const statsPromise = fetch('/api/reportes/estadisticas', { headers });
+      const topPromise = isOperator ? Promise.resolve(null) : fetch('/api/reportes/top-maquinas', { headers });
+      const [topRes, statsRes] = await Promise.all([topPromise, statsPromise]);
 
-      if (!topRes.ok) throw new Error('No se pudieron cargar las máquinas más usadas');
+      if (topRes && !topRes.ok) throw new Error('No se pudieron cargar las máquinas más usadas');
       if (!statsRes.ok) throw new Error('No se pudieron cargar las estadísticas');
 
-      const topMaquinas = await topRes.json();
+      const topMaquinas = isOperator ? machines : await topRes.json();
       const estadisticas = await statsRes.json();
 
       renderReportTopChart(topMaquinas);
@@ -147,18 +149,20 @@
       if (reportState.totalHoras !== undefined) summary.totalHoras = reportState.totalHoras;
       if (reportState.detalle) summary.detalle = reportState.detalle;
 
-      try {
-        const q = new URLSearchParams();
-        const d = getEffectiveReportDates();
-        if (d.start) q.append('fecha_inicio', d.start);
-        if (d.end) q.append('fecha_fin', d.end);
-        const ingRes = await fetch(`/api/reportes/ingresos?${q.toString()}`, { headers });
-        if (ingRes.ok) {
-          const ingPayload = await ingRes.json();
-          summary.totalIngresos = Number(ingPayload.total_ingresos || 0);
+      if (isAdmin) {
+        try {
+          const q = new URLSearchParams();
+          const d = getEffectiveReportDates();
+          if (d.start) q.append('fecha_inicio', d.start);
+          if (d.end) q.append('fecha_fin', d.end);
+          const ingRes = await fetch(`/api/reportes/ingresos?${q.toString()}`, { headers });
+          if (ingRes.ok) {
+            const ingPayload = await ingRes.json();
+            summary.totalIngresos = Number(ingPayload.total_ingresos || 0);
+          }
+        } catch (e) {
+          /* no bloquear la carga de KPIs */
         }
-      } catch (e) {
-        /* no bloquear la carga de KPIs */
       }
 
       updateReportKpis(summary);

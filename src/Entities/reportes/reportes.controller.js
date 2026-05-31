@@ -47,6 +47,36 @@ async function obtenerUsoHistorico(req, res, next) {
   }
 }
 
+async function obtenerResumenOperador(req, res, next) {
+  try {
+    const idUsuario = Number(req.user?.id_usuario);
+    if (!Number.isFinite(idUsuario)) {
+      return res.status(400).json({ message: 'No se pudo identificar al usuario autenticado' });
+    }
+
+    const data = await reportesRepo.getResumenOperador(idUsuario);
+    return res.json(data);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function obtenerActividadPorAutor(req, res, next) {
+  try {
+    const fechaInicio = typeof req.query.fecha_inicio === 'string' && req.query.fecha_inicio.trim() !== ''
+      ? req.query.fecha_inicio.trim()
+      : null;
+    const fechaFin = typeof req.query.fecha_fin === 'string' && req.query.fecha_fin.trim() !== ''
+      ? req.query.fecha_fin.trim()
+      : null;
+
+    const data = await reportesRepo.getActividadPorAutor({ fecha_inicio: fechaInicio, fecha_fin: fechaFin });
+    return res.json(data);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function obtenerIngresos(req, res, next) {
   try {
     const { fecha_inicio, fecha_fin, tarifa } = req.query;
@@ -129,8 +159,10 @@ module.exports = {
   obtenerHistorialMaquina,
   obtenerTopMaquinas,
   obtenerEstadisticas,
-  obtenerUsoHistorico
-  , obtenerIngresos
-  , obtenerIngresosCsv
-  , obtenerReporteFallas
+  obtenerUsoHistorico,
+  obtenerResumenOperador,
+  obtenerActividadPorAutor,
+  obtenerIngresos,
+  obtenerIngresosCsv,
+  obtenerReporteFallas
 };
