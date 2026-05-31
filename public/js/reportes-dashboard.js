@@ -19,6 +19,47 @@
     if (ingresosEl) ingresosEl.textContent = formatCurrency(summary.totalIngresos || 0);
   }
 
+  function renderOperatorResumen(summary) {
+    const card = document.getElementById('operatorResumenCard');
+    const horasEl = document.getElementById('operatorResumenHoras');
+    const incidenciasEl = document.getElementById('operatorResumenIncidencias');
+    const maquinasEl = document.getElementById('operatorResumenMaquinas');
+    const contratoEl = document.getElementById('operatorResumenContrato');
+    const maquinaActualEl = document.getElementById('operatorResumenMaquinaActual');
+
+    if (!card) return;
+
+    if (!summary) {
+      card.style.display = 'none';
+      return;
+    }
+
+    card.style.display = 'block';
+    if (horasEl) horasEl.textContent = formatNumber(summary.horas_registradas, ' hrs');
+    if (incidenciasEl) incidenciasEl.textContent = formatNumber(summary.incidencias_registradas);
+    if (maquinasEl) maquinasEl.textContent = formatNumber(summary.maquinas_asignadas);
+
+    if (contratoEl) {
+      contratoEl.textContent = summary.contratos_activos > 0 ? 'Activo' : 'Sin contrato';
+    }
+
+    if (maquinaActualEl) {
+      const contract = summary.contrato_activo;
+      maquinaActualEl.textContent = contract
+        ? `${contract.modelo_equipo || 'Máquina'} · ${contract.fecha_inicio || '—'} a ${contract.fecha_fin || '—'}`
+        : 'Sin contrato activo';
+    }
+  }
+
+  async function loadOperatorResumen(headers) {
+    const response = await fetch('/api/reportes/operador/resumen', { headers });
+    if (!response.ok) {
+      throw new Error('No se pudo cargar el resumen operativo');
+    }
+
+    return response.json();
+  }
+
   async function loadSelectedMachineReport(machineId, fechaInicio, fechaFin) {
     const selectedIds = machineId ? [machineId] : [];
     return loadSelectedMachinesReport(selectedIds, fechaInicio, fechaFin);
@@ -143,6 +184,18 @@
         selectedLabel.textContent = selectedMachineIds.length === 1
           ? (machines.find((m) => String(m.id_maquina) === String(selectedMachineIds[0]))?.modelo_equipo || 'Máquina seleccionada')
           : (selectedMachineIds.length > 1 ? `${selectedMachineIds.length} máquinas seleccionadas` : 'Sin máquina seleccionada');
+      }
+
+      if (isOperator) {
+        try {
+          const operatorSummary = await loadOperatorResumen(headers);
+          renderOperatorResumen(operatorSummary);
+        } catch (summaryError) {
+          console.error(summaryError);
+          renderOperatorResumen(null);
+        }
+      } else {
+        renderOperatorResumen(null);
       }
 
       const reportState = window.__srmmReporteState || {};

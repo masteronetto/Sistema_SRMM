@@ -287,6 +287,10 @@ export default function ReportesDashboard() {
     const machineSectionTitle = isOperator ? 'Maquinaria asignada' : 'Máquinas más utilizadas';
     const canSeeAuthorActivity = isAdmin || isMechanic;
     const operatorContract = operadorResumen?.contrato_activo || null;
+    const authorMetricsTitle = isMechanic ? 'Actividad por autor de trabajo' : 'Actividad por autor';
+    const authorMetricsDescription = isMechanic
+        ? 'Cada fila prioriza volumen, incidencias y último movimiento para distinguir trabajo propio de otros mecánicos.'
+        : 'Resumen de registros de horómetro e incidencias por usuario.';
 
     return (
         <div className="max-w-7xl mx-auto p-6 space-y-8 animate-fadeIn">
@@ -436,8 +440,8 @@ export default function ReportesDashboard() {
                 <div className="bg-white p-6 rounded-2xl shadow border border-slate-100">
                     <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
                         <div>
-                            <h3 className="text-xl font-bold text-slate-800 mb-1">Actividad por autor</h3>
-                            <p className="text-sm text-slate-500">Resumen de registros de horómetro e incidencias para separar el trabajo por usuario.</p>
+                            <h3 className="text-xl font-bold text-slate-800 mb-1">{authorMetricsTitle}</h3>
+                            <p className="text-sm text-slate-500">{authorMetricsDescription}</p>
                         </div>
                         <div className="text-sm text-slate-500">{actividadAutores.length} autor(es)</div>
                     </div>
@@ -450,13 +454,14 @@ export default function ReportesDashboard() {
                                     <th className="pb-3 px-2 text-center">Horómetros</th>
                                     <th className="pb-3 px-2 text-center">Incidencias</th>
                                     <th className="pb-3 px-2 text-center">Máquinas</th>
+                                    <th className="pb-3 px-2 text-center">Último movimiento</th>
                                     <th className="pb-3 px-2 text-right">Horas registradas</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {actividadAutores.length === 0 ? (
                                     <tr>
-                                        <td colSpan="6" className="py-4 text-center text-slate-500">No hay actividad por autor en el rango seleccionado.</td>
+                                        <td colSpan="7" className="py-4 text-center text-slate-500">No hay actividad por autor en el rango seleccionado.</td>
                                     </tr>
                                 ) : (
                                     actividadAutores.map((item) => (
@@ -466,6 +471,7 @@ export default function ReportesDashboard() {
                                             <td className="py-3 px-2 text-center">{formatNumber(item.total_registros_horometro)}</td>
                                             <td className="py-3 px-2 text-center">{formatNumber(item.total_incidencias)}</td>
                                             <td className="py-3 px-2 text-center">{formatNumber(item.maquinas_distintas)}</td>
+                                            <td className="py-3 px-2 text-center text-slate-600">{item.ultimo_evento ? new Date(item.ultimo_evento).toLocaleDateString('es-CL') : '—'}</td>
                                             <td className="py-3 px-2 text-right font-bold text-indigo-600">{formatNumber(item.horas_registradas, ' hrs')}</td>
                                         </tr>
                                     ))
