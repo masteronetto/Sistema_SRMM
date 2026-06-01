@@ -102,7 +102,7 @@
                 <div class="sidebar-user-name" id="sidebarName">Cargando…</div>
                 <div class="sidebar-user-actions">
                     <div id="sidebarRoleBadge" class="role-badge"></div>
-                    <button class="logout-btn" onclick="logout()">Cerrar sesión</button>
+                    <button class="logout-btn" id="sidebarLogoutBtn">Cerrar sesión</button>
                 </div>
             </div>
         </div>
@@ -484,7 +484,7 @@
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;">
                             <div class="section-title">Gestionar usuarios</div>
                             <div>
-                                <button class="btn" onclick="showAddUserForm()">+ Agregar usuario</button>
+                                <button class="btn" id="addUserBtn">+ Agregar usuario</button>
                             </div>
                         </div>
                         <div id="usuarios-content"><p class="muted">Cargando usuarios…</p></div>
@@ -494,7 +494,7 @@
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;">
                             <div class="section-title">Solicitudes de rol</div>
                             <div>
-                                <button class="btn" onclick="loadRoleRequests()">Refrescar</button>
+                                <button class="btn" id="refreshRoleRequestsBtn">Refrescar</button>
                             </div>
                         </div>
                         <div id="role-requests-content"><p class="muted">Cargando solicitudes…</p></div>
@@ -1266,6 +1266,9 @@ let adminMaquinariaInitialized = false;
 let reportTopChart = null;
 let reportUsoChart = null;
 let reportSelectedMachineId = '';
+let reportLoadRequestId = 0;
+let reportInteractionRequestId = 0;
+let reportFallasDebounceTimer = null;
 window.reportFallasCriticidadChart = null;
 window.reportFallasPeriodoChart = null;
 window.reportFallasState = {
@@ -1302,6 +1305,7 @@ async function initDashboard() {
     renderSidebarUser();
     applyRolePermissions();
     renderWelcome();
+    initStaticActionButtons();
     initNavigation();
     initMachineCards();
     initIncidentForm();
@@ -1311,6 +1315,26 @@ async function initDashboard() {
     loadInicioKpis();
     loadArriendosDashboard();
     loadLogisticaDashboard();
+}
+
+function initStaticActionButtons() {
+    const logoutBtn = document.getElementById('sidebarLogoutBtn');
+    if (logoutBtn && !logoutBtn.dataset.bound) {
+        logoutBtn.dataset.bound = '1';
+        logoutBtn.addEventListener('click', logout);
+    }
+
+    const addUserBtn = document.getElementById('addUserBtn');
+    if (addUserBtn && !addUserBtn.dataset.bound) {
+        addUserBtn.dataset.bound = '1';
+        addUserBtn.addEventListener('click', showAddUserForm);
+    }
+
+    const refreshRoleReqBtn = document.getElementById('refreshRoleRequestsBtn');
+    if (refreshRoleReqBtn && !refreshRoleReqBtn.dataset.bound) {
+        refreshRoleReqBtn.dataset.bound = '1';
+        refreshRoleReqBtn.addEventListener('click', loadRoleRequests);
+    }
 }
 
 /* ─── Sidebar usuario ─── */
@@ -1361,10 +1385,16 @@ function renderWelcome() {
                 <div class="user-access-copy">
                     Tu acceso está limitado a la vista de usuario. Si necesitas más permisos, solicítalo al administrador.
                 </div>
-                <button type="button" class="role-request-btn" onclick="requestRoleChange()" style="margin-top:10px;">
+                <button type="button" id="requestRoleBtn" class="role-request-btn" style="margin-top:10px;">
                     ✉ Solicitar cambio de rol
                 </button>
             </div>`;
+
+        const requestBtn = document.getElementById('requestRoleBtn');
+        if (requestBtn && !requestBtn.dataset.bound) {
+            requestBtn.dataset.bound = '1';
+            requestBtn.addEventListener('click', requestRoleChange);
+        }
         return;
     }
 
@@ -2116,18 +2146,22 @@ async function loadSelectedMachinesReport(machineIds, fechaInicio, fechaFin) {
 }
 
 async function loadReportesDashboard() {
+    const currentRequestId = ++reportLoadRequestId;
+    const isStale = () => currentRequestId !== reportLoadRequestId;
+
     const role = getCurrentRole();
     if (role.toLowerCase() === 'operador') {
-        setReportStatus('Cargando incidencias del operador...', 'info');
+        if (!isStale()) setReportStatus('Cargando incidencias del operador...', 'info');
         const opSection = document.getElementById('operatorSimpleReport');
         if (opSection) opSection.style.display = 'block';
         try {
             await initOperatorReportForm();
+            if (isStale()) return;
             await loadOperatorIncidencias();
-            setReportStatus('Incidencias del operador actualizadas', 'success');
+            if (!isStale()) setReportStatus('Incidencias del operador actualizadas', 'success');
         } catch (error) {
             console.error('Error cargando incidencias del operador:', error);
-            setReportStatus('No se pudieron cargar las incidencias del operador', 'error');
+            if (!isStale()) setReportStatus('No se pudieron cargar las incidencias del operador', 'error');
         }
         return;
     }
@@ -2137,10 +2171,11 @@ async function loadReportesDashboard() {
 
     if (!machineSelect) return;
 
-    setReportStatus('Cargando reportes...', 'info');
+    if (!isStale()) setReportStatus('Cargando reportes...', 'info');
 
     try {
         const machines = await loadAvailableMachines();
+        if (isStale()) return;
         currentReportMachines = Array.isArray(machines) ? machines : [];
 
         machineSelect.innerHTML = machines.length
@@ -2167,6 +2202,7 @@ async function loadReportesDashboard() {
 
             topMaquinas = await topRes.json();
             estadisticas = await statsRes.json();
+            if (isStale()) return;
         } catch (statsError) {
             console.error('Error cargando estadísticas históricas:', statsError);
         }
@@ -2194,6 +2230,7 @@ async function loadReportesDashboard() {
         const dates = getEffectiveReportDates();
         try {
             await loadSelectedMachinesReport(selectedMachineIds, dates.start, dates.end);
+            if (isStale()) return;
         } catch (reportError) {
             console.error('Error cargando historial unificado:', reportError);
             window.__srmmReporteState = {
@@ -2231,6 +2268,7 @@ async function loadReportesDashboard() {
                 const ingRes = await fetch(`/api/reportes/ingresos?${q.toString()}`, { headers });
                 if (ingRes.ok) {
                     const ingPayload = await ingRes.json();
+                    if (isStale()) return;
                     summary.totalIngresos = Number(ingPayload.total_ingresos || 0);
                 }
             } catch (e) { /* no bloquear la carga de KPIs */ }
@@ -2240,20 +2278,22 @@ async function loadReportesDashboard() {
 
         try {
             await loadReportFallasDashboard();
+            if (isStale()) return;
         } catch (fallasError) {
             console.error('Error cargando reporte de fallas:', fallasError);
         }
         if (typeof userRole !== 'undefined' && userRole !== 'Operador') {
             try {
                 await loadReportMantenimientosDashboard();
+                if (isStale()) return;
             } catch (mantError) {
                 console.error('Error cargando reporte de mantenimientos:', mantError);
             }
         }
-        setReportStatus('Reportes actualizados', 'success');
+        if (!isStale()) setReportStatus('Reportes actualizados', 'success');
     } catch (error) {
         console.error('Error cargando reportes históricos:', error);
-        setReportStatus('Error al cargar reportes', 'error');
+        if (!isStale()) setReportStatus('Error al cargar reportes', 'error');
     }
 }
 
@@ -2293,16 +2333,36 @@ function initReportesDashboard() {
 
     if (!machineSelect || !refreshBtn || !exportBtn || !pdfBtn) return;
 
+    const beginReportInteraction = () => ++reportInteractionRequestId;
+    const isStaleInteraction = (interactionId) => interactionId !== reportInteractionRequestId;
+    const scheduleFallasDashboardReload = () => {
+        const interactionId = beginReportInteraction();
+        if (reportFallasDebounceTimer) {
+            clearTimeout(reportFallasDebounceTimer);
+        }
+        reportFallasDebounceTimer = setTimeout(async () => {
+            if (isStaleInteraction(interactionId)) return;
+            try {
+                await loadReportFallasDashboard();
+            } catch (error) {
+                console.error('Error actualizando reporte de fallas:', error);
+            }
+        }, 180);
+    };
+
     if (!reportsInitialized) {
         reportsInitialized = true;
 
         machineSelect.addEventListener('change', async () => {
+            const interactionId = beginReportInteraction();
             const selectedIds = getSelectedReportMachineIds(machineSelect);
             try {
                 const d = getEffectiveReportDates();
                 await loadSelectedMachinesReport(selectedIds, d.start, d.end);
+                if (isStaleInteraction(interactionId)) return;
                 try {
                     await loadReportFallasDashboard();
+                    if (isStaleInteraction(interactionId)) return;
                 } catch (fallasError) {
                     console.error('Error cargando reporte de fallas:', fallasError);
                 }
@@ -2325,13 +2385,13 @@ function initReportesDashboard() {
 
             fallasPeriodoSelect.addEventListener('change', async () => {
                 syncFallasDateInputs();
-                await loadReportFallasDashboard();
+                scheduleFallasDashboardReload();
             });
-            fallasStartDateInput.addEventListener('change', loadReportFallasDashboard);
-            fallasEndDateInput.addEventListener('change', loadReportFallasDashboard);
-            fallasCriticidadSelect.addEventListener('change', loadReportFallasDashboard);
+            fallasStartDateInput.addEventListener('change', scheduleFallasDashboardReload);
+            fallasEndDateInput.addEventListener('change', scheduleFallasDashboardReload);
+            fallasCriticidadSelect.addEventListener('change', scheduleFallasDashboardReload);
             if (fallasWarningToggle) {
-                fallasWarningToggle.addEventListener('change', loadReportFallasDashboard);
+                fallasWarningToggle.addEventListener('change', scheduleFallasDashboardReload);
             }
             syncFallasDateInputs();
         }
@@ -3247,8 +3307,8 @@ function renderArriendosTable(rows) {
                             <td>${formatCLDate(item.fecha_fin)}</td>
                             <td><span class="pill ${String(item.estado_contrato || '').toLowerCase() === 'activo' ? 'success' : 'maintenance'}">${escapeHtml(item.estado_contrato || '—')}</span></td>
                             <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-                                <button class="btn btn-secondary" type="button" onclick="fillArriendoForm(${JSON.stringify(item.maquinaria_id_maquina)}, ${JSON.stringify(item.cliente_id ?? '')})">Editar</button>
-                                <button class="btn btn-danger" type="button" ${canDelete ? `onclick="deleteArriendoById(${JSON.stringify(item.id_contrato)})"` : 'disabled'}>Eliminar</button>
+                                <button class="btn btn-secondary" type="button" data-arriendo-action="edit" data-maquina-id="${escapeHtml(String(item.maquinaria_id_maquina ?? ''))}" data-cliente-id="${escapeHtml(String(item.cliente_id ?? ''))}">Editar</button>
+                                <button class="btn btn-danger" type="button" data-arriendo-action="delete" data-contrato-id="${escapeHtml(String(item.id_contrato ?? ''))}" ${canDelete ? '' : 'disabled'}>Eliminar</button>
                             </td>
                         </tr>
                     `).join('')}
@@ -3461,6 +3521,32 @@ async function populateArriendoSelectors() {
 
 async function loadArriendosDashboard() {
     const form = document.getElementById('arriendoForm');
+    const tableContainer = document.getElementById('arriendosTable');
+
+    if (tableContainer && !tableContainer.dataset.boundActions) {
+        tableContainer.dataset.boundActions = '1';
+        tableContainer.addEventListener('click', (event) => {
+            const targetBtn = event.target.closest('button[data-arriendo-action]');
+            if (!targetBtn) return;
+
+            const action = targetBtn.dataset.arriendoAction;
+            if (action === 'edit') {
+                const maquinaId = targetBtn.dataset.maquinaId || '';
+                const clienteId = targetBtn.dataset.clienteId || '';
+                fillArriendoForm(maquinaId, clienteId);
+                return;
+            }
+
+            if (action === 'delete') {
+                if (targetBtn.disabled) return;
+                const contratoId = Number(targetBtn.dataset.contratoId);
+                if (Number.isFinite(contratoId) && contratoId > 0) {
+                    deleteArriendoById(contratoId);
+                }
+            }
+        });
+    }
+
     if (form && !form.dataset.initialized) {
         form.dataset.initialized = '1';
         form.addEventListener('submit', async (event) => {
@@ -3499,8 +3585,7 @@ async function loadArriendosDashboard() {
         });
     }
 
-    const container = document.getElementById('arriendosTable');
-    if (container) container.innerHTML = '<table><tbody><tr><td colspan="6" class="detail-empty">Cargando arriendos…</td></tr></tbody></table>';
+    if (tableContainer) tableContainer.innerHTML = '<table><tbody><tr><td colspan="6" class="detail-empty">Cargando arriendos…</td></tr></tbody></table>';
     await populateArriendoSelectors();
     try {
         const res = await fetch('/api/arriendos', { headers: getAuthHeaders() });
@@ -3508,7 +3593,7 @@ async function loadArriendosDashboard() {
         const rows = await res.json();
         renderArriendosTable(Array.isArray(rows) ? rows : []);
     } catch (error) {
-        if (container) container.innerHTML = `<table><tbody><tr><td colspan="6" class="detail-empty">Error: ${escapeHtml(error.message)}</td></tr></tbody></table>`;
+        if (tableContainer) tableContainer.innerHTML = `<table><tbody><tr><td colspan="6" class="detail-empty">Error: ${escapeHtml(error.message)}</td></tr></tbody></table>`;
     }
 }
 
@@ -4020,9 +4105,6 @@ function initIncidentForm() {
 
 /* Inicializador y helpers para la vista simplificada de reportes (Operador) */
 async function initOperatorReportForm() {
-    if (window._opReportInitialized) return;
-    window._opReportInitialized = true;
-
     const machineSelect = document.getElementById('opIncidentMachine');
     const assignedMachineLabel = document.getElementById('opAssignedMachineLabel');
     const dateInput = document.getElementById('opIncidentDate');
@@ -4035,6 +4117,47 @@ async function initOperatorReportForm() {
     const today = new Date();
     if (dateInput) dateInput.value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
 
+    await hydrateOperatorReportFormData(machineSelect, assignedMachineLabel);
+
+    if (submitBtn.dataset.bound) return;
+    submitBtn.dataset.bound = '1';
+
+    submitBtn.addEventListener('click', async () => {
+        const maquinaId = document.getElementById('opIncidentMachine')?.value;
+        const fecha = document.getElementById('opIncidentDate')?.value;
+        const criticidad = document.getElementById('opIncidentSeverity')?.value;
+        const descripcion = document.getElementById('opIncidentDescription')?.value.trim();
+
+        if (!maquinaId || !fecha || !descripcion) {
+            if (statusEl) statusEl.textContent = 'Completa máquina, fecha y descripción.';
+            return;
+        }
+
+        try {
+            if (statusEl) statusEl.textContent = 'Guardando...';
+            submitBtn.disabled = true;
+            const body = { fecha, criticidad, descripcion };
+            const res = await fetch(`/api/maquinaria/${maquinaId}/incidencias`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                body: JSON.stringify(body)
+            });
+            const result = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(result.message || 'Error registrando incidencia');
+            if (statusEl) statusEl.textContent = 'Incidencia registrada.';
+            document.getElementById('opIncidentDescription').value = '';
+            await loadOperatorIncidencias();
+        } catch (err) {
+            console.error(err);
+            if (statusEl) statusEl.textContent = `Error: ${err.message}`;
+        } finally {
+            submitBtn.disabled = false;
+            setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
+        }
+    });
+}
+
+async function hydrateOperatorReportFormData(machineSelect, assignedMachineLabel) {
     try {
         const machines = await loadAvailableMachines();
         machineSelect.innerHTML = '<option value="">Selecciona una máquina</option>' + machines.map(m => `<option value="${m.id_maquina}">${m.modelo_equipo}</option>`).join('');
@@ -4073,40 +4196,6 @@ async function initOperatorReportForm() {
             console.error('No se pudo resolver la máquina asignada del operador:', fallbackError);
         }
     }
-
-    submitBtn.addEventListener('click', async () => {
-        const maquinaId = document.getElementById('opIncidentMachine')?.value;
-        const fecha = document.getElementById('opIncidentDate')?.value;
-        const criticidad = document.getElementById('opIncidentSeverity')?.value;
-        const descripcion = document.getElementById('opIncidentDescription')?.value.trim();
-
-        if (!maquinaId || !fecha || !descripcion) {
-            if (statusEl) statusEl.textContent = 'Completa máquina, fecha y descripción.';
-            return;
-        }
-
-        try {
-            if (statusEl) statusEl.textContent = 'Guardando...';
-            submitBtn.disabled = true;
-            const body = { fecha, criticidad, descripcion };
-            const res = await fetch(`/api/maquinaria/${maquinaId}/incidencias`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-                body: JSON.stringify(body)
-            });
-            const result = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(result.message || 'Error registrando incidencia');
-            if (statusEl) statusEl.textContent = 'Incidencia registrada.';
-            document.getElementById('opIncidentDescription').value = '';
-            await loadOperatorIncidencias();
-        } catch (err) {
-            console.error(err);
-            if (statusEl) statusEl.textContent = `Error: ${err.message}`;
-        } finally {
-            submitBtn.disabled = false;
-            setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
-        }
-    });
 }
 
 async function loadOperatorIncidencias() {
