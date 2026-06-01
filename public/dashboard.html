@@ -398,7 +398,20 @@
                         <div class="muted">Selecciona una o más máquinas para crear contratos en lote para el mismo usuario.</div>
                         <form id="arriendoForm" class="incident-form" style="margin-top:1rem;">
                             <div class="incident-grid">
-                                <label>Máquinas<select id="arriendoMaquina" multiple size="5" required><option value="">Cargando máquinas…</option></select></label>
+                                <label class="arriendo-machine-field">
+                                    <span>Máquinas</span>
+                                    <div class="arriendo-machine-picker">
+                                        <div class="arriendo-machine-toolbar">
+                                            <input id="arriendoMaquinaSearch" type="search" placeholder="Buscar por modelo o estado">
+                                            <div class="arriendo-machine-actions">
+                                                <button type="button" id="arriendoMaquinaSelectAll" class="btn btn-secondary btn-sm">Todas</button>
+                                                <button type="button" id="arriendoMaquinaClear" class="btn btn-secondary btn-sm">Limpiar</button>
+                                            </div>
+                                        </div>
+                                        <div id="arriendoMaquinaList" class="arriendo-machine-list" aria-live="polite"><div class="arriendo-machine-empty">Cargando máquinas…</div></div>
+                                        <div id="arriendoMaquinaSummary" class="arriendo-machine-summary">Selecciona una o más máquinas.</div>
+                                    </div>
+                                </label>
                                 <label>Cliente<select id="arriendoCliente"><option value="">Sin cliente</option></select></label>
                                 <label>Fecha inicio<input id="arriendoFechaInicio" type="date"></label>
                                 <label>Fecha fin<input id="arriendoFechaFin" type="date"></label>
@@ -3294,22 +3307,134 @@ function renderLogisticaTable(rows, { canDelete = false, canChangeStatus = false
 }
 
 function fillArriendoForm(maquinariaId, clienteId = '') {
-    const maquinaSelect = document.getElementById('arriendoMaquina');
     const clienteSelect = document.getElementById('arriendoCliente');
-    if (maquinaSelect) {
-        const ids = Array.isArray(maquinariaId) ? maquinariaId.map((value) => String(value)) : [String(maquinariaId || '')];
-        Array.from(maquinaSelect.options).forEach((option) => {
-            option.selected = ids.includes(String(option.value));
-        });
-    }
+    const ids = Array.isArray(maquinariaId) ? maquinariaId.map((value) => String(value)) : [String(maquinariaId || '')];
+    const cards = getArriendoMachineCards();
+    cards.forEach((card) => {
+        const checkbox = card.querySelector('input[type="checkbox"]');
+        if (!checkbox) return;
+        checkbox.checked = ids.includes(String(checkbox.value));
+        card.classList.toggle('is-selected', checkbox.checked);
+    });
+    updateArriendoMachineSummary();
     if (clienteSelect) clienteSelect.value = String(clienteId || '');
     setArriendoStatus('Edición preparada. Completa fechas y guarda.', 'info');
 }
 
+function getArriendoMachineCards() {
+    return Array.from(document.querySelectorAll('#arriendoMaquinaList .arriendo-machine-card'));
+}
+
+function updateArriendoMachineSummary() {
+    const summary = document.getElementById('arriendoMaquinaSummary');
+    const cards = getArriendoMachineCards();
+    if (!summary) return;
+
+    const selected = cards.filter((card) => card.querySelector('input[type="checkbox"]')?.checked);
+    if (!selected.length) {
+        summary.innerHTML = 'Selecciona una o más máquinas.';
+        return;
+    }
+
+    const names = selected.slice(0, 3).map((card) => {
+        const title = card.querySelector('.arriendo-machine-card-title')?.textContent || '';
+        return escapeHtml(title || 'Máquina seleccionada');
+    });
+    const extra = selected.length > 3 ? ` y ${selected.length - 3} más` : '';
+    summary.innerHTML = `<strong>${selected.length} seleccionada(s)</strong>: ${names.join(', ')}${extra}`;
+}
+
+function applyArriendoMachineFilter() {
+    const search = document.getElementById('arriendoMaquinaSearch');
+    const cards = getArriendoMachineCards();
+
+    const term = String(search?.value || '').trim().toLowerCase();
+    cards.forEach((card) => {
+        const text = String(card.textContent || '').toLowerCase();
+        card.classList.toggle('is-hidden', Boolean(term) && !text.includes(term));
+    });
+}
+
+function selectAllArriendoMachines(selected) {
+    const cards = getArriendoMachineCards();
+
+    cards.forEach((card) => {
+        const checkbox = card.querySelector('input[type="checkbox"]');
+        if (!checkbox) return;
+        checkbox.checked = selected;
+        card.classList.toggle('is-selected', selected);
+    });
+    updateArriendoMachineSummary();
+}
+
+function getSelectedArriendoMachineIds() {
+    return Array.from(document.querySelectorAll('#arriendoMaquinaList input[type="checkbox"]:checked'))
+        .map((input) => Number(input.value))
+        .filter((value) => Number.isFinite(value) && value > 0);
+}
+
+function renderArriendoMachineCards(machines) {
+    const container = document.getElementById('arriendoMaquinaList');
+    if (!container) return;
+
+    if (!Array.isArray(machines) || !machines.length) {
+        container.innerHTML = '<div class="arriendo-machine-empty">No hay máquinas disponibles.</div>';
+        return;
+    }
+
+    container.innerHTML = machines.map((machine, index) => {
+        const id = Number(machine.id_maquina);
+        const title = escapeHtml(machine.modelo_equipo || `Máquina #${id}`);
+        const state = escapeHtml(machine.estado || '—');
+        const horometro = machine.horometro_actual !== undefined && machine.horometro_actual !== null
+            ? escapeHtml(String(machine.horometro_actual))
+            : '—';
+        const contract = machine.estado_contrato ? escapeHtml(machine.estado_contrato) : 'Sin contrato';
+        const client = escapeHtml(machine.cliente_nombre || machine.cliente || 'Sin cliente');
+
+        return `
+            <label class="arriendo-machine-card" data-machine-id="${id}">
+                <input type="checkbox" value="${id}" name="arriendoMaquinaCard" aria-label="Seleccionar ${title}">
+                <div class="arriendo-machine-card-main">
+                    <div class="arriendo-machine-card-title">${title}</div>
+                    <div class="arriendo-machine-card-meta">
+                        <span>${client}</span>
+                        <span>•</span>
+                        <span>Horómetro ${horometro}</span>
+                        <span>•</span>
+                        <span>${state}</span>
+                    </div>
+                </div>
+                <span class="pill ${String(contract).toLowerCase() === 'activo' ? 'success' : 'maintenance'} arriendo-machine-card-badge">${contract}</span>
+            </label>
+        `;
+    }).join('');
+
+    container.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+        checkbox.addEventListener('change', () => {
+            const card = checkbox.closest('.arriendo-machine-card');
+            if (card) card.classList.toggle('is-selected', checkbox.checked);
+            updateArriendoMachineSummary();
+        });
+    });
+
+    updateArriendoMachineSummary();
+}
+
 async function populateArriendoSelectors() {
-    const maquinaSelect = document.getElementById('arriendoMaquina');
     const clienteSelect = document.getElementById('arriendoCliente');
-    if (!maquinaSelect || !clienteSelect) return;
+    const searchInput = document.getElementById('arriendoMaquinaSearch');
+    const selectAllBtn = document.getElementById('arriendoMaquinaSelectAll');
+    const clearBtn = document.getElementById('arriendoMaquinaClear');
+    const machineList = document.getElementById('arriendoMaquinaList');
+    if (!machineList || !clienteSelect) return;
+
+    if (!machineList.dataset.enhanced) {
+        machineList.dataset.enhanced = '1';
+        if (searchInput) searchInput.addEventListener('input', applyArriendoMachineFilter);
+        if (selectAllBtn) selectAllBtn.addEventListener('click', () => selectAllArriendoMachines(true));
+        if (clearBtn) clearBtn.addEventListener('click', () => selectAllArriendoMachines(false));
+    }
 
     try {
         const [machines, usersRes] = await Promise.all([
@@ -3317,9 +3442,11 @@ async function populateArriendoSelectors() {
             fetch('/api/usuarios', { headers: getAuthHeaders() })
         ]);
 
-        maquinaSelect.innerHTML = machines.length
-            ? machines.map((m) => `<option value="${m.id_maquina}">${escapeHtml(m.modelo_equipo)} — ${escapeHtml(m.estado || '—')}</option>`).join('')
-            : '<option value="">No hay máquinas disponibles</option>';
+        renderArriendoMachineCards(machines);
+
+        if (searchInput) searchInput.value = '';
+        applyArriendoMachineFilter();
+        updateArriendoMachineSummary();
 
         if (usersRes.ok) {
             const users = await usersRes.json();
@@ -3338,9 +3465,7 @@ async function loadArriendosDashboard() {
         form.dataset.initialized = '1';
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
-            const selectedMachines = Array.from(document.getElementById('arriendoMaquina')?.selectedOptions || [])
-                .map((option) => Number(option.value))
-                .filter((value) => Number.isFinite(value) && value > 0);
+            const selectedMachines = getSelectedArriendoMachineIds();
 
             const payload = {
                 maquinaria_ids: selectedMachines,
