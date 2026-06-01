@@ -339,7 +339,7 @@
                         <div id="ordersTableContainer" style="margin-top:0.6rem;"></div>
                     </section>
 
-                    <section class="section-card">
+                    <section class="section-card mecanico-only">
                         <div class="section-title">Registrar incidencia</div>
                         <form id="incidentRegisterForm" class="incident-form">
                             <div class="incident-grid">
@@ -393,7 +393,7 @@
             <!-- ══ ARRIENDO ══ -->
             <section id="arriendo" class="view">
                 <div class="section-stack">
-                    <section class="section-card">
+                    <section class="section-card mecanico-only">
                         <div class="section-title">Arriendos reales</div>
                         <div class="muted">Selecciona una o más máquinas para crear contratos en lote para el mismo usuario.</div>
                         <form id="arriendoForm" class="incident-form" style="margin-top:1rem;">
@@ -412,7 +412,7 @@
                             </div>
                         </form>
                     </section>
-                    <section class="section-card">
+                    <section class="section-card mecanico-only">
                         <div class="section-title">Contratos de arriendo</div>
                         <div id="arriendosTable" class="table-wrap">
                             <table>
@@ -492,7 +492,7 @@
             <!-- ══ REPORTES ══ -->
             <section id="reportes" class="view">
                 <div class="section-stack" style="gap:1rem;">
-                    <section class="section-card">
+                    <section class="section-card mecanico-only">
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
                             <div>
                                 <div class="section-title">Visualización de reportes históricos</div>
@@ -1629,26 +1629,57 @@ async function loadAvailableMachines() {
 
         if (!machines.length) {
             try {
-                const resumenRes = await fetch('/api/reportes/operador/resumen', { headers: getAuthHeaders() });
-                if (resumenRes.ok) {
-                    const resumen = await resumenRes.json();
-                    const contrato = resumen?.contrato_activo;
-                    if (contrato?.maquinaria_id_maquina) {
-                        machines.push({
-                            id_maquina: contrato.maquinaria_id_maquina,
-                            modelo_equipo: contrato.modelo_equipo || `Máquina #${contrato.maquinaria_id_maquina}`,
+                const incidenciasRes = await fetch('/api/incidencias', { headers: getAuthHeaders() });
+                if (incidenciasRes.ok) {
+                    const incidencias = await incidenciasRes.json();
+                    const machinesById = new Map();
+                    (Array.isArray(incidencias) ? incidencias : []).forEach((incidencia) => {
+                        const idMaquina = Number(incidencia.maquinaria_id_maquina);
+                        if (!Number.isFinite(idMaquina) || machinesById.has(idMaquina)) return;
+                        machinesById.set(idMaquina, {
+                            id_maquina: idMaquina,
+                            modelo_equipo: incidencia.modelo_equipo || `Máquina #${idMaquina}`,
                             horometro_actual: 0,
                             cliente_id: currentUser?.id_usuario,
                             cliente_nombre: currentUser?.nombre_completo || currentUser?.email || '',
-                            id_contrato: contrato.id_contrato || null,
-                            estado_contrato: contrato.estado_contrato || 'Activo',
-                            fecha_fin: contrato.fecha_fin || null,
-                            fecha_inicio: contrato.fecha_inicio || null
+                            id_contrato: null,
+                            estado_contrato: 'Activo',
+                            fecha_fin: null,
+                            fecha_inicio: null
                         });
+                    });
+
+                    if (machinesById.size > 0) {
+                        machines.push(...machinesById.values());
                     }
                 }
-            } catch (fallbackError) {
-                console.error('No se pudo obtener el contrato activo del operador:', fallbackError);
+            } catch (incidenciasFallbackError) {
+                console.error('No se pudo inferir la máquina asignada desde incidencias:', incidenciasFallbackError);
+            }
+
+            if (!machines.length) {
+                try {
+                    const resumenRes = await fetch('/api/reportes/operador/resumen', { headers: getAuthHeaders() });
+                    if (resumenRes.ok) {
+                        const resumen = await resumenRes.json();
+                        const contrato = resumen?.contrato_activo;
+                        if (contrato?.maquinaria_id_maquina) {
+                            machines.push({
+                                id_maquina: contrato.maquinaria_id_maquina,
+                                modelo_equipo: contrato.modelo_equipo || `Máquina #${contrato.maquinaria_id_maquina}`,
+                                horometro_actual: 0,
+                                cliente_id: currentUser?.id_usuario,
+                                cliente_nombre: currentUser?.nombre_completo || currentUser?.email || '',
+                                id_contrato: contrato.id_contrato || null,
+                                estado_contrato: contrato.estado_contrato || 'Activo',
+                                fecha_fin: contrato.fecha_fin || null,
+                                fecha_inicio: contrato.fecha_inicio || null
+                            });
+                        }
+                    }
+                } catch (fallbackError) {
+                    console.error('No se pudo obtener el contrato activo del operador:', fallbackError);
+                }
             }
         }
 
@@ -2172,23 +2203,18 @@ async function loadReportesDashboard() {
 
         updateReportKpis(summary);
 
-        // Si es operador, mostrar versión simplificada: formulario de reporte y lista de mis fallas
+        // Si es operador, mostrar solo la vista simplificada y detener la carga histórica
         if (role.toLowerCase() === 'operador') {
             const opSection = document.getElementById('operatorSimpleReport');
             if (opSection) opSection.style.display = '';
             try {
-                await loadReportFallasDashboard(); // mantiene resumen si aplica
-            } catch (fallasError) {
-                console.error('Error cargando reporte de fallas:', fallasError);
-            }
-            try {
                 await initOperatorReportForm();
                 await loadOperatorIncidencias();
-                setReportStatus('Reportes (modo operador) actualizados', 'success');
-                return;
             } catch (e) {
                 console.error('Error cargando vista simple operador:', e);
             }
+            setReportStatus('Incidencias del operador actualizadas', 'success');
+            return;
         }
 
         try {
