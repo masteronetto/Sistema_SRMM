@@ -220,9 +220,22 @@
 
       updateReportKpis(summary);
       await loadReportFallasDashboard();
-      if (!isOperator) {
-        await loadReportMantenimientosDashboard();
+      
+      // Solo mostrar reportes de mantenimiento a Mecánicos y Administradores
+      const role = typeof userRole !== 'undefined' ? userRole : '';
+      if (role !== 'Operador') {
+        try {
+          const mantenimientosRes = await fetch('/api/reportes/mantenimientos', { headers });
+          if (mantenimientosRes.ok) {
+            const rows = await mantenimientosRes.json();
+            // Aquí iría la renderización de mantenimientos si hubiera UI
+            console.log('Reporte de mantenimientos cargado:', rows.length, 'máquinas');
+          }
+        } catch (error) {
+          console.error('Error cargando reporte de mantenimientos:', error);
+        }
       }
+      
       setReportStatus('Reportes actualizados', 'success');
     } catch (error) {
       console.error('Error cargando reportes históricos:', error);
