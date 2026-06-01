@@ -301,7 +301,7 @@ async function getReporteFallas(filtros = {}) {
       COUNT(*)::int AS total_fallas,
       COUNT(*) FILTER (WHERE i.estado = 'Resuelta')::int AS total_resueltas,
       COUNT(*) FILTER (WHERE i.estado = 'Pendiente')::int AS total_pendientes,
-      COUNT(*) FILTER (WHERE COALESCE(i.vinculada_mantenimiento, 0) = 1)::int AS total_vinculadas,
+      COUNT(*) FILTER (WHERE COALESCE(i.vinculada_mantenimiento, FALSE))::int AS total_vinculadas,
       ${promedioResolucionExpr} AS promedio_resolucion_horas
     FROM incidencias_maquina i
     INNER JOIN maquinaria m ON m.id_maquina = i.maquinaria_id_maquina
@@ -315,7 +315,7 @@ async function getReporteFallas(filtros = {}) {
       COUNT(*)::int AS total_fallas,
       COUNT(*) FILTER (WHERE i.estado = 'Resuelta')::int AS total_resueltas,
       COUNT(*) FILTER (WHERE i.estado = 'Pendiente')::int AS total_pendientes,
-      COUNT(*) FILTER (WHERE COALESCE(i.vinculada_mantenimiento, 0) = 1)::int AS total_vinculadas,
+      COUNT(*) FILTER (WHERE COALESCE(i.vinculada_mantenimiento, FALSE))::int AS total_vinculadas,
       ${promedioResolucionExpr} AS promedio_resolucion_horas
     FROM incidencias_maquina i
     ${whereClause}
