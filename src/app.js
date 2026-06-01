@@ -120,6 +120,7 @@ if (hasDatabaseConfig || hasDatabaseUrl) {
   const historialUsoRoutes = require('./Entities/historial_uso/historial_uso.routes');
   const maquinariaRoutes = require('./Entities/maquinaria/maquinaria.routes');
   const mantenimientosRoutes = require('./Entities/mantenimientos/mantenimientos.routes');
+  const incidenciasRoutes = require('./Entities/incidencias/incidencias.routes');
   const reportesRoutes = require('./Entities/reportes/reportes.routes');
   const alertasCriticasRoutes = require('./Entities/alertas_criticas/alertas_criticas.routes');
   const notificacionesTiempoRealRoutes = require('./Entities/notificaciones_tiempo_real/notificaciones_tiempo_real.routes');
@@ -132,6 +133,7 @@ if (hasDatabaseConfig || hasDatabaseUrl) {
   app.use('/api/usuarios', usuariosRoutes);
   app.use('/api/maquinaria', maquinariaRoutes);
   app.use('/api/mantenimientos', mantenimientosRoutes);
+  app.use('/api/incidencias', incidenciasRoutes);
   app.use('/api/historial-uso', historialUsoRoutes);
   app.use('/api/reportes', reportesRoutes);
   app.use('/api/alertas-criticas', alertasCriticasRoutes);
