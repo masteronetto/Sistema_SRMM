@@ -37,9 +37,17 @@ async function listRoleRequests({ limit = 50, offset = 0 } = {}) {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `SELECT id_request, usuario_id, nombre_usuario, email_usuario, mensaje, estado, created_at
-       FROM role_requests
-       ORDER BY created_at DESC
+      `SELECT
+         rr.id_request,
+         rr.usuario_id,
+         COALESCE(NULLIF(u.nombre_completo, ''), NULLIF(rr.nombre_usuario, '')) AS nombre_usuario,
+         COALESCE(NULLIF(u.email, ''), rr.email_usuario) AS email_usuario,
+         rr.mensaje,
+         rr.estado,
+         rr.created_at
+       FROM role_requests rr
+       LEFT JOIN usuarios u ON u.id_usuario = rr.usuario_id
+       ORDER BY rr.created_at DESC
        LIMIT $1 OFFSET $2;`,
       [limit, offset]
     );
