@@ -1465,7 +1465,8 @@ function showView(viewName, push = true) {
 function updateGlobalDateControlsVisibility(activeView = document.querySelector('.view.active')?.id) {
     const controls = document.getElementById('globalDateControls');
     const label = document.getElementById('reportActiveRangeLabel');
-    const shouldShow = ['inicio', 'inventario', 'mantenimiento', 'reportes'].includes(activeView);
+    const currentRole = getCurrentRole().toLowerCase();
+    const shouldShow = currentRole !== 'usuario' && ['inicio', 'inventario', 'mantenimiento', 'reportes'].includes(activeView);
 
     if (controls) controls.style.display = shouldShow ? 'flex' : 'none';
     if (label) label.style.display = shouldShow ? 'block' : 'none';

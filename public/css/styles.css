@@ -518,6 +518,11 @@ tbody tr:hover { background: #fdfaf8; }
     display: none;
 }
 
+.user-view #globalDateControls,
+.user-view #reportActiveRangeLabel {
+    display: none !important;
+}
+
 .user-view #inicio .welcome-block {
     margin-bottom: 1rem;
 }
