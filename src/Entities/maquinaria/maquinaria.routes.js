@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const controller = require('./maquinaria.controller');
-const { verifyToken, requireAdmin, requireMecanicoOperadorOrAdmin } = require('../../middleware/auth');
+const { verifyToken, requireAdmin, requireMecanicoOperadorOrAdmin, requireMecanicoOrAdmin } = require('../../middleware/auth');
 
 const router = Router();
 
@@ -17,7 +17,7 @@ router.post('/:id_maquina/incidencias', requireMecanicoOperadorOrAdmin, controll
 router.post('/', requireAdmin, controller.create);
 router.post('/:id_maquina/bloqueo-critico', requireAdmin, controller.blockCritical);
 router.post('/:id_maquina/notify-operator', requireAdmin, controller.notifyOperator);
-router.put('/:id_maquina', requireAdmin, controller.update);
+router.put('/:id_maquina', requireMecanicoOrAdmin, controller.update);
 router.patch('/:id_maquina/mark-not-operative', requireAdmin, controller.markAsNotOperative);
 router.patch('/:id_maquina/desbloquear', requireAdmin, controller.unblock);
 router.delete('/:id_maquina', requireAdmin, controller.remove);

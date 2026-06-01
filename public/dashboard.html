@@ -1474,7 +1474,7 @@
             <!-- ══ REPORTES ══ -->
             <section id="reportes" class="view">
                 <div class="section-stack" style="gap:1rem;">
-                    <section class="section-card mecanico-only admin-only">
+                    <section class="section-card mecanico-only">
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
                             <div>
                                 <div class="section-title">Visualización de reportes históricos</div>
@@ -1575,7 +1575,7 @@
                         </div>
                     </section>
 
-                    <div class="mini-grid mecanico-only admin-only">
+                    <div class="mini-grid mecanico-only">
                         <article class="section-card">
                             <div class="section-title">Horas históricas</div>
                             <div id="reportHorasHistoricas" class="text-3xl font-bold text-slate-800">—</div>
@@ -1598,7 +1598,7 @@
                         </article>
                 </div>
 
-                        <section class="section-card mecanico-only admin-only">
+                        <section class="section-card mecanico-only">
                             <div class="report-fallas-header">
                                 <div>
                                     <div class="section-title">Reporte de fallas</div>
@@ -1688,7 +1688,7 @@
                             <div id="reportFallasTable" class="overflow-x-auto mt-3"></div>
                         </section>
 
-                        <section id="reportMantenimientosSection" class="section-card mecanico-only admin-only">
+                        <section id="reportMantenimientosSection" class="section-card mecanico-only">
                             <div class="report-fallas-header">
                                 <div>
                                     <div class="section-title">Reporte de mantenimientos</div>
@@ -1719,7 +1719,7 @@
                             <div id="reportMantenimientosTable" class="overflow-x-auto mt-4"></div>
                         </section>
 
-                    <div class="mini-grid mecanico-only admin-only">
+                    <div class="mini-grid mecanico-only">
                         <article class="section-card">
                             <div class="section-title">Top máquinas por horómetro</div>
                             <div class="relative h-72 w-full mt-3"><canvas id="reportTopChart"></canvas></div>
@@ -1730,7 +1730,7 @@
                         </article>
                     </div>
 
-                    <section class="section-card mecanico-only admin-only">
+                    <section class="section-card mecanico-only">
                         <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
                             <div>
                                 <div class="section-title">Historial unificado</div>
@@ -1839,8 +1839,11 @@ function initAdminMaquinariaPanel() {
     loadMaintenancePlans();
 
     if (!isAdmin) {
-        if (subtitle) subtitle.textContent = 'Consulta las máquinas asignadas a tu contrato activo.';
-        if (actions) actions.style.display = 'none';
+        if (subtitle) subtitle.textContent = 'Consulta la lista completa de maquinaria. Puedes editar estado y horómetro, pero no crear ni eliminar máquinas.';
+        if (actions) {
+            actions.style.display = '';
+            if (newBtn) newBtn.style.display = 'none';
+        }
     }
 
     if (!isAdmin && formPanel) {
@@ -1855,13 +1858,13 @@ function initAdminMaquinariaPanel() {
         rowsContainer.addEventListener('click', (e) => {
             const btn = e.target.closest('button');
             if (!btn) return;
-            if (!isAdmin) return;
+            const canEdit = isAdmin || userRole === 'Mecanico';
             const id = btn.dataset.id;
-            if (btn.classList.contains('btn-edit')) {
+            if (btn.classList.contains('btn-edit') && canEdit) {
                 editMaquinariaById(id);
             } else if (btn.classList.contains('btn-incidencias')) {
                 focusMaquinariaIncidenciasById(id);
-            } else if (btn.classList.contains('btn-delete')) {
+            } else if (btn.classList.contains('btn-delete') && isAdmin) {
                 deleteMaquinariaById(id);
             }
         });
@@ -1936,60 +1939,27 @@ function renderAdminMaquinaria(rows) {
     if (!rows.length) {
         container.innerHTML = isAdmin
             ? '<tr><td colspan="7" class="detail-empty">No hay maquinaria registrada.</td></tr>'
-            : '<tr><td colspan="6" class="detail-empty">No tienes máquinas asignadas.</td></tr>';
+            : '<tr><td colspan="7" class="detail-empty">No tienes máquinas asignadas.</td></tr>';
         return;
     }
 
-    if (!isAdmin) {
-        container.innerHTML = `
-            <table>
-                <thead>
-                    <tr><th>ID</th><th>Modelo</th><th>Estado</th><th>Horómetro</th><th>Contrato</th><th>Vigencia</th></tr>
-                </thead>
-                <tbody>
-                    ${rows.map((item) => {
-                        const maquina = mapMaquinariaItem(item);
-                        const vigencia = `${formatCLDate(maquina.contrato_inicio)}${maquina.contrato_fin ? ` → ${formatCLDate(maquina.contrato_fin)}` : ' → Activo'}`;
-                        return `<tr>
-                            <td>${maquina.id ?? '—'}</td>
-                            <td>${maquina.modelo || '—'}</td>
-                            <td><span class="pill success">${escapeHtml(maquina.estado || 'Asignada')}</span></td>
-                            <td>${maquina.horometro ?? '—'}</td>
-                            <td>${escapeHtml(maquina.cliente_nombre || '—')}</td>
-                            <td>${escapeHtml(vigencia)}</td>
-                        </tr>`;
-                    }).join('')}
-                </tbody>
-            </table>
-        `;
-        return;
-    }
-
-    container.innerHTML = `
-        <table>
-            <thead>
-                <tr><th>ID</th><th>Modelo</th><th>Estado</th><th>Horómetro</th><th>Tarifa diaria</th><th>Plan</th><th>Acciones</th></tr>
-            </thead>
-            <tbody>
-                ${rows.map((item) => {
-                    const maquina = mapMaquinariaItem(item);
-                    return `<tr>
-                        <td>${maquina.id ?? '—'}</td>
-                        <td>${maquina.modelo || '—'}</td>
-                        <td>${maquina.estado || '—'}</td>
-                        <td>${maquina.horometro ?? '—'}</td>
-                        <td>${formatCurrency(maquina.tarifa_diaria || 0)}</td>
-                        <td>${maquina.planes_mantencion_id_plan || '—'}</td>
-                        <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-                            <button class="btn btn-edit" data-id="${maquina.id ?? ''}">Editar</button>
-                            <button class="btn btn-secondary btn-incidencias" data-id="${maquina.id ?? ''}">Incidencias</button>
-                            <button class="btn btn-danger btn-delete" data-id="${maquina.id ?? ''}">Eliminar</button>
-                        </td>
-                    </tr>`;
-                }).join('')}
-            </tbody>
-        </table>
-    `;
+    const showActions = isAdmin || userRole === 'Mecanico';
+    container.innerHTML = rows.map((item) => {
+        const maquina = mapMaquinariaItem(item);
+        return `<tr>
+            <td>${maquina.id ?? '—'}</td>
+            <td>${maquina.modelo || '—'}</td>
+            <td>${escapeHtml(maquina.estado || '—')}</td>
+            <td>${maquina.horometro ?? '—'}</td>
+            <td>${formatCurrency(maquina.tarifa_diaria || 0)}</td>
+            <td>${maquina.planes_mantencion_id_plan || '—'}</td>
+            ${showActions ? `<td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <button class="btn btn-edit" data-id="${maquina.id ?? ''}">Editar</button>
+                <button class="btn btn-secondary btn-incidencias" data-id="${maquina.id ?? ''}">Incidencias</button>
+                ${isAdmin ? `<button class="btn btn-danger btn-delete" data-id="${maquina.id ?? ''}">Eliminar</button>` : ''}
+            </td>` : '<td></td>'}
+        </tr>`;
+    }).join('');
 }
 
 async function loadAdminMaquinaria() {
@@ -1999,7 +1969,7 @@ async function loadAdminMaquinaria() {
     const isAdmin = userRole === 'Administrador';
     container.innerHTML = isAdmin
         ? '<tr><td colspan="7" class="detail-empty">Cargando maquinaria…</td></tr>'
-        : '<tr><td colspan="6" class="detail-empty">Cargando máquinas asignadas…</td></tr>';
+        : '<tr><td colspan="7" class="detail-empty">Cargando máquinas asignadas…</td></tr>';
     setMaquinariaStatus(isAdmin ? 'Cargando maquinaria...' : 'Cargando máquinas asignadas...', 'info');
 
     try {
