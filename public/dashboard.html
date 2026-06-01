@@ -531,6 +531,10 @@
                             </div>
 
                             <form id="opIncidentForm" class="incident-form" style="margin-top:1rem;">
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 mb-3">
+                                    <div class="small muted">Máquina asignada</div>
+                                    <div id="opAssignedMachineLabel" class="font-semibold text-slate-800">Cargando asignación...</div>
+                                </div>
                                 <div class="incident-grid">
                                     <label>Máquina
                                         <select id="opIncidentMachine" required><option value="">Cargando máquinas…</option></select>
@@ -1602,7 +1606,7 @@ async function loadAvailableMachines() {
         }
 
         const contracts = await res.json();
-        const machines = (Array.isArray(contracts) ? contracts : []).map((contract) => ({
+        let machines = (Array.isArray(contracts) ? contracts : []).map((contract) => ({
             id_maquina: contract.maquinaria_id_maquina,
             modelo_equipo: contract.modelo_equipo,
             horometro_actual: contract.horometro_entrada ?? contract.horometro_salida ?? 0,
@@ -1613,6 +1617,31 @@ async function loadAvailableMachines() {
             fecha_fin: contract.fecha_fin,
             fecha_inicio: contract.fecha_inicio
         }));
+
+        if (!machines.length) {
+            try {
+                const resumenRes = await fetch('/api/reportes/operador/resumen', { headers: getAuthHeaders() });
+                if (resumenRes.ok) {
+                    const resumen = await resumenRes.json();
+                    const contrato = resumen?.contrato_activo;
+                    if (contrato?.maquinaria_id_maquina) {
+                        machines = [{
+                            id_maquina: contrato.maquinaria_id_maquina,
+                            modelo_equipo: contrato.modelo_equipo || `Máquina #${contrato.maquinaria_id_maquina}`,
+                            horometro_actual: 0,
+                            cliente_id: currentUser?.id_usuario,
+                            cliente_nombre: currentUser?.nombre_completo || currentUser?.email || '',
+                            id_contrato: contrato.id_contrato || null,
+                            estado_contrato: contrato.estado_contrato || 'Activo',
+                            fecha_fin: contrato.fecha_fin || null,
+                            fecha_inicio: contrato.fecha_inicio || null
+                        }];
+                    }
+                }
+            } catch (fallbackError) {
+                console.error('No se pudo obtener el contrato activo del operador:', fallbackError);
+            }
+        }
 
         availableMachines = machines;
         return availableMachines;
@@ -3827,6 +3856,7 @@ async function initOperatorReportForm() {
     window._opReportInitialized = true;
 
     const machineSelect = document.getElementById('opIncidentMachine');
+    const assignedMachineLabel = document.getElementById('opAssignedMachineLabel');
     const dateInput = document.getElementById('opIncidentDate');
     const submitBtn = document.getElementById('opIncidentSubmit');
     const statusEl = document.getElementById('opIncidentStatus');
@@ -3840,8 +3870,23 @@ async function initOperatorReportForm() {
     try {
         const machines = await loadAvailableMachines();
         machineSelect.innerHTML = '<option value="">Selecciona una máquina</option>' + machines.map(m => `<option value="${m.id_maquina}">${m.modelo_equipo}</option>`).join('');
+
+        if (machines.length === 1) {
+            machineSelect.value = String(machines[0].id_maquina);
+        }
+
+        if (assignedMachineLabel) {
+            if (machines.length === 0) {
+                assignedMachineLabel.textContent = 'Sin máquina asignada';
+            } else if (machines.length === 1) {
+                assignedMachineLabel.textContent = machines[0].modelo_equipo || `Máquina #${machines[0].id_maquina}`;
+            } else {
+                assignedMachineLabel.textContent = `${machines.length} máquinas asignadas`;
+            }
+        }
     } catch (e) {
         machineSelect.innerHTML = '<option value="">No se pudieron cargar máquinas</option>';
+        if (assignedMachineLabel) assignedMachineLabel.textContent = 'No se pudo cargar la asignación';
     }
 
     submitBtn.addEventListener('click', async () => {
