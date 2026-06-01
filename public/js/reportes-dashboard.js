@@ -69,20 +69,21 @@
     const selectedLabel = document.getElementById('reportSelectedMachineLabel');
     const headers = getAuthHeaders();
     const ids = Array.isArray(machineIds) ? machineIds.filter(Boolean).map(String) : [];
+    const effectiveIds = ids.length ? ids : availableMachines.map((item) => String(item.id_maquina)).filter(Boolean);
     const query = new URLSearchParams();
     if (fechaInicio) query.append('fecha_inicio', fechaInicio);
     if (fechaFin) query.append('fecha_fin', fechaFin);
 
-    if (!ids.length) {
-      window.__srmmReporteState = { rows: [], totalHoras: 0, totalMantenciones: 0, totalFallas: 0, detalle: 'Selecciona una o varias máquinas para ver su evolución.' };
-      if (selectedLabel) selectedLabel.textContent = 'Sin máquina seleccionada';
+    if (!effectiveIds.length) {
+      window.__srmmReporteState = { rows: [], totalHoras: 0, totalMantenciones: 0, totalFallas: 0, detalle: 'No hay máquinas disponibles para reportar.' };
+      if (selectedLabel) selectedLabel.textContent = 'Sin máquinas disponibles';
       renderReportUsoChart([]);
       renderReportTable([]);
       return;
     }
 
     const labelMap = new Map(availableMachines.map((item) => [String(item.id_maquina), item.modelo_equipo]));
-    const seriesResults = await Promise.all(ids.map(async (idMaquina) => {
+    const seriesResults = await Promise.all(effectiveIds.map(async (idMaquina) => {
       const res = await fetch(`/api/reportes/historial-unificado/${idMaquina}?${query.toString()}`, { headers });
       if (!res.ok) throw new Error(`No se pudo cargar el historial unificado de la máquina ${idMaquina}`);
       const rows = await res.json();
@@ -103,15 +104,17 @@
       totalHoras,
       totalMantenciones,
       totalFallas,
-      detalle: `${rows.length} evento(s) entre ${fechaInicio || 'inicio'} y ${fechaFin || 'hoy'} en ${ids.length} máquina(s)`,
-      selectedMachineIds: ids
+      detalle: `${rows.length} evento(s) entre ${fechaInicio || 'inicio'} y ${fechaFin || 'hoy'} en ${effectiveIds.length} máquina(s)`,
+      selectedMachineIds: effectiveIds
     };
 
     if (selectedLabel) {
-      selectedLabel.textContent = ids.length === 1 ? (labelMap.get(ids[0]) || `Máquina #${ids[0]}`) : `${ids.length} máquinas seleccionadas`;
+      selectedLabel.textContent = ids.length === 0
+        ? 'Todas las máquinas'
+        : (ids.length === 1 ? (labelMap.get(ids[0]) || `Máquina #${ids[0]}`) : `${ids.length} máquinas seleccionadas`);
     }
 
-    if (ids.length === 1) {
+    if (effectiveIds.length === 1) {
       renderReportUsoChart(seriesResults[0]?.rows || [], [seriesResults[0]?.label || 'Horómetro histórico']);
     } else {
       renderComparativeUsageChart(seriesResults);
@@ -133,10 +136,10 @@
       const machines = await loadAvailableMachines();
 
       machineSelect.innerHTML = machines.length
-        ? machines.map((m) => `<option value="${m.id_maquina}">${m.modelo_equipo}</option>`).join('')
+        ? [`<option value="">Todas las máquinas</option>`, ...machines.map((m) => `<option value="${m.id_maquina}">${m.modelo_equipo}</option>`)].join('')
         : '<option value="">No hay máquinas disponibles</option>';
 
-      const initialIds = reportSelectedMachineId ? [String(reportSelectedMachineId)] : (machines[0] ? [String(machines[0].id_maquina)] : []);
+      const initialIds = reportSelectedMachineId ? [String(reportSelectedMachineId)] : [];
       Array.from(machineSelect.options).forEach((option) => {
         option.selected = initialIds.includes(String(option.value));
       });
@@ -171,17 +174,12 @@
       };
 
       const dates = getEffectiveReportDates();
-      if (selectedMachineIds.length) {
-        await loadSelectedMachinesReport(selectedMachineIds, dates.start, dates.end);
-      } else if (machines[0]) {
-        await loadSelectedMachinesReport([String(machines[0].id_maquina)], dates.start, dates.end);
-        Array.from(machineSelect.options).forEach((option) => {
-          option.selected = String(option.value) === String(machines[0].id_maquina);
-        });
-      }
+      await loadSelectedMachinesReport(selectedMachineIds, dates.start, dates.end);
 
       if (selectedLabel) {
-        selectedLabel.textContent = selectedMachineIds.length === 1
+        selectedLabel.textContent = selectedMachineIds.length === 0
+          ? 'Todas las máquinas'
+          : selectedMachineIds.length === 1
           ? (machines.find((m) => String(m.id_maquina) === String(selectedMachineIds[0]))?.modelo_equipo || 'Máquina seleccionada')
           : (selectedMachineIds.length > 1 ? `${selectedMachineIds.length} máquinas seleccionadas` : 'Sin máquina seleccionada');
       }
@@ -260,19 +258,11 @@
       machineSelect.addEventListener('change', async () => {
         const selectedIds = getSelectedReportMachineIds(machineSelect);
         try {
-          if (!selectedIds.length) {
-            window.__srmmReporteState = { rows: [], totalHoras: 0, totalMantenciones: 0, totalFallas: 0, detalle: 'Selecciona una o varias máquinas para ver su evolución.' };
-            renderReportUsoChart([]);
-            renderReportTable([]);
-            setReportStatus('Selecciona al menos una máquina', 'warning');
-            return;
-          }
-
           const d = getEffectiveReportDates();
           await loadSelectedMachinesReport(selectedIds, d.start, d.end);
           await loadReportFallasDashboard();
           reportSelectedMachineId = selectedIds[0] || '';
-          setReportStatus(selectedIds.length === 1 ? 'Máquina actualizada' : 'Máquinas actualizadas', 'success');
+          setReportStatus(selectedIds.length === 0 ? 'Todas las máquinas actualizadas' : (selectedIds.length === 1 ? 'Máquina actualizada' : 'Máquinas actualizadas'), 'success');
         } catch (error) {
           console.error(error);
           setReportStatus('No se pudo actualizar la selección', 'error');
@@ -305,13 +295,19 @@
       const multiHelp = document.getElementById('reportMultiHelp');
       if (toggleMultiBtn) {
         toggleMultiBtn.classList.remove('active');
+        machineSelect.multiple = false;
+        machineSelect.size = 1;
         toggleMultiBtn.addEventListener('click', () => {
           const isActive = toggleMultiBtn.classList.toggle('active');
           if (isActive) {
             machineSelect.multiple = true;
-            if (multiHelp) multiHelp.textContent = 'Multiselección activada — selecciona varias máquinas.';
+            machineSelect.size = Math.min(8, Math.max(4, machines.length + 1));
+            machineSelect.classList.add('is-multi');
+            if (multiHelp) multiHelp.textContent = 'Multiselección activada — selecciona una o varias máquinas.';
           } else {
             machineSelect.multiple = false;
+            machineSelect.size = 1;
+            machineSelect.classList.remove('is-multi');
             const first = machineSelect.selectedOptions[0];
             Array.from(machineSelect.options).forEach((opt) => {
               opt.selected = first ? String(opt.value) === String(first.value) : false;

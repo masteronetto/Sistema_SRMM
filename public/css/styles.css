@@ -851,10 +851,16 @@ tbody tr:hover { background: #fdfaf8; }
 
 .report-machine-select {
     width: 100%;
-    min-height: 92px;
-    height: 100%;
-    padding-top: 0.65rem;
-    padding-bottom: 0.65rem;
+    min-height: 46px;
+    height: auto;
+    max-height: 52px;
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+}
+
+.report-machine-select.is-multi {
+    min-height: 168px;
+    max-height: 240px;
 }
 
 .report-machine-help {
