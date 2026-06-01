@@ -1,4 +1,5 @@
 const usuariosRepo = require('./usuarios.repository');
+const roleRequestsRepo = require('../role_requests/role_requests.repository');
 
 const rolesPermitidos = new Set(['Administrador', 'Mecanico', 'Operador', 'Usuario']);
 
@@ -117,7 +118,13 @@ async function changeRole(req, res, next) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
-    return res.json({ message: 'Rol actualizado correctamente', user: data });
+    const deletedRequests = await roleRequestsRepo.deleteRoleRequestsByUsuarioId(id);
+
+    return res.json({
+      message: 'Rol actualizado correctamente',
+      user: data,
+      deleted_role_requests: deletedRequests,
+    });
   } catch (error) {
     return next(error);
   }

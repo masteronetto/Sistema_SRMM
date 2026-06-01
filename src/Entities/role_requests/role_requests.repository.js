@@ -46,8 +46,23 @@ async function deleteRoleRequest(idRequest) {
   }
 }
 
+async function deleteRoleRequestsByUsuarioId(usuarioId) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'DELETE FROM role_requests WHERE usuario_id = $1 RETURNING id_request;',
+      [usuarioId]
+    );
+
+    return result.rowCount || 0;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   createRoleRequest,
   listRoleRequests,
   deleteRoleRequest,
+  deleteRoleRequestsByUsuarioId,
 };

@@ -1403,7 +1403,12 @@ function renderWelcome() {
 }
 
 function requestRoleChange() {
-    const mensaje = `Solicito revisión de rol. Usuario: ${currentUser.nombre || currentUser.email || 'N/D'}\nEmail: ${currentUser.email || 'N/D'}\nRol actual: ${userRole || 'N/D'}\n`;
+    const mensaje = [
+        'Solicitud de cambio de rol',
+        `Usuario: ${currentUser.nombre || currentUser.email || 'N/D'}`,
+        `Email: ${currentUser.email || 'N/D'}`,
+        `Rol actual: ${userRole || 'N/D'}`
+    ].join(' | ');
 
     fetch('/api/role-requests', {
         method: 'POST',
@@ -1412,7 +1417,7 @@ function requestRoleChange() {
     })
     .then(async (r) => {
         if (!r.ok) throw new Error((await r.json()).message || 'Error');
-        alert('Solicitud enviada correctamente. El administrador será notificado.');
+        alert('Solicitud enviada correctamente.');
     })
     .catch((err) => {
         console.error(err);
@@ -3740,6 +3745,9 @@ async function changeUserRole(userId) {
         if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
         alert(`✅ Rol actualizado a: ${newRole}`);
         loadUsersList();
+        if (typeof loadRoleRequests === 'function') {
+            loadRoleRequests();
+        }
     } catch (err) {
         alert(`❌ Error: ${err.message}`);
     }
