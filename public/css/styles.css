@@ -742,7 +742,7 @@ tbody tr:hover { background: #fdfaf8; }
     background: #faf7f4;
     color: #201915;
     font: inherit;
-    min-height: 3.6rem;
+    min-height: 2.8rem;
     line-height: 1.2;
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -758,6 +758,9 @@ tbody tr:hover { background: #fdfaf8; }
 .arriendo-client-select option {
     padding: 0.45rem 0.6rem;
 }
+
+/* Alinear todos los labels del formulario de arriendos al tope para evitar que el selector se estire */
+#arriendoForm .incident-grid > label { align-self: start; }
 
 .incident-warning-banner {
     grid-column: 1 / -1;
