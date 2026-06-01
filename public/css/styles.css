@@ -732,6 +732,33 @@ tbody tr:hover { background: #fdfaf8; }
     color: #3f2f28;
 }
 
+/* Estilos para el selector de cliente en el formulario de arriendos */
+.arriendo-client-select {
+    display: block;
+    width: 100%;
+    padding: 0.9rem 1rem;
+    border: 1px solid rgba(40,28,22,0.12);
+    border-radius: 12px;
+    background: #faf7f4;
+    color: #201915;
+    font: inherit;
+    min-height: 3.6rem;
+    line-height: 1.2;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+/* Ajuste para que el select se alinee verticalmente con el buscador superior */
+.arriendo-machine-picker + label .arriendo-client-select,
+.arriendo-machine-field ~ label .arriendo-client-select {
+    margin-top: 0.25rem;
+}
+
+.arriendo-client-select option {
+    padding: 0.45rem 0.6rem;
+}
+
 .incident-warning-banner {
     grid-column: 1 / -1;
     display: none;
