@@ -52,6 +52,9 @@ async function listMaquinaria() {
       m.created_at, 
       m.updated_at,
       p.intervalo_horas,
+      mo.operador_id AS operador_activo_id,
+      uop.nombre_completo AS operador_activo_nombre,
+      mo.fecha_inicio AS operador_activo_desde,
       CASE
         WHEN p.intervalo_horas IS NULL THEN 'Baja'
         WHEN (COALESCE(um.horometro_registro, uh.ultimo_valor_registrado, 0) + p.intervalo_horas - m.horometro_actual) <= 0 THEN 'Alta'
@@ -70,6 +73,15 @@ async function listMaquinaria() {
       
     FROM maquinaria m
     LEFT JOIN planes_mantencion p ON p.id_plan = m.planes_mantencion_id_plan
+    LEFT JOIN LATERAL (
+      SELECT mo.operador_id, mo.fecha_inicio
+      FROM maquinaria_operadores mo
+      WHERE mo.maquinaria_id_maquina = m.id_maquina
+        AND mo.estado_asignacion = 'Activa'
+      ORDER BY mo.fecha_inicio DESC, mo.id_asignacion DESC
+      LIMIT 1
+    ) mo ON TRUE
+    LEFT JOIN usuarios uop ON uop.id_usuario = mo.operador_id
     LEFT JOIN LATERAL (
       SELECT horometro_registro 
       FROM mantenimiento 
@@ -272,6 +284,122 @@ async function getMaquinariaById(id_maquina) {
   return rows[0] || null;
 }
 
+async function listMaquinasAsignadasByOperador(operador_id) {
+  const query = `
+    SELECT
+      mo.id_asignacion,
+      mo.maquinaria_id_maquina,
+      m.modelo_equipo,
+      m.horometro_actual,
+      m.estado,
+      mo.operador_id,
+      u.nombre_completo AS operador_nombre,
+      u.email AS operador_email,
+      mo.fecha_inicio,
+      mo.fecha_fin,
+      mo.estado_asignacion,
+      mo.created_at,
+      mo.updated_at
+    FROM maquinaria_operadores mo
+    INNER JOIN maquinaria m ON m.id_maquina = mo.maquinaria_id_maquina
+    INNER JOIN usuarios u ON u.id_usuario = mo.operador_id
+    WHERE mo.operador_id = $1
+      AND mo.estado_asignacion = 'Activa'
+    ORDER BY mo.fecha_inicio DESC, mo.id_asignacion DESC
+  `;
+
+  const { rows } = await pool.query(query, [operador_id]);
+  return rows;
+}
+
+async function getAsignacionActivaByMaquina(maquinaria_id_maquina) {
+  const query = `
+    SELECT
+      mo.id_asignacion,
+      mo.maquinaria_id_maquina,
+      mo.operador_id,
+      u.nombre_completo AS operador_nombre,
+      u.email AS operador_email,
+      mo.fecha_inicio,
+      mo.fecha_fin,
+      mo.estado_asignacion,
+      mo.created_at,
+      mo.updated_at
+    FROM maquinaria_operadores mo
+    INNER JOIN usuarios u ON u.id_usuario = mo.operador_id
+    WHERE mo.maquinaria_id_maquina = $1
+      AND mo.estado_asignacion = 'Activa'
+    ORDER BY mo.fecha_inicio DESC, mo.id_asignacion DESC
+    LIMIT 1
+  `;
+
+  const { rows } = await pool.query(query, [maquinaria_id_maquina]);
+  return rows[0] || null;
+}
+
+async function asignarOperadorAMaquina({ maquinaria_id_maquina, operador_id, fecha_inicio = null, fecha_fin = null }, db = pool) {
+  const useOwnTransaction = db === pool;
+  const client = useOwnTransaction ? await pool.connect() : db;
+
+  try {
+    if (useOwnTransaction) {
+      await client.query('BEGIN');
+    }
+
+    await client.query(
+      `UPDATE maquinaria_operadores
+       SET estado_asignacion = 'Finalizada',
+           fecha_fin = COALESCE(fecha_fin, CURRENT_DATE),
+           updated_at = NOW()
+       WHERE maquinaria_id_maquina = $1
+         AND estado_asignacion = 'Activa'`,
+      [maquinaria_id_maquina]
+    );
+
+    const result = await client.query(
+      `INSERT INTO maquinaria_operadores (
+         maquinaria_id_maquina,
+         operador_id,
+         fecha_inicio,
+         fecha_fin,
+         estado_asignacion
+       ) VALUES ($1, $2, COALESCE($3, CURRENT_DATE), $4, 'Activa')
+       RETURNING id_asignacion, maquinaria_id_maquina, operador_id, fecha_inicio, fecha_fin, estado_asignacion, created_at, updated_at`,
+      [maquinaria_id_maquina, operador_id, fecha_inicio, fecha_fin]
+    );
+
+    if (useOwnTransaction) {
+      await client.query('COMMIT');
+    }
+
+    return result.rows[0] || null;
+  } catch (error) {
+    if (useOwnTransaction) {
+      await client.query('ROLLBACK');
+    }
+    throw error;
+  } finally {
+    if (useOwnTransaction) {
+      client.release();
+    }
+  }
+}
+
+async function finalizarAsignacionActivaByMaquina(maquinaria_id_maquina, fecha_fin = null, db = pool) {
+  const query = `
+    UPDATE maquinaria_operadores
+    SET estado_asignacion = 'Finalizada',
+        fecha_fin = COALESCE(fecha_fin, CURRENT_DATE),
+        updated_at = NOW()
+    WHERE maquinaria_id_maquina = $1
+      AND estado_asignacion = 'Activa'
+    RETURNING id_asignacion, maquinaria_id_maquina, operador_id, fecha_inicio, fecha_fin, estado_asignacion, created_at, updated_at
+  `;
+
+  const { rows } = await db.query(query, [maquinaria_id_maquina, fecha_fin]);
+  return rows[0] || null;
+}
+
 async function createMaquinaria({ modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan, tarifa_diaria }) {
   const query = `
     INSERT INTO maquinaria (modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan, tarifa_diaria)
@@ -445,6 +573,10 @@ module.exports = {
   listMaquinaria,
   getMaquinariaById,
   getHorasAcumuladasByMaquina,
+  listMaquinasAsignadasByOperador,
+  getAsignacionActivaByMaquina,
+  asignarOperadorAMaquina,
+  finalizarAsignacionActivaByMaquina,
   createMaquinaria,
   updateMaquinaria,
   updateMaquinariaEstado,

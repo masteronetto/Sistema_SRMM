@@ -175,6 +175,20 @@ async function getIncidencias(req, res, next) {
   }
 }
 
+async function getMisAsignaciones(req, res, next) {
+  try {
+    const operadorId = toNumberOrNull(req.user?.id_usuario);
+    if (operadorId === null) {
+      return res.status(400).json({ message: 'No se pudo identificar al usuario autenticado' });
+    }
+
+    const asignaciones = await maquinariaRepo.listMaquinasAsignadasByOperador(operadorId);
+    return res.json(asignaciones);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 function validateIncidenciaPayload(payload) {
   const descripcion = payload.descripcion ? payload.descripcion.toString().trim() : '';
   const criticidad = payload.criticidad ? payload.criticidad.toString().trim() : 'Media';
@@ -274,6 +288,71 @@ async function create(req, res, next) {
 
     const data = await maquinariaRepo.createMaquinaria(parsed);
     return res.status(201).json(data);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function asignarOperador(req, res, next) {
+  try {
+    const id_maquina = toNumberOrNull(req.params.id_maquina);
+    if (id_maquina === null) {
+      return res.status(400).json({ message: 'id_maquina debe ser numerico' });
+    }
+
+    const operadorId = toNumberOrNull(req.body.operador_id ?? req.body.operadorId);
+    if (operadorId === null) {
+      return res.status(400).json({ message: 'operador_id es requerido y debe ser numerico' });
+    }
+
+    const maquina = await maquinariaRepo.getMaquinariaById(id_maquina);
+    if (!maquina) {
+      return res.status(404).json({ message: 'Maquinaria no encontrada' });
+    }
+
+    const operador = await usuariosRepo.getUsuarioById(operadorId);
+    if (!operador) {
+      return res.status(404).json({ message: 'Operador no encontrado' });
+    }
+
+    const asignacion = await maquinariaRepo.asignarOperadorAMaquina({
+      maquinaria_id_maquina: id_maquina,
+      operador_id: operadorId,
+      fecha_inicio: req.body.fecha_inicio || null,
+      fecha_fin: req.body.fecha_fin || null
+    });
+
+    return res.status(201).json({
+      message: 'Operador asignado correctamente',
+      asignacion
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function desasignarOperador(req, res, next) {
+  try {
+    const id_maquina = toNumberOrNull(req.params.id_maquina);
+    if (id_maquina === null) {
+      return res.status(400).json({ message: 'id_maquina debe ser numerico' });
+    }
+
+    const maquina = await maquinariaRepo.getMaquinariaById(id_maquina);
+    if (!maquina) {
+      return res.status(404).json({ message: 'Maquinaria no encontrada' });
+    }
+
+    const asignacion = await maquinariaRepo.finalizarAsignacionActivaByMaquina(id_maquina, req.body.fecha_fin || null);
+
+    if (!asignacion) {
+      return res.status(404).json({ message: 'La máquina no tiene una asignación activa' });
+    }
+
+    return res.json({
+      message: 'Asignación finalizada correctamente',
+      asignacion
+    });
   } catch (error) {
     return next(error);
   }
@@ -495,11 +574,14 @@ module.exports = {
   getDisponibilidad,
   listUrgentMaintenance,
   getIncidencias,
+  getMisAsignaciones,
   createIncidencia,
   create,
   update,
   markAsNotOperative,
   notifyOperator,
+  asignarOperador,
+  desasignarOperador,
   blockCritical,
   getBloqueo,
   unblock,

@@ -1681,28 +1681,28 @@ async function loadAvailableMachines() {
     }
 
     if (isOperator) {
-        let contracts = [];
+        let assignments = [];
         try {
-            const res = await fetch('/api/arriendos/mis-contratos', { headers: getAuthHeaders() });
+            const res = await fetch('/api/maquinaria/mis-asignaciones', { headers: getAuthHeaders() });
             if (res.ok) {
-                contracts = await res.json();
+                assignments = await res.json();
             } else {
-                console.warn('No se pudieron cargar mis contratos; se usará fallback de asignación');
+                console.warn('No se pudieron cargar mis asignaciones; se usará fallback de arriendos');
             }
         } catch (contractError) {
-            console.warn('Error consultando mis contratos; se usará fallback de asignación:', contractError);
+            console.warn('Error consultando mis asignaciones; se usará fallback de arriendos:', contractError);
         }
 
-        const machines = (Array.isArray(contracts) ? contracts : []).map((contract) => ({
-            id_maquina: contract.maquinaria_id_maquina,
-            modelo_equipo: contract.modelo_equipo,
-            horometro_actual: contract.horometro_entrada ?? contract.horometro_salida ?? 0,
-            cliente_id: contract.cliente_id,
-            cliente_nombre: contract.cliente_nombre,
-            id_contrato: contract.id_contrato,
-            estado_contrato: contract.estado_contrato,
-            fecha_fin: contract.fecha_fin,
-            fecha_inicio: contract.fecha_inicio
+        const machines = (Array.isArray(assignments) ? assignments : []).map((assignment) => ({
+            id_maquina: assignment.maquinaria_id_maquina,
+            modelo_equipo: assignment.modelo_equipo,
+            horometro_actual: assignment.horometro_actual ?? 0,
+            cliente_id: assignment.operador_id,
+            cliente_nombre: assignment.operador_nombre || assignment.operador_email || '',
+            id_asignacion: assignment.id_asignacion,
+            estado_asignacion: assignment.estado_asignacion,
+            fecha_fin: assignment.fecha_fin,
+            fecha_inicio: assignment.fecha_inicio
         }));
 
         if (!machines.length) {
@@ -1720,8 +1720,8 @@ async function loadAvailableMachines() {
                             horometro_actual: 0,
                             cliente_id: currentUser?.id_usuario,
                             cliente_nombre: currentUser?.nombre_completo || currentUser?.email || '',
-                            id_contrato: null,
-                            estado_contrato: 'Activo',
+                            id_asignacion: null,
+                            estado_asignacion: 'Activa',
                             fecha_fin: null,
                             fecha_inicio: null
                         });
@@ -1740,23 +1740,23 @@ async function loadAvailableMachines() {
                     const resumenRes = await fetch('/api/reportes/operador/resumen', { headers: getAuthHeaders() });
                     if (resumenRes.ok) {
                         const resumen = await resumenRes.json();
-                        const contrato = resumen?.contrato_activo;
-                        if (contrato?.maquinaria_id_maquina) {
+                        const asignacion = resumen?.asignacion_activa || resumen?.contrato_activo;
+                        if (asignacion?.maquinaria_id_maquina) {
                             machines.push({
-                                id_maquina: contrato.maquinaria_id_maquina,
-                                modelo_equipo: contrato.modelo_equipo || `Máquina #${contrato.maquinaria_id_maquina}`,
+                                id_maquina: asignacion.maquinaria_id_maquina,
+                                modelo_equipo: asignacion.modelo_equipo || `Máquina #${asignacion.maquinaria_id_maquina}`,
                                 horometro_actual: 0,
                                 cliente_id: currentUser?.id_usuario,
-                                cliente_nombre: currentUser?.nombre_completo || currentUser?.email || '',
-                                id_contrato: contrato.id_contrato || null,
-                                estado_contrato: contrato.estado_contrato || 'Activo',
-                                fecha_fin: contrato.fecha_fin || null,
-                                fecha_inicio: contrato.fecha_inicio || null
+                                cliente_nombre: asignacion.operador_nombre || currentUser?.nombre_completo || currentUser?.email || '',
+                                id_asignacion: asignacion.id_asignacion || null,
+                                estado_asignacion: asignacion.estado_asignacion || 'Activa',
+                                fecha_fin: asignacion.fecha_fin || null,
+                                fecha_inicio: asignacion.fecha_inicio || null
                             });
                         }
                     }
                 } catch (fallbackError) {
-                    console.error('No se pudo obtener el contrato activo del operador:', fallbackError);
+                    console.error('No se pudo obtener la asignación activa del operador:', fallbackError);
                 }
             }
         }
@@ -3607,6 +3607,11 @@ async function loadArriendosDashboard() {
 
             if (!payload.maquinaria_ids.length) {
                 setArriendoStatus('Selecciona una o más máquinas.', 'warning');
+                return;
+            }
+
+            if (payload.cliente_id === null) {
+                setArriendoStatus('Selecciona un cliente para el contrato.', 'warning');
                 return;
             }
 

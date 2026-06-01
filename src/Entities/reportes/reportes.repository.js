@@ -102,11 +102,27 @@ async function getUsoHistorico(id_maquina) {
 async function getResumenOperador(id_usuario) {
   const query = `
     SELECT
-      COALESCE((SELECT COUNT(*)::int FROM arriendos a WHERE a.cliente_id = $1), 0) AS total_contratos,
-      COALESCE((SELECT COUNT(*)::int FROM arriendos a WHERE a.cliente_id = $1 AND a.estado_contrato = 'Activo'), 0) AS contratos_activos,
-      COALESCE((SELECT COUNT(DISTINCT a.maquinaria_id_maquina)::int FROM arriendos a WHERE a.cliente_id = $1), 0) AS maquinas_asignadas,
+      COALESCE((SELECT COUNT(*)::int FROM maquinaria_operadores mo WHERE mo.operador_id = $1), 0) AS total_asignaciones,
+      COALESCE((SELECT COUNT(*)::int FROM maquinaria_operadores mo WHERE mo.operador_id = $1 AND mo.estado_asignacion = 'Activa'), 0) AS asignaciones_activas,
+      COALESCE((SELECT COUNT(DISTINCT mo.maquinaria_id_maquina)::int FROM maquinaria_operadores mo WHERE mo.operador_id = $1), 0) AS maquinas_asignadas,
       COALESCE((SELECT SUM(h.valor_horas)::numeric FROM historial_horometro h WHERE h.id_usuario = $1), 0) AS horas_registradas,
       COALESCE((SELECT COUNT(*)::int FROM incidencias_maquina i WHERE i.operador_id = $1), 0) AS incidencias_registradas,
+      (
+        SELECT json_build_object(
+          'id_asignacion', mo.id_asignacion,
+          'maquinaria_id_maquina', mo.maquinaria_id_maquina,
+          'modelo_equipo', m.modelo_equipo,
+          'estado_asignacion', mo.estado_asignacion,
+          'fecha_inicio', mo.fecha_inicio,
+          'fecha_fin', mo.fecha_fin
+        )
+        FROM maquinaria_operadores mo
+        INNER JOIN maquinaria m ON m.id_maquina = mo.maquinaria_id_maquina
+        WHERE mo.operador_id = $1
+          AND mo.estado_asignacion = 'Activa'
+        ORDER BY mo.fecha_inicio DESC, mo.id_asignacion DESC
+        LIMIT 1
+      ) AS asignacion_activa,
       (
         SELECT json_build_object(
           'id_contrato', a.id_contrato,
@@ -129,11 +145,12 @@ async function getResumenOperador(id_usuario) {
   const row = rows[0] || {};
 
   return {
-    total_contratos: Number(row.total_contratos || 0),
-    contratos_activos: Number(row.contratos_activos || 0),
+    total_asignaciones: Number(row.total_asignaciones || 0),
+    asignaciones_activas: Number(row.asignaciones_activas || 0),
     maquinas_asignadas: Number(row.maquinas_asignadas || 0),
     horas_registradas: Number(row.horas_registradas || 0),
     incidencias_registradas: Number(row.incidencias_registradas || 0),
+    asignacion_activa: row.asignacion_activa || null,
     contrato_activo: row.contrato_activo || null
   };
 }

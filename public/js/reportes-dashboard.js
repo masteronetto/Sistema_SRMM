@@ -40,14 +40,14 @@
     if (maquinasEl) maquinasEl.textContent = formatNumber(summary.maquinas_asignadas);
 
     if (contratoEl) {
-      contratoEl.textContent = summary.contratos_activos > 0 ? 'Activo' : 'Sin contrato';
+      contratoEl.textContent = summary.asignaciones_activas > 0 ? 'Activa' : 'Sin asignación';
     }
 
     if (maquinaActualEl) {
-      const contract = summary.contrato_activo;
-      maquinaActualEl.textContent = contract
-        ? `${contract.modelo_equipo || 'Máquina'} · ${contract.fecha_inicio || '—'} a ${contract.fecha_fin || '—'}`
-        : 'Sin contrato activo';
+      const assignment = summary.asignacion_activa || summary.contrato_activo;
+      maquinaActualEl.textContent = assignment
+        ? `${assignment.modelo_equipo || 'Máquina'} · ${assignment.fecha_inicio || '—'} a ${assignment.fecha_fin || '—'}`
+        : 'Sin asignación activa';
     }
   }
 

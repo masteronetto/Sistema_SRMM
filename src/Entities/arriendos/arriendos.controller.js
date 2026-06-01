@@ -17,6 +17,10 @@ async function createContrato(req, res, next) {
             return res.status(400).json({ message: 'maquinaria_id_maquina o maquinaria_ids debe contener al menos una máquina válida' });
         }
 
+        if (idCliente === null) {
+            return res.status(400).json({ message: 'cliente_id es obligatorio para crear un arriendo' });
+        }
+
         if (idCliente !== null && !Number.isFinite(idCliente)) {
             return res.status(400).json({ message: 'cliente_id debe ser numerico si se envia' });
         }
@@ -74,6 +78,14 @@ async function createContrato(req, res, next) {
                 estado_contrato: estado_contrato || 'Activo'
             }, client);
             contratos.push(contrato);
+            if (idCliente !== null) {
+                await maquinariaRepo.asignarOperadorAMaquina({
+                    maquinaria_id_maquina: maquina.id_maquina,
+                    operador_id: idCliente,
+                    fecha_inicio: fecha_inicio || null,
+                    fecha_fin: fecha_fin || null
+                }, client);
+            }
             await maquinariaRepo.updateMaquinariaEstado(maquina.id_maquina, 'Arrendada', client);
         }
 
@@ -143,6 +155,14 @@ async function deleteContrato(req, res, next) {
         if (!deleted) {
             await client.query('ROLLBACK');
             return res.status(404).json({ message: 'Contrato no encontrado' });
+        }
+
+        if (contrato.cliente_id !== null) {
+            await maquinariaRepo.finalizarAsignacionActivaByMaquina(
+                contrato.maquinaria_id_maquina,
+                contrato.fecha_fin || null,
+                client
+            );
         }
 
         const stillActive = await arriendosRepo.getArriendoActivoByMaquina(contrato.maquinaria_id_maquina, client);
