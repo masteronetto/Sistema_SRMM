@@ -3986,6 +3986,67 @@ function setLogisticaStatus(message, type = 'info') {
     status.style.color = colors[type] || colors.info;
 }
 
+function getLogisticaStatusOptions(currentStatus, isAdmin = false) {
+    const status = String(currentStatus || 'Pendiente').trim();
+    if (isAdmin) {
+        return ['Pendiente', 'Confirmado', 'En Ruta', 'Completado', 'Cancelado'];
+    }
+
+    const transitions = {
+        Pendiente: ['Confirmado'],
+        Confirmado: ['En Ruta'],
+        'En Ruta': ['Completado'],
+        Completado: [],
+        Cancelado: []
+    };
+
+    return transitions[status] || [];
+}
+
+async function promptLogisticaUpdateStatus(idEvento, currentStatus) {
+    const allowedStatuses = getLogisticaStatusOptions(currentStatus, userRole === 'Administrador');
+    if (!allowedStatuses.length) {
+        setLogisticaStatus('No hay cambios de estado permitidos para este evento.', 'warning');
+        return;
+    }
+
+    const selection = window.prompt(
+        `Estado destino (opciones: ${allowedStatuses.join(', ')}):`,
+        allowedStatuses[0]
+    );
+    if (!selection) return;
+
+    const newStatus = allowedStatuses.find((estado) => estado.toLowerCase() === selection.trim().toLowerCase());
+    if (!newStatus) {
+        setLogisticaStatus('Estado no válido. Usa una de las opciones mostradas.', 'warning');
+        return;
+    }
+
+    if (newStatus === currentStatus) {
+        setLogisticaStatus('El evento ya tiene ese estado.', 'info');
+        return;
+    }
+
+    try {
+        setLogisticaStatus('Actualizando estado...', 'info');
+        const res = await fetch(`/api/logistica/${idEvento}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify({ estado_evento: newStatus })
+        });
+
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(body.message || 'No se pudo actualizar el estado');
+        }
+
+        setLogisticaStatus(`Estado actualizado a ${newStatus}`, 'success');
+        await loadLogisticaDashboard();
+    } catch (error) {
+        setLogisticaStatus(`Error: ${error.message}`, 'error');
+    }
+}
+
 function renderArriendosTable(rows) {
     const container = document.getElementById('arriendosTable');
     if (!container) return;
@@ -4045,10 +4106,10 @@ function renderArriendosTable(rows) {
     `;
 }
 
-function renderLogisticaTable(rows, { canDelete = false, operatorContext = false } = {}) {
+function renderLogisticaTable(rows, { canDelete = false, canChangeStatus = false, operatorContext = false } = {}) {
     const container = document.getElementById('logisticaTable');
     if (!container) return;
-    const showActions = Boolean(canDelete);
+    const showActions = Boolean(canDelete || canChangeStatus);
     const emptyColspan = showActions ? 8 : 7;
 
     const totalEventos = rows.length;
@@ -4082,7 +4143,10 @@ function renderLogisticaTable(rows, { canDelete = false, operatorContext = false
                         <td>${escapeHtml(item.ruta || '—')}</td>
                         <td>${escapeHtml(item.hora_evento || '—')}</td>
                         <td><span class="pill ${String(item.estado_evento || '').toLowerCase() === 'confirmado' ? 'success' : 'available'}">${escapeHtml(item.estado_evento || '—')}</span></td>
-                        ${showActions ? `<td style="display:flex;gap:0.5rem;flex-wrap:wrap;"><button class="btn btn-danger" type="button" onclick="deleteLogisticaById(${JSON.stringify(item.id_evento)})">Eliminar</button></td>` : ''}
+                        ${showActions ? `<td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                            ${canChangeStatus ? `<button class="btn btn-secondary" type="button" onclick="promptLogisticaUpdateStatus(${JSON.stringify(item.id_evento)}, ${JSON.stringify(item.estado_evento || 'Pendiente')})">Actualizar</button>` : ''}
+                            ${canDelete ? `<button class="btn btn-danger" type="button" onclick="deleteLogisticaById(${JSON.stringify(item.id_evento)})">Eliminar</button>` : ''}
+                        </td>` : ''}
                     </tr>
                 `).join('')}
             </tbody>
@@ -4289,7 +4353,7 @@ function loadLogisticaDashboard() {
 
     loadRows()
         .then((res) => {
-            renderLogisticaTable(Array.isArray(res) ? res : [], { canDelete: isAdmin, operatorContext: !isAdmin });
+            renderLogisticaTable(Array.isArray(res) ? res : [], { canDelete: isAdmin, canChangeStatus: true, operatorContext: !isAdmin });
         })
         .catch((error) => {
             if (container) container.innerHTML = `<table><tbody><tr><td colspan="8" class="detail-empty">Error: ${escapeHtml(error.message)}</td></tr></tbody></table>`;

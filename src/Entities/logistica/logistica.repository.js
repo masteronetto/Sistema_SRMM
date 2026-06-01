@@ -52,8 +52,44 @@ async function deleteEvento(id_evento) {
   return rows[0] || null;
 }
 
+async function getEventoById(id_evento) {
+  const query = `
+    SELECT
+      id_evento,
+      maquinaria_id_maquina,
+      titulo,
+      equipo,
+      cliente,
+      ruta,
+      hora_evento,
+      estado_evento,
+      created_at,
+      updated_at
+    FROM logistica_eventos
+    WHERE id_evento = $1
+    LIMIT 1
+  `;
+
+  const { rows } = await pool.query(query, [id_evento]);
+  return rows[0] || null;
+}
+
+async function updateEventoStatus(id_evento, estado_evento) {
+  const query = `
+    UPDATE logistica_eventos
+    SET estado_evento = $2,
+        updated_at = NOW()
+    WHERE id_evento = $1
+    RETURNING id_evento, maquinaria_id_maquina, titulo, equipo, cliente, ruta, hora_evento, estado_evento, created_at, updated_at
+  `;
+  const { rows } = await pool.query(query, [id_evento, estado_evento]);
+  return rows[0] || null;
+}
+
 module.exports = {
   listEventos,
   createEvento,
+  getEventoById,
+  updateEventoStatus,
   deleteEvento
 };
