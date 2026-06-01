@@ -1152,6 +1152,11 @@ async function saveAdminMaquinaria(event) {
 
         setMaquinariaStatus(isEdit ? 'Maquinaria actualizada' : 'Maquinaria creada', 'success');
         resetAdminMaquinariaForm();
+        // Cerrar el panel de formulario tras exitoso guardado
+        try {
+            const formPanel = document.getElementById('adminMaquinariaFormPanel');
+            if (formPanel) formPanel.style.display = 'none';
+        } catch (e) { /* ignore */ }
         await loadAdminMaquinaria();
         try { await loadInicioKpis(); } catch (e) { console.warn('No se pudo refrescar KPIs tras crear/editar maquinaria', e); }
     } catch (err) {
