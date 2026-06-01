@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const roleRequestsRepo = require('./role_requests.repository');
+const usuariosRepo = require('../usuarios/usuarios.repository');
 
 function createTransporterIfConfigured() {
   // Permite configurar SMTP genérico o Gmail mediante variables de entorno
@@ -29,8 +30,14 @@ async function createRequest(req, res, next) {
 
     if (!usuario) return res.status(401).json({ message: 'No autorizado' });
 
-    const nombre_usuario = usuario.nombre_completo || null;
-    const email_usuario = usuario.email;
+    const usuarioDb = await usuariosRepo.getUsuarioById(usuario.id_usuario);
+    if (!usuarioDb) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    const nombre_usuario = String(usuarioDb.nombre_completo || '').trim() || null;
+    const email_usuario = usuarioDb.email || usuario.email;
+    const rol_actual = usuarioDb.rol_acceso || usuario.rol_acceso || 'Usuario';
 
     const existingRequest = await roleRequestsRepo.getPendingRoleRequestByUsuarioId(usuario.id_usuario);
     if (existingRequest) {
@@ -39,11 +46,18 @@ async function createRequest(req, res, next) {
       });
     }
 
+    const normalizedMessage = [
+      'Solicitud de cambio de rol',
+      `Solicitante: ${nombre_usuario || `Usuario #${usuarioDb.id_usuario}`}`,
+      `Correo: ${email_usuario || 'Sin correo'}`,
+      `Rol actual: ${rol_actual}`,
+    ].join(' | ');
+
     const created = await roleRequestsRepo.createRoleRequest({
       usuario_id: usuario.id_usuario,
       nombre_usuario,
       email_usuario,
-      mensaje: mensaje || null,
+      mensaje: normalizedMessage,
     });
 
     // Notificar por correo al administrador si está configurado
@@ -52,7 +66,7 @@ async function createRequest(req, res, next) {
     if (transporter) {
       const subject = `Nueva solicitud de rol de ${nombre_usuario || email_usuario}`;
       const text = `Usuario: ${nombre_usuario || ''} <${email_usuario}>
-Mensaje: ${mensaje || ''}
+    Mensaje: ${normalizedMessage}
 Ver solicitud en el panel de administración.`;
 
       try {

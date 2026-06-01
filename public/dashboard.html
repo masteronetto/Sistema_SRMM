@@ -3145,7 +3145,7 @@ async function loadRoleRequests() {
 
         const formatRequesterName = (req) => {
             const name = String(req.nombre_usuario || '').trim();
-            if (name) return name;
+            if (name && !name.includes('@')) return name;
 
             const email = String(req.email_usuario || '').trim();
             if (!email) return 'Usuario';
