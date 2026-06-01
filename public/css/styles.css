@@ -291,6 +291,14 @@ body {
     line-height: 1.35;
 }
 
+/* Animación ligera para destacar KPIs actualizados */
+.kpi-flash {
+    transform: translateY(-6px);
+    box-shadow: 0 10px 30px rgba(43,37,29,0.12);
+    background-color: rgba(39,157,73,0.06);
+    transition: transform 260ms ease, box-shadow 260ms ease, background-color 260ms ease;
+}
+
 .user-view .admin-only,
 .mecanico-view .admin-only,
 .operator-view .admin-only {

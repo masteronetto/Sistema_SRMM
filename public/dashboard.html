@@ -1153,6 +1153,7 @@ async function saveAdminMaquinaria(event) {
         setMaquinariaStatus(isEdit ? 'Maquinaria actualizada' : 'Maquinaria creada', 'success');
         resetAdminMaquinariaForm();
         await loadAdminMaquinaria();
+        try { await loadInicioKpis(); } catch (e) { console.warn('No se pudo refrescar KPIs tras crear/editar maquinaria', e); }
     } catch (err) {
         setMaquinariaStatus(`Error: ${err.message}`, 'error');
     }
@@ -1228,6 +1229,7 @@ async function deleteMaquinariaById(maquinaId) {
             }
             setMaquinariaStatus('Maquinaria eliminada', 'success');
             await loadAdminMaquinaria();
+            try { await loadInicioKpis(); } catch (e) { console.warn('No se pudo refrescar KPIs tras eliminar maquinaria', e); }
         } catch (err) {
             setMaquinariaStatus(`Error: ${err.message}`, 'error');
         }
@@ -1562,6 +1564,14 @@ function formatCurrency(value) {
     const n = Number(value || 0);
     if (!Number.isFinite(n)) return '0';
     return n.toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
+}
+
+// Añade una animación breve a elementos KPI para indicar actualización
+function flashKpis(elements = [], duration = 900) {
+    const els = Array.isArray(elements) ? elements.filter(Boolean) : [];
+    if (!els.length) return;
+    els.forEach(el => el.classList.add('kpi-flash'));
+    setTimeout(() => els.forEach(el => el.classList.remove('kpi-flash')), duration);
 }
 
 function escapeHtml(value) {
@@ -2910,6 +2920,11 @@ async function loadInicioKpis() {
         if (mantEl) mantEl.textContent = urgentCount || '—';
         if (mantNoteEl) mantNoteEl.textContent = urgentCount > 0 ? 'Acción requerida' : 'Sin urgencias';
 
+        // Animar KPIs para dar feedback visual en la actualización
+        try {
+            flashKpis([totalMaquinariaEl, disponiblesEl, arrendEl, mantEl], 900);
+        } catch (e) { /* no crítico */ }
+
         const inventarioTotalEl = document.getElementById('inventarioTotal');
         const inventarioDisponiblesEl = document.getElementById('inventarioDisponibles');
         const inventarioBloqueadasEl = document.getElementById('inventarioBloqueadas');
@@ -3626,6 +3641,9 @@ async function loadArriendosDashboard() {
                 if (!res.ok) throw new Error(body.message || 'No se pudo guardar el arriendo');
                 setArriendoStatus('Arriendo guardado correctamente', 'success');
                 await loadArriendosDashboard();
+                // actualizar inventario y métricas en Inicio
+                try { await loadAdminMaquinaria(); } catch (e) { console.warn('No se pudo refrescar maquinaria tras arriendo', e); }
+                try { await loadInicioKpis(); } catch (e) { console.warn('No se pudieron refrescar KPIs tras arriendo', e); }
             } catch (error) {
                 setArriendoStatus(`Error: ${error.message}`, 'error');
             }
@@ -3656,6 +3674,8 @@ async function deleteArriendoById(idContrato) {
                 throw new Error(body.message || 'No se pudo eliminar el arriendo');
             }
             await loadArriendosDashboard();
+            try { await loadAdminMaquinaria(); } catch (e) { console.warn('No se pudo refrescar maquinaria tras eliminar arriendo', e); }
+            try { await loadInicioKpis(); } catch (e) { console.warn('No se pudieron refrescar KPIs tras eliminar arriendo', e); }
         } catch (error) {
             setArriendoStatus(`Error: ${error.message}`, 'error');
         }
