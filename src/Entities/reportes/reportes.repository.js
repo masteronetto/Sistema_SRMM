@@ -7,6 +7,26 @@ function computePorcentajeVinculadas(totalVinculadas, totalFallas) {
   return Number(((vinc / tot) * 100).toFixed(2));
 }
 
+let incidenciasAuditColumnsPromise = null;
+
+async function getIncidenciasAuditColumns() {
+  if (!incidenciasAuditColumnsPromise) {
+    incidenciasAuditColumnsPromise = pool
+      .query(
+        `
+          SELECT column_name
+          FROM information_schema.columns
+          WHERE table_schema = current_schema()
+            AND table_name = 'incidencias_maquina'
+            AND column_name IN ('created_at', 'updated_at')
+        `
+      )
+      .then(({ rows }) => new Set(rows.map((row) => row.column_name)));
+  }
+
+  return incidenciasAuditColumnsPromise;
+}
+
 async function getHistorialUnificado(id_maquina, fecha_inicio, fecha_fin) {
   let query = `
     SELECT * FROM vista_historial_completo 
@@ -266,6 +286,11 @@ async function getReporteFallas(filtros = {}) {
 
   const { whereClause, values } = buildReporteFallasFilters({ maquinaria_ids, fecha_inicio, fecha_fin, criticidad, operador_id });
   const periodoExpr = getReporteFallasPeriodoExpr(periodo);
+  const incidenciasAuditColumns = await getIncidenciasAuditColumns();
+  const puedeCalcularResolucion = incidenciasAuditColumns.has('created_at') && incidenciasAuditColumns.has('updated_at');
+  const promedioResolucionExpr = puedeCalcularResolucion
+    ? `ROUND(COALESCE(AVG(CASE WHEN i.estado = 'Resuelta' THEN EXTRACT(EPOCH FROM (i.updated_at - i.created_at)) / 3600.0 END), 0)::numeric, 2)`
+    : `0::numeric`;
 
   const groupedQuery = `
     SELECT
@@ -277,7 +302,7 @@ async function getReporteFallas(filtros = {}) {
       COUNT(*) FILTER (WHERE i.estado = 'Resuelta')::int AS total_resueltas,
       COUNT(*) FILTER (WHERE i.estado = 'Pendiente')::int AS total_pendientes,
       COUNT(*) FILTER (WHERE COALESCE(i.vinculada_mantenimiento, 0) = 1)::int AS total_vinculadas,
-      ROUND(COALESCE(AVG(CASE WHEN i.estado = 'Resuelta' THEN EXTRACT(EPOCH FROM (i.updated_at - i.created_at)) / 3600.0 END), 0)::numeric, 2) AS promedio_resolucion_horas
+      ${promedioResolucionExpr} AS promedio_resolucion_horas
     FROM incidencias_maquina i
     INNER JOIN maquinaria m ON m.id_maquina = i.maquinaria_id_maquina
     ${whereClause}
@@ -291,7 +316,7 @@ async function getReporteFallas(filtros = {}) {
       COUNT(*) FILTER (WHERE i.estado = 'Resuelta')::int AS total_resueltas,
       COUNT(*) FILTER (WHERE i.estado = 'Pendiente')::int AS total_pendientes,
       COUNT(*) FILTER (WHERE COALESCE(i.vinculada_mantenimiento, 0) = 1)::int AS total_vinculadas,
-      ROUND(COALESCE(AVG(CASE WHEN i.estado = 'Resuelta' THEN EXTRACT(EPOCH FROM (i.updated_at - i.created_at)) / 3600.0 END), 0)::numeric, 2) AS promedio_resolucion_horas
+      ${promedioResolucionExpr} AS promedio_resolucion_horas
     FROM incidencias_maquina i
     ${whereClause}
   `;
