@@ -531,6 +531,10 @@
                             </div>
 
                             <form id="opIncidentForm" class="incident-form" style="margin-top:1rem;">
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 mb-3">
+                                    <div class="small muted">Máquina asignada</div>
+                                    <div id="opAssignedMachineLabel" class="font-semibold text-slate-800">Cargando asignación...</div>
+                                </div>
                                 <div class="incident-grid">
                                     <label>Máquina
                                         <select id="opIncidentMachine" required><option value="">Cargando máquinas…</option></select>
@@ -1257,6 +1261,14 @@ window.reportFallasState = {
     filtros: null
 };
 
+function getCurrentRole() {
+    return String((typeof userRole !== 'undefined' && userRole) || currentUser?.rol_acceso || '').trim();
+}
+
+function hasCurrentRole(roleName) {
+    return getCurrentRole().toLowerCase() === String(roleName || '').trim().toLowerCase();
+}
+
 /* ═══════════════════════════════════════════════════
    INIT
    ═══════════════════════════════════════════════════ */
@@ -1301,20 +1313,21 @@ function renderSidebarUser() {
 
 /* ─── Aplicar permisos: mostrar/ocultar ítems del menú ─── */
 function applyRolePermissions() {
-    const allowed = ROLE_PERMISSIONS[userRole] || ['inicio'];
+    const role = getCurrentRole();
+    const allowed = ROLE_PERMISSIONS[role] || ['inicio'];
 
-    document.body.classList.toggle('user-view', userRole === 'Usuario');
-    document.body.classList.toggle('mecanico-view', userRole === 'Mecanico');
-    document.body.classList.toggle('operator-view', userRole === 'Operador');
-    document.body.classList.toggle('admin-view', userRole === 'Administrador');
+    document.body.classList.toggle('user-view', hasCurrentRole('Usuario'));
+    document.body.classList.toggle('mecanico-view', hasCurrentRole('Mecanico'));
+    document.body.classList.toggle('operator-view', hasCurrentRole('Operador'));
+    document.body.classList.toggle('admin-view', hasCurrentRole('Administrador'));
 
     // Mostrar solo los botones de menú permitidos
     document.querySelectorAll('.nav-link[data-role-required]').forEach(btn => {
-        const required = btn.dataset.roleRequired.split(',');
-        btn.style.display = required.includes(userRole) ? 'flex' : 'none';
+        const required = btn.dataset.roleRequired.split(',').map((value) => value.trim());
+        btn.style.display = required.includes(role) ? 'flex' : 'none';
     });
 
-    if (userRole === 'Usuario') {
+    if (hasCurrentRole('Usuario')) {
         document.getElementById('topAlertsBtn').style.display = 'none';
     }
 }
@@ -1588,8 +1601,8 @@ async function refreshIncidentDetailPanelIfNeeded(maquinaId) {
 }
 
 async function loadAvailableMachines() {
-    const role = typeof userRole !== 'undefined' ? userRole : (currentUser?.rol_acceso || '');
-    const isOperator = role === 'Operador';
+    const role = getCurrentRole();
+    const isOperator = role.toLowerCase() === 'operador';
 
     if (!isOperator && availableMachines.length > 0) {
         return availableMachines;
@@ -1613,6 +1626,31 @@ async function loadAvailableMachines() {
             fecha_fin: contract.fecha_fin,
             fecha_inicio: contract.fecha_inicio
         }));
+
+        if (!machines.length) {
+            try {
+                const resumenRes = await fetch('/api/reportes/operador/resumen', { headers: getAuthHeaders() });
+                if (resumenRes.ok) {
+                    const resumen = await resumenRes.json();
+                    const contrato = resumen?.contrato_activo;
+                    if (contrato?.maquinaria_id_maquina) {
+                        machines.push({
+                            id_maquina: contrato.maquinaria_id_maquina,
+                            modelo_equipo: contrato.modelo_equipo || `Máquina #${contrato.maquinaria_id_maquina}`,
+                            horometro_actual: 0,
+                            cliente_id: currentUser?.id_usuario,
+                            cliente_nombre: currentUser?.nombre_completo || currentUser?.email || '',
+                            id_contrato: contrato.id_contrato || null,
+                            estado_contrato: contrato.estado_contrato || 'Activo',
+                            fecha_fin: contrato.fecha_fin || null,
+                            fecha_inicio: contrato.fecha_inicio || null
+                        });
+                    }
+                }
+            } catch (fallbackError) {
+                console.error('No se pudo obtener el contrato activo del operador:', fallbackError);
+            }
+        }
 
         availableMachines = machines;
         return availableMachines;
@@ -2135,7 +2173,7 @@ async function loadReportesDashboard() {
         updateReportKpis(summary);
 
         // Si es operador, mostrar versión simplificada: formulario de reporte y lista de mis fallas
-        if (role === 'Operador') {
+        if (role.toLowerCase() === 'operador') {
             const opSection = document.getElementById('operatorSimpleReport');
             if (opSection) opSection.style.display = '';
             try {
@@ -2181,12 +2219,12 @@ function getEffectiveReportDates() {
 
 function initReportesDashboard() {
     const machineSelect = document.getElementById('reportMachineSelect');
-    const role = typeof userRole !== 'undefined' ? userRole : (currentUser?.rol_acceso || '');
+    const role = getCurrentRole();
 
     // Mostrar vista simplificada para operadores: ocultar secciones complejas
     const opSection = document.getElementById('operatorSimpleReport');
-    if (role === 'Operador') {
-        if (opSection) opSection.style.display = '';
+    if (role.toLowerCase() === 'operador') {
+        if (opSection) opSection.style.display = 'block';
         document.querySelectorAll('.mecanico-only, .admin-only').forEach((el) => { el.style.display = 'none'; });
         // Inicializar vista simple de operador 
         try { initOperatorReportForm(); loadOperatorIncidencias(); } catch (e) { console.error('Error iniciando vista operador', e); }
@@ -2694,7 +2732,7 @@ async function loadInicioKpis() {
             const role = typeof userRole !== 'undefined' ? userRole : (currentUser?.rol_acceso || '');
 
             let machines = [];
-            if (role === 'Operador') {
+            if (role.toLowerCase() === 'operador') {
                 // Para operadores, usar máquinas asignadas por contrato
                 machines = await loadAvailableMachines();
             } else {
@@ -3827,6 +3865,7 @@ async function initOperatorReportForm() {
     window._opReportInitialized = true;
 
     const machineSelect = document.getElementById('opIncidentMachine');
+    const assignedMachineLabel = document.getElementById('opAssignedMachineLabel');
     const dateInput = document.getElementById('opIncidentDate');
     const submitBtn = document.getElementById('opIncidentSubmit');
     const statusEl = document.getElementById('opIncidentStatus');
@@ -3840,8 +3879,40 @@ async function initOperatorReportForm() {
     try {
         const machines = await loadAvailableMachines();
         machineSelect.innerHTML = '<option value="">Selecciona una máquina</option>' + machines.map(m => `<option value="${m.id_maquina}">${m.modelo_equipo}</option>`).join('');
+
+        if (machines.length === 1) {
+            machineSelect.value = String(machines[0].id_maquina);
+        }
+
+        if (assignedMachineLabel) {
+            if (machines.length === 0) {
+                assignedMachineLabel.textContent = 'Sin máquina asignada';
+            } else if (machines.length === 1) {
+                assignedMachineLabel.textContent = `${machines[0].modelo_equipo || 'Máquina'} #${machines[0].id_maquina}`;
+            } else {
+                assignedMachineLabel.textContent = `${machines.length} máquinas asignadas`;
+            }
+        }
     } catch (e) {
         machineSelect.innerHTML = '<option value="">No se pudieron cargar máquinas</option>';
+        if (assignedMachineLabel) assignedMachineLabel.textContent = 'No se pudo cargar la asignación';
+
+        try {
+            const resumenRes = await fetch('/api/reportes/operador/resumen', { headers: getAuthHeaders() });
+            if (resumenRes.ok) {
+                const resumen = await resumenRes.json();
+                const contrato = resumen?.contrato_activo;
+                if (contrato?.maquinaria_id_maquina) {
+                    machineSelect.innerHTML = `<option value="${contrato.maquinaria_id_maquina}">${contrato.modelo_equipo || `Máquina #${contrato.maquinaria_id_maquina}`}</option>`;
+                    machineSelect.value = String(contrato.maquinaria_id_maquina);
+                    if (assignedMachineLabel) {
+                        assignedMachineLabel.textContent = `${contrato.modelo_equipo || 'Máquina'} #${contrato.maquinaria_id_maquina}`;
+                    }
+                }
+            }
+        } catch (fallbackError) {
+            console.error('No se pudo resolver la máquina asignada del operador:', fallbackError);
+        }
     }
 
     submitBtn.addEventListener('click', async () => {
