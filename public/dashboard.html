@@ -2070,16 +2070,21 @@ async function loadReportesDashboard() {
         renderReportTopChart(topMaquinas);
 
         const selectedMachineIds = Array.from(machineSelect.selectedOptions).map((option) => String(option.value)).filter(Boolean);
+        const selectedMachineScope = selectedMachineIds.length
+            ? machines.filter((item) => selectedMachineIds.includes(String(item.id_maquina)))
+            : machines;
         const selectedMachineStats = selectedMachineIds.length
             ? estadisticas.filter((item) => selectedMachineIds.includes(String(item.id_maquina)))
-            : [];
+            : estadisticas;
 
         const summary = {
-            totalHoras: 0,
+            totalHoras: selectedMachineScope.reduce((acc, item) => acc + Number(item.horometro_actual || 0), 0),
             totalMantenciones: selectedMachineStats.reduce((acc, item) => acc + Number(item.total_mantenciones || 0), 0),
             totalFallas: selectedMachineStats.reduce((acc, item) => acc + Number(item.total_fallas || 0), 0),
             totalIngresos: 0,
-            detalle: 'Selecciona una o varias máquinas para ver su evolución.'
+            detalle: selectedMachineIds.length
+                ? 'Selecciona una o varias máquinas para ver su evolución.'
+                : 'Resumen global calculado desde todas las máquinas disponibles.'
         };
 
         const dates = getEffectiveReportDates();
@@ -2105,8 +2110,9 @@ async function loadReportesDashboard() {
         }
 
         const reportState = window.__srmmReporteState || {};
-        if (reportState.totalHoras !== undefined) summary.totalHoras = reportState.totalHoras;
-        if (reportState.detalle) summary.detalle = reportState.detalle;
+        if (reportState.rows && reportState.rows.length > 0 && reportState.detalle) {
+            summary.detalle = reportState.detalle;
+        }
 
         // Cargar ingresos estimados para el rango y máquina (o global si no hay máquina)
         try {
