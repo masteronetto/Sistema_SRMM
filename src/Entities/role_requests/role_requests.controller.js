@@ -32,6 +32,13 @@ async function createRequest(req, res, next) {
     const nombre_usuario = usuario.nombre_completo || null;
     const email_usuario = usuario.email;
 
+    const existingRequest = await roleRequestsRepo.getPendingRoleRequestByUsuarioId(usuario.id_usuario);
+    if (existingRequest) {
+      return res.status(409).json({
+        message: 'Ya enviaste una solicitud de cambio de rol. Espera a que el administrador la revise y actualice tu rol.'
+      });
+    }
+
     const created = await roleRequestsRepo.createRoleRequest({
       usuario_id: usuario.id_usuario,
       nombre_usuario,

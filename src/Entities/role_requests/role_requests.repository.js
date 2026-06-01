@@ -15,6 +15,24 @@ async function createRoleRequest({ usuario_id, nombre_usuario, email_usuario, me
   }
 }
 
+async function getPendingRoleRequestByUsuarioId(usuarioId) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `SELECT id_request, usuario_id, nombre_usuario, email_usuario, mensaje, estado, created_at
+       FROM role_requests
+       WHERE usuario_id = $1 AND estado = 'Pendiente'
+       ORDER BY created_at DESC
+       LIMIT 1;`,
+      [usuarioId]
+    );
+
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
 async function listRoleRequests({ limit = 50, offset = 0 } = {}) {
   const client = await pool.connect();
   try {
@@ -62,6 +80,7 @@ async function deleteRoleRequestsByUsuarioId(usuarioId) {
 
 module.exports = {
   createRoleRequest,
+  getPendingRoleRequestByUsuarioId,
   listRoleRequests,
   deleteRoleRequest,
   deleteRoleRequestsByUsuarioId,

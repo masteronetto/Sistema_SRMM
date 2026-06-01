@@ -1339,13 +1339,33 @@ function initStaticActionButtons() {
 
 /* ─── Sidebar usuario ─── */
 function renderSidebarUser() {
-    const name   = currentUser.nombre || currentUser.email || 'Usuario';
+    const name   = getCurrentUserDisplayName();
     const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
     document.getElementById('sidebarAvatar').textContent = initials;
     document.getElementById('sidebarName').textContent   = name;
     const badge = document.getElementById('sidebarRoleBadge');
     badge.textContent  = userRole;
     badge.className    = `role-badge ${userRole.toLowerCase()}`;
+}
+
+function getCurrentUserDisplayName() {
+    const rawName = String(currentUser?.nombre_completo || currentUser?.nombre || '').trim();
+    if (rawName) return rawName;
+
+    const email = String(currentUser?.email || '').trim();
+    if (email) {
+        const localPart = email.split('@')[0].replace(/[._-]+/g, ' ').trim();
+        if (localPart) {
+            return localPart
+                .split(/\s+/)
+                .filter(Boolean)
+                .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+                .join(' ');
+        }
+        return email;
+    }
+
+    return 'Usuario';
 }
 
 /* ─── Aplicar permisos: mostrar/ocultar ítems del menú ─── */
@@ -1375,7 +1395,7 @@ function renderWelcome() {
         `Bienvenido al Sistema SRMM`;
 
     document.getElementById('welcomeDesc').textContent =
-        `Sesión activa como: ${currentUser.email || currentUser.nombre}`;
+        `Sesión activa como: ${getCurrentUserDisplayName()} · ${currentUser.email || 'Sin correo'}`;
     // No mostrar mensajes de bienvenida (banner) en la vista Inicio para ningún rol.
     // Sólo mostrar la interfaz de acceso limitado para usuarios tipo `Usuario`, sin el banner informativo.
     if (userRole === 'Usuario') {
@@ -1403,10 +1423,12 @@ function renderWelcome() {
 }
 
 function requestRoleChange() {
+    const requesterName = getCurrentUserDisplayName();
+    const requesterEmail = currentUser.email || 'Sin correo';
     const mensaje = [
         'Solicitud de cambio de rol',
-        `Usuario: ${currentUser.nombre || currentUser.email || 'N/D'}`,
-        `Email: ${currentUser.email || 'N/D'}`,
+        `Solicitante: ${requesterName}`,
+        `Correo: ${requesterEmail}`,
         `Rol actual: ${userRole || 'N/D'}`
     ].join(' | ');
 
@@ -1416,8 +1438,9 @@ function requestRoleChange() {
         body: JSON.stringify({ mensaje })
     })
     .then(async (r) => {
-        if (!r.ok) throw new Error((await r.json()).message || 'Error');
-        alert('Solicitud enviada correctamente.');
+        const payload = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(payload.message || 'Error');
+        alert(payload.message || 'Solicitud enviada correctamente. Ya enviaste una solicitud; espera el cambio de rol.');
     })
     .catch((err) => {
         console.error(err);
@@ -3120,14 +3143,27 @@ async function loadRoleRequests() {
             return;
         }
 
+        const formatRequesterName = (req) => {
+            const name = String(req.nombre_usuario || '').trim();
+            if (name) return name;
+
+            const email = String(req.email_usuario || '').trim();
+            if (!email) return 'Usuario';
+
+            const localPart = email.split('@')[0].replace(/[._-]+/g, ' ').trim();
+            return localPart
+                ? localPart.split(/\s+/).filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ')
+                : email;
+        };
+
         let html = `<div class="table-wrap"><table class="manage-users-table">
             <thead><tr><th>ID</th><th>Usuario</th><th>Email</th><th>Mensaje</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
             <tbody>`;
         requests.forEach(req => {
             html += `<tr>
                 <td>${req.id_request}</td>
-                <td>${req.nombre_usuario || 'N/D'}</td>
-                <td>${req.email_usuario}</td>
+                <td>${escapeHtml(formatRequesterName(req))}</td>
+                <td>${escapeHtml(req.email_usuario || '—')}</td>
                 <td>${req.mensaje || ''}</td>
                 <td><span class="role-badge usuario">${req.estado}</span></td>
                 <td>${new Date(req.created_at).toLocaleString()}</td>

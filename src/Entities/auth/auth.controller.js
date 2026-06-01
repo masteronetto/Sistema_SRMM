@@ -51,7 +51,12 @@ async function login(req, res, next) {
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
-    const payload = { id_usuario: user.id_usuario, email: user.email, rol_acceso: user.rol_acceso };
+    const payload = {
+      id_usuario: user.id_usuario,
+      nombre_completo: user.nombre_completo,
+      email: user.email,
+      rol_acceso: user.rol_acceso
+    };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 
     return res.json({ token, user: payload });
