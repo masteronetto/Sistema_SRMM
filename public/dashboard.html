@@ -3156,7 +3156,7 @@ function initReportesDashboard() {
     if (role === 'Operador') {
         if (opSection) opSection.style.display = '';
         document.querySelectorAll('.mecanico-only, .admin-only').forEach((el) => { el.style.display = 'none'; });
-        // Inicializar vista simple de operador sin bloquear el hilo
+        // Inicializar vista simple de operador 
         try { initOperatorReportForm(); loadOperatorIncidencias(); } catch (e) { console.error('Error iniciando vista operador', e); }
     } else {
         if (opSection) opSection.style.display = 'none';
