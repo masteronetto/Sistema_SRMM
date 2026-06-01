@@ -3149,6 +3149,19 @@ function getEffectiveReportDates() {
 
 function initReportesDashboard() {
     const machineSelect = document.getElementById('reportMachineSelect');
+    const role = typeof userRole !== 'undefined' ? userRole : (currentUser?.rol_acceso || '');
+
+    // Mostrar vista simplificada para operadores: ocultar secciones complejas
+    const opSection = document.getElementById('operatorSimpleReport');
+    if (role === 'Operador') {
+        if (opSection) opSection.style.display = '';
+        document.querySelectorAll('.mecanico-only, .admin-only').forEach((el) => { el.style.display = 'none'; });
+        // Inicializar vista simple de operador sin bloquear el hilo
+        try { initOperatorReportForm(); loadOperatorIncidencias(); } catch (e) { console.error('Error iniciando vista operador', e); }
+    } else {
+        if (opSection) opSection.style.display = 'none';
+        document.querySelectorAll('.mecanico-only, .admin-only').forEach((el) => { el.style.display = ''; });
+    }
     const fallasPeriodoSelect = document.getElementById('reportFallasPeriodo');
     const fallasStartDateInput = document.getElementById('reportFallasStartDate');
     const fallasEndDateInput = document.getElementById('reportFallasEndDate');
