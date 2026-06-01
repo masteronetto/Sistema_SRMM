@@ -222,8 +222,7 @@
       await loadReportFallasDashboard();
       
       // Solo mostrar reportes de mantenimiento a Mecánicos y Administradores
-      const role = typeof userRole !== 'undefined' ? userRole : '';
-      if (role !== 'Operador') {
+      if (!isOperator) {
         try {
           const mantenimientosRes = await fetch('/api/reportes/mantenimientos', { headers });
           if (mantenimientosRes.ok) {
@@ -376,6 +375,13 @@
       if (exportIngresosBtn) {
         exportIngresosBtn.addEventListener('click', async () => {
           try {
+            // Solo administradores pueden descargar reportes de ingresos
+            const role = typeof userRole !== 'undefined' ? userRole : '';
+            if (role !== 'Administrador') {
+              setReportStatus('No tienes permiso para descargar reportes de ingresos', 'error');
+              return;
+            }
+
             const headers = getAuthHeaders();
             const q = new URLSearchParams();
             const d = getEffectiveReportDates();

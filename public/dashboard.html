@@ -2114,22 +2114,26 @@ async function loadReportesDashboard() {
             summary.detalle = reportState.detalle;
         }
 
-        // Cargar ingresos estimados para el rango y máquina (o global si no hay máquina)
-        try {
-            const q = new URLSearchParams();
-            const d = getEffectiveReportDates();
-            if (d.start) q.append('fecha_inicio', d.start);
-            if (d.end) q.append('fecha_fin', d.end);
-            const ingRes = await fetch(`/api/reportes/ingresos?${q.toString()}`, { headers });
-            if (ingRes.ok) {
-                const ingPayload = await ingRes.json();
-                summary.totalIngresos = Number(ingPayload.total_ingresos || 0);
-            }
-        } catch (e) { /* no bloquear la carga de KPIs */ }
+        // Determinar rol antes de cargar recursos sensibles
+        const role = typeof userRole !== 'undefined' ? userRole : '';
+
+        // Cargar ingresos estimados solo para administradores
+        if (role === 'Administrador') {
+            try {
+                const q = new URLSearchParams();
+                const d = getEffectiveReportDates();
+                if (d.start) q.append('fecha_inicio', d.start);
+                if (d.end) q.append('fecha_fin', d.end);
+                const ingRes = await fetch(`/api/reportes/ingresos?${q.toString()}`, { headers });
+                if (ingRes.ok) {
+                    const ingPayload = await ingRes.json();
+                    summary.totalIngresos = Number(ingPayload.total_ingresos || 0);
+                }
+            } catch (e) { /* no bloquear la carga de KPIs */ }
+        }
 
         updateReportKpis(summary);
 
-        const role = typeof userRole !== 'undefined' ? userRole : '';
         // Si es operador, mostrar versión simplificada: formulario de reporte y lista de mis fallas
         if (role === 'Operador') {
             const opSection = document.getElementById('operatorSimpleReport');
@@ -2322,6 +2326,13 @@ function initReportesDashboard() {
         if (exportIngresosBtn) {
             exportIngresosBtn.addEventListener('click', async () => {
                 try {
+                    // Solo administradores pueden descargar reportes de ingresos
+                    const role = typeof userRole !== 'undefined' ? userRole : '';
+                    if (role !== 'Administrador') {
+                        setReportStatus('No tienes permiso para descargar reportes de ingresos', 'error');
+                        return;
+                    }
+
                     const headers = getAuthHeaders();
                     const q = new URLSearchParams();
                     const d = getEffectiveReportDates();
