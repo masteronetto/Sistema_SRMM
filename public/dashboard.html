@@ -1496,6 +1496,45 @@
                                 <button id="reportPrintBtn" class="btn btn-secondary">Imprimir</button>
                             </div>
                         </div>
+                    
+                        <!-- Versión simplificada de Reportes para Operador -->
+                        <section id="operatorSimpleReport" class="section-card operator-only" style="display:none;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;">
+                                <div>
+                                    <div class="section-title">Reportar y ver fallas</div>
+                                    <div class="muted">Registra fallas en terreno y visualiza las incidencias asignadas a tus contratos.</div>
+                                </div>
+                                <div id="operatorSimpleStatus" class="role-badge" style="background:rgba(79,70,229,0.08);color:#4338ca;">Operador</div>
+                            </div>
+
+                            <form id="opIncidentForm" class="incident-form" style="margin-top:1rem;">
+                                <div class="incident-grid">
+                                    <label>Máquina
+                                        <select id="opIncidentMachine" required><option value="">Cargando máquinas…</option></select>
+                                    </label>
+                                    <label>Fecha
+                                        <input id="opIncidentDate" type="date" />
+                                    </label>
+                                    <label>Criticidad
+                                        <select id="opIncidentSeverity"><option value="Alta">Alta</option><option value="Media">Media</option><option value="Baja">Baja</option></select>
+                                    </label>
+                                </div>
+
+                                <label>Descripción de la falla
+                                    <textarea id="opIncidentDescription" placeholder="Describe el evento, lugar e impacto" required></textarea>
+                                </label>
+
+                                <div class="incident-actions">
+                                    <button id="opIncidentSubmit" type="button" class="top-button primary">Registrar incidencia</button>
+                                    <span id="opIncidentStatus" class="form-status"></span>
+                                </div>
+                            </form>
+
+                            <div style="margin-top:1rem;">
+                                <div class="section-title">Mis fallas recientes</div>
+                                <div id="opIncidenciasList" class="overflow-x-auto mt-3"></div>
+                            </div>
+                        </section>
                     </section>
 
                     <section id="operatorResumenCard" class="section-card operator-only" style="display:none;">
@@ -3073,6 +3112,23 @@ async function loadReportesDashboard() {
         } catch (e) { /* no bloquear la carga de KPIs */ }
 
         updateReportKpis(summary);
+
+        const role = typeof userRole !== 'undefined' ? userRole : '';
+        // Si es operador, mostrar versión simplificada: formulario de reporte y lista de mis fallas
+        if (role === 'Operador') {
+            const opSection = document.getElementById('operatorSimpleReport');
+            if (opSection) opSection.style.display = '';
+            await loadReportFallasDashboard(); // mantiene resumen si aplica
+            try {
+                await initOperatorReportForm();
+                await loadOperatorIncidencias();
+                setReportStatus('Reportes (modo operador) actualizados', 'success');
+                return;
+            } catch (e) {
+                console.error('Error cargando vista simple operador:', e);
+            }
+        }
+
         await loadReportFallasDashboard();
         if (typeof userRole !== 'undefined' && userRole !== 'Operador') {
             await loadReportMantenimientosDashboard();
@@ -3574,20 +3630,29 @@ async function loadInicioKpis() {
             fetch('/api/reportes/top-maquinas', { headers })
         ]);
 
-        const [machinesRes, alertsRes, urgentRes] = await Promise.all([
-            fetch('/api/maquinaria', { headers }),
-            fetch('/api/alertas-criticas?limit=5', { headers }),
-            fetch('/api/maquinaria/urgent-maintenance?umbral=0&limit=5', { headers })
-        ]);
+            const [alertsRes, urgentRes] = await Promise.all([
+                fetch('/api/alertas-criticas?limit=5', { headers }),
+                fetch('/api/maquinaria/urgent-maintenance?umbral=0&limit=5', { headers })
+            ]);
 
-        if (!topRes.ok) throw new Error('No se pudieron cargar top máquinas');
+            if (!topRes.ok) throw new Error('No se pudieron cargar top máquinas');
 
-        const machines = machinesRes.ok ? await machinesRes.json() : [];
-        const alerts = alertsRes.ok ? await alertsRes.json() : [];
-        const urgent = urgentRes.ok ? await urgentRes.json() : [];
-        availableMachines = Array.isArray(machines) ? machines : [];
+            const role = typeof userRole !== 'undefined' ? userRole : (currentUser?.rol_acceso || '');
 
-        const top = await topRes.json();
+            let machines = [];
+            if (role === 'Operador') {
+                // Para operadores, usar máquinas asignadas por contrato
+                machines = await loadAvailableMachines();
+            } else {
+                const machinesRes = await fetch('/api/maquinaria', { headers });
+                machines = machinesRes.ok ? await machinesRes.json() : [];
+            }
+
+            const alerts = alertsRes.ok ? await alertsRes.json() : [];
+            const urgent = urgentRes.ok ? await urgentRes.json() : [];
+            availableMachines = Array.isArray(machines) ? machines : [];
+
+            const top = await topRes.json();
 
         const totalMaquinaria = machines.length;
         const disponibles = machines.filter((item) => item.estado === 'Disponible').length;
@@ -4636,6 +4701,113 @@ function initIncidentForm() {
             showIncidentFormFeedback(`❌ Error: ${err.message}`, 'error');
         }
     });
+}
+
+/* Inicializador y helpers para la vista simplificada de reportes (Operador) */
+async function initOperatorReportForm() {
+    if (window._opReportInitialized) return;
+    window._opReportInitialized = true;
+
+    const machineSelect = document.getElementById('opIncidentMachine');
+    const dateInput = document.getElementById('opIncidentDate');
+    const submitBtn = document.getElementById('opIncidentSubmit');
+    const statusEl = document.getElementById('opIncidentStatus');
+
+    if (!machineSelect || !submitBtn) return;
+
+    // Fecha por defecto hoy
+    const today = new Date();
+    if (dateInput) dateInput.value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+    try {
+        const machines = await loadAvailableMachines();
+        machineSelect.innerHTML = '<option value="">Selecciona una máquina</option>' + machines.map(m => `<option value="${m.id_maquina}">${m.modelo_equipo}</option>`).join('');
+    } catch (e) {
+        machineSelect.innerHTML = '<option value="">No se pudieron cargar máquinas</option>';
+    }
+
+    submitBtn.addEventListener('click', async () => {
+        const maquinaId = document.getElementById('opIncidentMachine')?.value;
+        const fecha = document.getElementById('opIncidentDate')?.value;
+        const criticidad = document.getElementById('opIncidentSeverity')?.value;
+        const descripcion = document.getElementById('opIncidentDescription')?.value.trim();
+
+        if (!maquinaId || !fecha || !descripcion) {
+            if (statusEl) statusEl.textContent = 'Completa máquina, fecha y descripción.';
+            return;
+        }
+
+        try {
+            if (statusEl) statusEl.textContent = 'Guardando...';
+            submitBtn.disabled = true;
+            const body = { fecha, criticidad, descripcion };
+            const res = await fetch(`/api/maquinaria/${maquinaId}/incidencias`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                body: JSON.stringify(body)
+            });
+            const result = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(result.message || 'Error registrando incidencia');
+            if (statusEl) statusEl.textContent = 'Incidencia registrada.';
+            document.getElementById('opIncidentDescription').value = '';
+            await loadOperatorIncidencias();
+        } catch (err) {
+            console.error(err);
+            if (statusEl) statusEl.textContent = `Error: ${err.message}`;
+        } finally {
+            submitBtn.disabled = false;
+            setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
+        }
+    });
+}
+
+async function loadOperatorIncidencias() {
+    const listContainer = document.getElementById('opIncidenciasList');
+    if (!listContainer) return;
+    listContainer.innerHTML = '<p class="muted">Cargando incidencias…</p>';
+
+    try {
+        const machines = await loadAvailableMachines();
+        const ids = machines.map(m => Number(m.id_maquina)).filter(Boolean);
+        const q = new URLSearchParams();
+        if (ids.length) q.append('maquina_ids', ids.join(','));
+        const res = await fetch(`/api/incidencias?${q.toString()}`, { headers: getAuthHeaders() });
+        if (!res.ok) throw new Error('No se pudieron cargar las incidencias');
+        const rows = await res.json();
+
+        if (!rows || !rows.length) {
+            listContainer.innerHTML = '<p class="muted">No hay incidencias registradas para tus máquinas.</p>';
+            return;
+        }
+
+        const html = `
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b border-slate-200 text-sm text-slate-500 uppercase">
+                        <th class="pb-3 px-2">Fecha</th>
+                        <th class="pb-3 px-2">Máquina</th>
+                        <th class="pb-3 px-2">Criticidad</th>
+                        <th class="pb-3 px-2">Descripción</th>
+                        <th class="pb-3 px-2">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows.map(r => `
+                        <tr class="border-b border-slate-100 hover:bg-slate-50 transition align-top">
+                            <td class="py-3 px-2 whitespace-nowrap">${new Date(r.fecha).toLocaleDateString('es-CL')}</td>
+                            <td class="py-3 px-2">${escapeHtml(r.modelo_equipo || r.maquina_nombre || '—')}</td>
+                            <td class="py-3 px-2">${escapeHtml(r.criticidad || '—')}</td>
+                            <td class="py-3 px-2">${escapeHtml(r.descripcion || '—')}</td>
+                            <td class="py-3 px-2">${escapeHtml(r.estado || '—')}</td>
+                        </tr>`).join('')}
+                </tbody>
+            </table>`;
+
+        listContainer.innerHTML = html;
+    } catch (err) {
+        console.error(err);
+        listContainer.innerHTML = `<p class="muted">Error: ${err.message}</p>`;
+    }
 }
 
 /* ─── Logout ─── */
