@@ -556,7 +556,11 @@
         }
 
         .operator-view .mecanico-only,
-        .mecanico-view .operator-only {
+        .operator-view .admin-only,
+        .mecanico-view .operator-only,
+        .mecanico-view .admin-only,
+        .user-view .operator-only,
+        .user-view .admin-only {
             display: none;
         }
 
@@ -1470,7 +1474,7 @@
             <!-- ══ REPORTES ══ -->
             <section id="reportes" class="view">
                 <div class="section-stack" style="gap:1rem;">
-                    <section class="section-card">
+                    <section class="section-card mecanico-only admin-only">
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
                             <div>
                                 <div class="section-title">Visualización de reportes históricos</div>
@@ -1496,6 +1500,7 @@
                                 <button id="reportPrintBtn" class="btn btn-secondary">Imprimir</button>
                             </div>
                         </div>
+                    </section>
                     
                         <!-- Versión simplificada de Reportes para Operador -->
                         <section id="operatorSimpleReport" class="section-card operator-only" style="display:none;">
@@ -1535,7 +1540,6 @@
                                 <div id="opIncidenciasList" class="overflow-x-auto mt-3"></div>
                             </div>
                         </section>
-                    </section>
 
                     <section id="operatorResumenCard" class="section-card operator-only" style="display:none;">
                         <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
@@ -1571,7 +1575,7 @@
                         </div>
                     </section>
 
-                    <div class="mini-grid">
+                    <div class="mini-grid mecanico-only admin-only">
                         <article class="section-card">
                             <div class="section-title">Horas históricas</div>
                             <div id="reportHorasHistoricas" class="text-3xl font-bold text-slate-800">—</div>
@@ -1594,7 +1598,7 @@
                         </article>
                 </div>
 
-                        <section class="section-card">
+                        <section class="section-card mecanico-only admin-only">
                             <div class="report-fallas-header">
                                 <div>
                                     <div class="section-title">Reporte de fallas</div>
@@ -1684,7 +1688,7 @@
                             <div id="reportFallasTable" class="overflow-x-auto mt-3"></div>
                         </section>
 
-                        <section id="reportMantenimientosSection" class="section-card mecanico-only">
+                        <section id="reportMantenimientosSection" class="section-card mecanico-only admin-only">
                             <div class="report-fallas-header">
                                 <div>
                                     <div class="section-title">Reporte de mantenimientos</div>
@@ -1715,7 +1719,7 @@
                             <div id="reportMantenimientosTable" class="overflow-x-auto mt-4"></div>
                         </section>
 
-                    <div class="mini-grid mecanico-only">
+                    <div class="mini-grid mecanico-only admin-only">
                         <article class="section-card">
                             <div class="section-title">Top máquinas por horómetro</div>
                             <div class="relative h-72 w-full mt-3"><canvas id="reportTopChart"></canvas></div>
@@ -1726,7 +1730,7 @@
                         </article>
                     </div>
 
-                    <section class="section-card mecanico-only">
+                    <section class="section-card mecanico-only admin-only">
                         <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
                             <div>
                                 <div class="section-title">Historial unificado</div>
