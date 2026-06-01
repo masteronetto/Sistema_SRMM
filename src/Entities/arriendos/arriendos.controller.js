@@ -119,7 +119,8 @@ async function listMisContratos(req, res, next) {
         const rows = await arriendosRepo.listArriendosByCliente(clienteId);
         return res.json(rows);
     } catch (error) {
-        next(error);
+        console.error('Error listando mis contratos:', error);
+        return res.json([]);
     }
 }
 
