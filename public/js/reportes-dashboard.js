@@ -200,6 +200,8 @@
 
       const reportState = window.__srmmReporteState || {};
       if (reportState.totalHoras !== undefined) summary.totalHoras = reportState.totalHoras;
+      if (reportState.totalMantenciones !== undefined) summary.totalMantenciones = reportState.totalMantenciones;
+      if (reportState.totalFallas !== undefined) summary.totalFallas = reportState.totalFallas;
       if (reportState.detalle) summary.detalle = reportState.detalle;
 
       if (isAdmin) {
