@@ -350,7 +350,6 @@
       renderReportFallasCharts(resumen);
       renderReportFallasTable(rows);
 
-      const currentRole = typeof userRole !== 'undefined' ? userRole : '';
       if (currentRole !== 'Operador') {
         try {
           await loadGlobalIncidencias();
