@@ -72,6 +72,32 @@ async function deleteRoleRequest(idRequest) {
   }
 }
 
+async function updatePendingRoleRequestByUsuarioId(usuarioId, { nombre_usuario, email_usuario, mensaje }) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `UPDATE role_requests
+       SET nombre_usuario = $2,
+           email_usuario = $3,
+           mensaje = $4
+       WHERE id_request = (
+         SELECT id_request
+         FROM role_requests
+         WHERE usuario_id = $1
+           AND estado = 'Pendiente'
+         ORDER BY created_at DESC
+         LIMIT 1
+       )
+       RETURNING id_request, usuario_id, nombre_usuario, email_usuario, mensaje, estado, created_at;`,
+      [usuarioId, nombre_usuario, email_usuario, mensaje]
+    );
+
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
 async function deleteRoleRequestsByUsuarioId(usuarioId) {
   const client = await pool.connect();
   try {
@@ -89,6 +115,7 @@ async function deleteRoleRequestsByUsuarioId(usuarioId) {
 module.exports = {
   createRoleRequest,
   getPendingRoleRequestByUsuarioId,
+  updatePendingRoleRequestByUsuarioId,
   listRoleRequests,
   deleteRoleRequest,
   deleteRoleRequestsByUsuarioId,

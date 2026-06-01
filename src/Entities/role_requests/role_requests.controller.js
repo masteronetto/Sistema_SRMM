@@ -25,7 +25,6 @@ function createTransporterIfConfigured() {
 
 async function createRequest(req, res, next) {
   try {
-    const { mensaje } = req.body;
     const usuario = req.user; // middleware auth agrega user
 
     if (!usuario) return res.status(401).json({ message: 'No autorizado' });
@@ -39,19 +38,25 @@ async function createRequest(req, res, next) {
     const email_usuario = usuarioDb.email || usuario.email;
     const rol_actual = usuarioDb.rol_acceso || usuario.rol_acceso || 'Usuario';
 
-    const existingRequest = await roleRequestsRepo.getPendingRoleRequestByUsuarioId(usuario.id_usuario);
-    if (existingRequest) {
-      return res.status(409).json({
-        message: 'Ya enviaste una solicitud de cambio de rol. Espera a que el administrador la revise y actualice tu rol.'
-      });
-    }
-
     const normalizedMessage = [
       'Solicitud de cambio de rol',
       `Solicitante: ${nombre_usuario || `Usuario #${usuarioDb.id_usuario}`}`,
       `Correo: ${email_usuario || 'Sin correo'}`,
       `Rol actual: ${rol_actual}`,
     ].join(' | ');
+
+    const existingRequest = await roleRequestsRepo.getPendingRoleRequestByUsuarioId(usuario.id_usuario);
+    if (existingRequest) {
+      await roleRequestsRepo.updatePendingRoleRequestByUsuarioId(usuario.id_usuario, {
+        nombre_usuario,
+        email_usuario,
+        mensaje: normalizedMessage,
+      });
+
+      return res.status(409).json({
+        message: 'Ya enviaste una solicitud de cambio de rol. Espera a que el administrador la revise y actualice tu rol.'
+      });
+    }
 
     const created = await roleRequestsRepo.createRoleRequest({
       usuario_id: usuario.id_usuario,
