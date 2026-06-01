@@ -1609,12 +1609,18 @@ async function loadAvailableMachines() {
     }
 
     if (isOperator) {
-        const res = await fetch('/api/arriendos/mis-contratos', { headers: getAuthHeaders() });
-        if (!res.ok) {
-            throw new Error('No se pudieron cargar las máquinas asignadas');
+        let contracts = [];
+        try {
+            const res = await fetch('/api/arriendos/mis-contratos', { headers: getAuthHeaders() });
+            if (res.ok) {
+                contracts = await res.json();
+            } else {
+                console.warn('No se pudieron cargar mis contratos; se usará fallback de asignación');
+            }
+        } catch (contractError) {
+            console.warn('Error consultando mis contratos; se usará fallback de asignación:', contractError);
         }
 
-        const contracts = await res.json();
         const machines = (Array.isArray(contracts) ? contracts : []).map((contract) => ({
             id_maquina: contract.maquinaria_id_maquina,
             modelo_equipo: contract.modelo_equipo,
@@ -2097,6 +2103,22 @@ async function loadSelectedMachinesReport(machineIds, fechaInicio, fechaFin) {
 }
 
 async function loadReportesDashboard() {
+    const role = getCurrentRole();
+    if (role.toLowerCase() === 'operador') {
+        setReportStatus('Cargando incidencias del operador...', 'info');
+        const opSection = document.getElementById('operatorSimpleReport');
+        if (opSection) opSection.style.display = 'block';
+        try {
+            await initOperatorReportForm();
+            await loadOperatorIncidencias();
+            setReportStatus('Incidencias del operador actualizadas', 'success');
+        } catch (error) {
+            console.error('Error cargando incidencias del operador:', error);
+            setReportStatus('No se pudieron cargar las incidencias del operador', 'error');
+        }
+        return;
+    }
+
     const machineSelect = document.getElementById('reportMachineSelect');
     const selectedLabel = document.getElementById('reportSelectedMachineLabel');
 
@@ -2184,7 +2206,7 @@ async function loadReportesDashboard() {
         }
 
         // Determinar rol antes de cargar recursos sensibles
-        const role = typeof userRole !== 'undefined' ? userRole : '';
+        const role = getCurrentRole();
 
         // Cargar ingresos estimados solo para administradores
         if (role === 'Administrador') {
@@ -2202,20 +2224,6 @@ async function loadReportesDashboard() {
         }
 
         updateReportKpis(summary);
-
-        // Si es operador, mostrar solo la vista simplificada y detener la carga histórica
-        if (role.toLowerCase() === 'operador') {
-            const opSection = document.getElementById('operatorSimpleReport');
-            if (opSection) opSection.style.display = '';
-            try {
-                await initOperatorReportForm();
-                await loadOperatorIncidencias();
-            } catch (e) {
-                console.error('Error cargando vista simple operador:', e);
-            }
-            setReportStatus('Incidencias del operador actualizadas', 'success');
-            return;
-        }
 
         try {
             await loadReportFallasDashboard();

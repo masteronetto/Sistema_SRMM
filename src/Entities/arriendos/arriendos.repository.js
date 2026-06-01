@@ -122,6 +122,7 @@ async function deleteArriendo(id_contrato, db = pool) {
 
 module.exports = {
   listArriendos,
+  listArriendosByCliente,
   createArriendo,
   getArriendoById,
   getArriendoActivoByMaquina,
