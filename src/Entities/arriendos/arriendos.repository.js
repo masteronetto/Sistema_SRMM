@@ -12,13 +12,11 @@ async function listArriendos(db = pool) {
       a.horometro_salida,
       a.fecha_inicio,
       a.fecha_fin,
-      a.estado_contrato,
-      a.created_at,
-      a.updated_at
+      a.estado_contrato
     FROM arriendos a
-    INNER JOIN maquinaria m ON m.id_maquina = a.maquinaria_id_maquina
+    LEFT JOIN maquinaria m ON m.id_maquina = a.maquinaria_id_maquina
     LEFT JOIN usuarios u ON u.id_usuario = a.cliente_id
-    ORDER BY a.created_at DESC, a.id_contrato DESC
+    ORDER BY a.id_contrato DESC
   `;
 
   const { rows } = await db.query(query);
@@ -36,7 +34,7 @@ async function createArriendo({ maquinaria_id_maquina, cliente_id = null, horome
       fecha_fin,
       estado_contrato
     ) VALUES ($1, $2, $3, $4, COALESCE($5, CURRENT_DATE), $6, COALESCE($7, 'Activo'))
-    RETURNING id_contrato, maquinaria_id_maquina, cliente_id, horometro_entrada, horometro_salida, fecha_inicio, fecha_fin, estado_contrato, created_at, updated_at
+    RETURNING id_contrato, maquinaria_id_maquina, cliente_id, horometro_entrada, horometro_salida, fecha_inicio, fecha_fin, estado_contrato
   `;
 
   const values = [
@@ -65,15 +63,13 @@ async function listArriendosByCliente(cliente_id, db = pool) {
       a.horometro_salida,
       a.fecha_inicio,
       a.fecha_fin,
-      a.estado_contrato,
-      a.created_at,
-      a.updated_at
+      a.estado_contrato
     FROM arriendos a
-    INNER JOIN maquinaria m ON m.id_maquina = a.maquinaria_id_maquina
+    LEFT JOIN maquinaria m ON m.id_maquina = a.maquinaria_id_maquina
     LEFT JOIN usuarios u ON u.id_usuario = a.cliente_id
     WHERE a.cliente_id = $1
       AND a.estado_contrato = 'Activo'
-    ORDER BY a.created_at DESC, a.id_contrato DESC
+    ORDER BY a.id_contrato DESC
   `;
 
   const { rows } = await db.query(query, [cliente_id]);
@@ -110,7 +106,7 @@ async function getArriendoActivoByMaquina(maquinaria_id_maquina, db = pool) {
     FROM arriendos a
     WHERE a.maquinaria_id_maquina = $1
       AND a.estado_contrato = 'Activo'
-    ORDER BY a.created_at DESC, a.id_contrato DESC
+    ORDER BY a.id_contrato DESC
     LIMIT 1
   `;
 
