@@ -298,6 +298,11 @@ async function listMaquinasAsignadasByOperador(operador_id) {
       m.modelo_equipo,
       m.horometro_actual,
       m.estado,
+      m.especificaciones,
+      m.tarifa_diaria,
+      m.planes_mantencion_id_plan,
+      p.nombre_plan,
+      p.intervalo_horas,
       mo.operador_id,
       u.nombre_completo AS operador_nombre,
       u.email AS operador_email,
@@ -308,6 +313,7 @@ async function listMaquinasAsignadasByOperador(operador_id) {
       mo.updated_at
     FROM maquinaria_operadores mo
     INNER JOIN maquinaria m ON m.id_maquina = mo.maquinaria_id_maquina
+    LEFT JOIN planes_mantencion p ON p.id_plan = m.planes_mantencion_id_plan
     INNER JOIN usuarios u ON u.id_usuario = mo.operador_id
     WHERE mo.operador_id = $1
       AND mo.estado_asignacion = 'Activa'

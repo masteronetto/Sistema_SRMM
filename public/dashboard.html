@@ -25,7 +25,6 @@
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/js/reportes-fallas.js"></script>
-    <script src="/js/reportes-dashboard.js"></script>
 </head>
 <body>
     <!-- Confirm Modal -->
@@ -1011,13 +1010,21 @@ function getMaquinariaValue(item, keys, fallback = '') {
 }
 
 function mapMaquinariaItem(item) {
+    const planNombre = getMaquinariaValue(item, ['nombre_plan']);
+    const planId = getMaquinariaValue(item, ['planes_mantencion_id_plan']);
+    const planIntervalo = getMaquinariaValue(item, ['intervalo_horas']);
+    const planDisplay = planNombre
+        ? `${planNombre}${planIntervalo ? ` (${planIntervalo} hrs)` : ''}`
+        : (planId || '');
+
     return {
         id: getMaquinariaValue(item, ['id_maquina', 'id']),
         modelo: getMaquinariaValue(item, ['modelo_equipo', 'modelo']),
-        estado: getMaquinariaValue(item, ['estado', 'estado_contrato']),
+        estado: getMaquinariaValue(item, ['estado', 'estado_contrato', 'estado_asignacion']),
         horometro: getMaquinariaValue(item, ['horometro_actual', 'horometro']),
         tarifa_diaria: getMaquinariaValue(item, ['tarifa_diaria', 'tarifa']),
         planes_mantencion_id_plan: getMaquinariaValue(item, ['planes_mantencion_id_plan']),
+        plan_display: planDisplay,
         especificaciones: getMaquinariaValue(item, ['especificaciones', 'descripcion']),
         contrato_inicio: getMaquinariaValue(item, ['fecha_inicio']),
         contrato_fin: getMaquinariaValue(item, ['fecha_fin']),
@@ -1062,7 +1069,7 @@ function renderAdminMaquinaria(rows) {
             <td>${escapeHtml(maquina.estado || '—')}</td>
             <td>${maquina.horometro ?? '—'}</td>
             <td>${formatCurrency(maquina.tarifa_diaria || 0)}</td>
-            <td>${maquina.planes_mantencion_id_plan || '—'}</td>
+            <td>${escapeHtml(maquina.plan_display || maquina.planes_mantencion_id_plan || '—')}</td>
             ${showActions ? `<td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
                 <button class="btn btn-edit" data-id="${maquina.id ?? ''}">Editar</button>
                 <button class="btn btn-secondary btn-incidencias" data-id="${maquina.id ?? ''}">Incidencias</button>
@@ -2116,6 +2123,12 @@ async function loadAvailableMachines() {
             id_maquina: assignment.maquinaria_id_maquina,
             modelo_equipo: assignment.modelo_equipo,
             horometro_actual: assignment.horometro_actual ?? 0,
+            estado: assignment.estado || assignment.estado_asignacion || null,
+            especificaciones: assignment.especificaciones || null,
+            tarifa_diaria: assignment.tarifa_diaria ?? null,
+            planes_mantencion_id_plan: assignment.planes_mantencion_id_plan ?? null,
+            nombre_plan: assignment.nombre_plan || null,
+            intervalo_horas: assignment.intervalo_horas ?? null,
             cliente_id: assignment.operador_id,
             cliente_nombre: assignment.operador_nombre || assignment.operador_email || '',
             id_asignacion: assignment.id_asignacion,
@@ -4349,8 +4362,8 @@ function renderLogisticaTable(rows, { canDelete = false, canChangeStatus = false
                         <td>${escapeHtml(item.hora_evento || '—')}</td>
                         <td><span class="pill ${String(item.estado_evento || '').toLowerCase() === 'confirmado' ? 'success' : 'available'}">${escapeHtml(item.estado_evento || '—')}</span></td>
                         ${showActions ? `<td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-                            ${canChangeStatus ? `<button class="btn btn-secondary" type="button" onclick="promptLogisticaUpdateStatus(${JSON.stringify(item.id_evento)}, ${JSON.stringify(item.estado_evento || 'Pendiente')})">Actualizar</button>` : ''}
-                            ${canDelete ? `<button class="btn btn-danger" type="button" onclick="deleteLogisticaById(${JSON.stringify(item.id_evento)})">Eliminar</button>` : ''}
+                            ${canChangeStatus ? `<button class="btn btn-secondary" type="button" data-logistica-action="update" data-evento-id="${escapeHtml(String(item.id_evento ?? ''))}" data-current-status="${escapeHtml(String(item.estado_evento || 'Pendiente'))}">Actualizar</button>` : ''}
+                            ${canDelete ? `<button class="btn btn-danger" type="button" data-logistica-action="delete" data-evento-id="${escapeHtml(String(item.id_evento ?? ''))}">Eliminar</button>` : ''}
                         </td>` : ''}
                     </tr>
                 `).join('')}
@@ -4702,6 +4715,32 @@ function loadLogisticaDashboard() {
 
     const container = document.getElementById('logisticaTable');
     const loadingColspan = isAdmin ? 9 : 8;
+
+    if (container && !container.dataset.boundActions) {
+        container.dataset.boundActions = '1';
+        container.addEventListener('click', (event) => {
+            const targetBtn = event.target.closest('button[data-logistica-action]');
+            if (!targetBtn) return;
+
+            const action = targetBtn.dataset.logisticaAction;
+            const idEvento = Number(targetBtn.dataset.eventoId);
+            if (!Number.isFinite(idEvento) || idEvento <= 0) {
+                setLogisticaStatus('ID de evento inválido.', 'warning');
+                return;
+            }
+
+            if (action === 'update') {
+                const currentStatus = String(targetBtn.dataset.currentStatus || 'Pendiente');
+                promptLogisticaUpdateStatus(idEvento, currentStatus);
+                return;
+            }
+
+            if (action === 'delete' && isAdmin) {
+                deleteLogisticaById(idEvento);
+            }
+        });
+    }
+
     if (container) container.innerHTML = `<table><tbody><tr><td colspan="${loadingColspan}" class="detail-empty">Cargando eventos…</td></tr></tbody></table>`;
 
     const loadRows = async () => {
