@@ -2778,32 +2778,6 @@ function normalizeReportExportValue(value) {
     return String(value);
 }
 
-function csvEscape(value) {
-    return `"${normalizeReportExportValue(value).replace(/"/g, '""')}"`;
-}
-
-function getReportExportColumns(rows) {
-    const preferred = [
-        'maquinaria_id_maquina',
-        'maquina_label',
-        'fecha_evento',
-        'tipo_evento',
-        'horometro',
-        'detalle',
-        'usuario_responsable',
-        'fecha_sistema'
-    ];
-
-    const keys = new Set();
-    (Array.isArray(rows) ? rows : []).forEach((row) => {
-        Object.keys(row || {}).forEach((key) => keys.add(key));
-    });
-
-    const orderedPreferred = preferred.filter((key) => keys.has(key));
-    const extras = Array.from(keys).filter((key) => !orderedPreferred.includes(key)).sort((a, b) => a.localeCompare(b, 'es'));
-    return [...orderedPreferred, ...extras];
-}
-
 function buildProfessionalReportPdf(doc, rows, context = {}) {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -3279,7 +3253,7 @@ function initReportesDashboard() {
             }
 
             if (!rows.length) {
-                setReportStatus('No hay datos para exportar', 'error');
+                setReportStatus('No hay datos para generar PDF', 'error');
                 return;
             }
 
@@ -3364,7 +3338,7 @@ function initReportesDashboard() {
                 if (!rows.length) {
                     const selectedIds = getSelectedReportMachineIds(machineSelect);
                     if (!selectedIds.length) {
-                        setReportStatus('No hay datos para exportar', 'error');
+                        setReportStatus('No hay datos para imprimir', 'error');
                         return;
                     }
 

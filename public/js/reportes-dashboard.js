@@ -256,13 +256,11 @@
     const fallasCriticidadSelect = document.getElementById('reportFallasCriticidad');
     const fallasWarningToggle = document.getElementById('reportFallasShowWarning');
     const refreshBtn = document.getElementById('reportRefreshBtn');
-    const exportBtn = document.getElementById('reportExportBtn');
-    const exportIngresosBtn = document.getElementById('reportExportIngresosBtn');
     const pdfBtn = document.getElementById('reportPdfBtn');
     const fallasRefreshBtn = document.getElementById('reportFallasRefreshBtn');
     const fallasPrintBtn = document.getElementById('reportFallasPrintBtn');
 
-    if (!machineSelect || !refreshBtn || !exportBtn || !pdfBtn) return;
+    if (!machineSelect || !refreshBtn || !pdfBtn) return;
 
     if (!reportsInitialized) {
       reportsInitialized = true;
@@ -339,78 +337,6 @@
         }
       });
 
-      exportBtn.addEventListener('click', () => {
-        const reportState = window.__srmmReporteState || {};
-        const rows = Array.isArray(reportState.rows) ? reportState.rows : [];
-        const selectedIds = getSelectedReportMachineIds(machineSelect);
-
-        if (!rows.length) {
-          setReportStatus('No hay datos para exportar', 'error');
-          return;
-        }
-
-        const header = ['fecha_evento', 'tipo_evento', 'horometro', 'detalle'];
-        const csvLines = [header.join(',')];
-        rows.forEach((row) => {
-          csvLines.push([
-            row.fecha_evento,
-            row.tipo_evento,
-            row.horometro,
-            row.detalle
-          ].map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`).join(','));
-        });
-
-        const blob = new Blob(['\uFEFF' + csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `reporte_maquina_${selectedIds[0] || 'sin_seleccion'}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-        setReportStatus('CSV generado correctamente', 'success');
-      });
-
-      if (exportIngresosBtn) {
-        exportIngresosBtn.addEventListener('click', async () => {
-          try {
-            // Solo administradores pueden descargar reportes de ingresos
-            const role = typeof userRole !== 'undefined' ? userRole : '';
-            if (role !== 'Administrador') {
-              setReportStatus('No tienes permiso para descargar reportes de ingresos', 'error');
-              return;
-            }
-
-            const headers = getAuthHeaders();
-            const q = new URLSearchParams();
-            const d = getEffectiveReportDates();
-            if (d.start) q.append('fecha_inicio', d.start);
-            if (d.end) q.append('fecha_fin', d.end);
-            const url = `/api/reportes/ingresos/csv?${q.toString()}`;
-            const res = await fetch(url, { headers });
-            if (!res.ok) {
-              setReportStatus('Error descargando CSV de ingresos', 'error');
-              return;
-            }
-            const blob = await res.blob();
-            const disposition = res.headers.get('content-disposition') || '';
-            const filenameMatch = disposition.match(/filename="?(.*)"?/);
-            const filename = filenameMatch ? filenameMatch[1] : `ingresos_${d.start || 'from'}_${d.end || 'to'}.csv`;
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            setReportStatus('CSV de ingresos descargado', 'success');
-          } catch (err) {
-            console.error(err);
-            setReportStatus('Error descargando CSV de ingresos', 'error');
-          }
-        });
-      }
-
       pdfBtn.addEventListener('click', () => {
         const reportState = window.__srmmReporteState || {};
         const rows = Array.isArray(reportState.rows) ? reportState.rows : [];
@@ -423,7 +349,7 @@
         }
 
         if (!rows.length) {
-          setReportStatus('No hay datos para exportar', 'error');
+          setReportStatus('No hay datos para generar PDF', 'error');
           return;
         }
 
@@ -478,7 +404,7 @@
           if (!rows.length) {
             const selectedIds = getSelectedReportMachineIds(machineSelect);
             if (!selectedIds.length) {
-              setReportStatus('No hay datos para exportar', 'error');
+              setReportStatus('No hay datos para imprimir', 'error');
               return;
             }
 
