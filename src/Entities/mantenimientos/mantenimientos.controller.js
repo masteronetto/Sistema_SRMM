@@ -485,6 +485,24 @@ async function getOrdenById(req, res, next) {
   }
 }
 
+async function eliminarOrden(req, res, next) {
+  try {
+    const id_orden = toNumberOrNull(req.params.id_orden);
+    if (id_orden === null) {
+      return res.status(400).json({ message: 'id_orden debe ser numérico' });
+    }
+
+    const orden = await mantenimientosRepo.deleteOrdenTrabajo(id_orden);
+    if (!orden) {
+      return res.status(404).json({ message: 'Orden de trabajo no encontrada' });
+    }
+
+    return res.json(successPayload(orden, { message: 'Orden eliminada correctamente' }));
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function procesarRetrasos(io) {
   const ordenes = await mantenimientosRepo.listOrdenesAtrasadas();
   const adminId = 1;
@@ -555,6 +573,7 @@ module.exports = {
   listOrdenesMecanico,
   iniciar,
   getOrdenById,
+  eliminarOrden,
   completar,
   listOrdenesAtrasadas,
   verificarRetrasos,

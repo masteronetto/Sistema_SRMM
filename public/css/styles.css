@@ -861,6 +861,14 @@ tbody tr:hover { background: #fdfaf8; }
 .muted { color: var(--muted); }
 .hidden { display: none !important; }
 
+#mantenimiento .section-stack > .section-card.mecanico-only:first-child { order: 1; }
+#mantenimiento #maintenanceHighlights { order: 2; }
+#mantenimiento #maintenanceOrdersList { order: 3; }
+#mantenimiento #machineDetailPanel { order: 4; }
+#mantenimiento #maintenanceOrderFormPanel { order: 5; }
+#mantenimiento #maintenancePlanAssignPanel { order: 6; }
+#mantenimiento #incidentRegisterPanel { order: 7; }
+
 /* ── WELCOME INFO ── */
 .welcome-block {
     background: var(--panel); border-radius: 18px;

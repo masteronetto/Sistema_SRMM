@@ -305,7 +305,6 @@
                 <div class="section-stack">
                     <section class="section-card mecanico-only">
                         <div class="section-title">Mantenimiento</div>
-                        <div id="maintenanceOrderDetail" class="muted" style="margin-top:0.5rem;"></div>
                         <div class="mini-grid">
                             <article class="machine-card stat-card">
                                 <div class="stat-label">Pendientes</div>
@@ -325,7 +324,7 @@
                         </div>
                     </section>
 
-                    <section class="section-card mecanico-only">
+                    <section id="maintenanceOrderFormPanel" class="section-card mecanico-only">
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
                             <div>
                                 <div class="section-title">Programar orden de mantenimiento</div>
@@ -404,9 +403,10 @@
                             </div>
                         </div>
                         <div id="ordersTableContainer" style="margin-top:0.6rem;"></div>
+                        <div id="maintenanceOrderDetail" class="muted" style="margin-top:0.5rem;"></div>
                     </section>
 
-                    <section class="section-card mecanico-only">
+                    <section id="incidentRegisterPanel" class="section-card mecanico-only">
                         <div class="section-title">Registrar incidencia</div>
                         <form id="incidentRegisterForm" class="incident-form">
                             <div class="incident-grid">
@@ -3544,17 +3544,45 @@ function renderMaintenanceOrders(rows, page, perPage, total = null) {
 
     const html = [`<div class="table-wrap"><table><thead><tr><th>ID</th><th>Máquina</th><th>Tipo</th><th>Programada</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>`];
     rows.forEach(o => {
+        const orderId = o.id_orden || o.id;
         html.push(`<tr>
-            <td>${o.id_orden || o.id}</td>
+            <td>${orderId}</td>
             <td>${escapeHtml(o.modelo_equipo || o.nombre_maquina || '—')}</td>
             <td>${escapeHtml(o.tipo_servicio || o.tipo)}</td>
             <td>${formatCLDate(o.fecha_programada || o.fecha_servicio)}</td>
             <td>${escapeHtml(o.estado_ot || o.estado || '—')}</td>
-            <td><button class="btn" onclick="openMaintenanceById(${o.id_orden || o.id})">Ver</button></td>
+            <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <button class="btn" onclick="openMaintenanceById(${orderId})">Ver</button>
+                <button class="btn btn-danger" onclick="deleteMaintenanceOrderById(${orderId})">Eliminar</button>
+            </td>
         </tr>`);
     });
     html.push(`</tbody></table></div>`);
     container.innerHTML = html.join('');
+}
+
+async function deleteMaintenanceOrderById(idOrden) {
+    if (!idOrden) return;
+
+    showConfirmModal('Eliminar orden de mantenimiento', `¿Eliminar la orden #${idOrden}? Esta acción no se puede deshacer.`, async () => {
+        try {
+            const res = await fetch(`/api/mantenimientos/ordenes/${idOrden}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(body.message || 'No se pudo eliminar la orden');
+
+            const detailEl = document.getElementById('maintenanceOrderDetail');
+            if (detailEl) detailEl.textContent = `Orden #${idOrden} eliminada.`;
+
+            await loadMaintenanceDashboard();
+            await loadMaintenanceOrders(maintenanceOrdersPage);
+        } catch (error) {
+            const detailEl = document.getElementById('maintenanceOrderDetail');
+            if (detailEl) detailEl.textContent = `Error al eliminar orden: ${error.message}`;
+        }
+    });
 }
 
 async function loadRoleRequests() {

@@ -301,6 +301,17 @@ async function cancelarOrdenTrabajo(id_orden) {
   return rows[0] || null;
 }
 
+async function deleteOrdenTrabajo(id_orden) {
+  const query = `
+    DELETE FROM ordenes_trabajo
+    WHERE id_orden = $1
+    RETURNING id_orden, tipo_servicio, detalle_tecnico, fecha_programada, maquinaria_id_maquina, mecanico_asignado, estado_ot, alerta_retraso_enviada, estado_maquina_al_bloquear, created_at, updated_at
+  `;
+
+  const { rows } = await pool.query(query, [id_orden]);
+  return rows[0] || null;
+}
+
 async function listOrdenesAtrasadas() {
   const query = `
     SELECT
@@ -357,5 +368,6 @@ module.exports = {
   marcarRetrasoNotificado,
   iniciarOrdenTrabajo,
   completarOrdenTrabajo,
-  cancelarOrdenTrabajo
+  cancelarOrdenTrabajo,
+  deleteOrdenTrabajo
 };
