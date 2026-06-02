@@ -160,6 +160,9 @@
   function renderGlobalIncidenciasTable(rows) {
     const container = document.getElementById('reportIncidenciasGlobal');
     if (!container) return;
+    const canResolve = typeof window.hasCurrentRole === 'function'
+      ? (window.hasCurrentRole('Mecanico') || window.hasCurrentRole('Administrador'))
+      : false;
     if (!rows || !rows.length) {
       container.innerHTML = '<p class="muted">No hay incidencias para los filtros seleccionados.</p>';
       return;
@@ -176,6 +179,7 @@
                     <th class="pb-3 px-2">Mantenimiento</th>
                     <th class="pb-3 px-2">Operador</th>
                     <th class="pb-3 px-2">Estado</th>
+                    <th class="pb-3 px-2">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -189,6 +193,11 @@
                         <td class="py-3 px-2">${r.mantenimiento_id ? `<a href="#" onclick="openMaintenanceById(${r.mantenimiento_id});return false;">#${r.mantenimiento_id}</a>` : '—'}</td>
                         <td class="py-3 px-2">${escapeHtml(r.operador_nombre || `#${r.operador_id || ''}`)}</td>
                         <td class="py-3 px-2">${escapeHtml(r.estado || '—')}</td>
+                        <td class="py-3 px-2">${canResolve
+                          ? (String(r.estado || '').toLowerCase() === 'resuelta'
+                            ? '<span class="muted">Resuelta</span>'
+                            : `<button class="btn btn-secondary" type="button" onclick="resolveIncidenciaById(${Number(r.id_incidencia)})">Resolver</button>`)
+                          : '<span class="muted">—</span>'}</td>
                     </tr>
                 `).join('')}
             </tbody>

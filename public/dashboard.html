@@ -2184,6 +2184,25 @@ async function refreshIncidentDetailPanelIfNeeded(maquinaId) {
     }
 }
 
+async function refreshIncidentViewsAfterCreate(maquinaId) {
+    const machineId = Number(maquinaId);
+    if (!Number.isFinite(machineId) || machineId <= 0) {
+        return;
+    }
+
+    try {
+        // Enfoca el detalle de la máquina para que la incidencia recién creada sea visible de inmediato.
+        focusMaquinariaIncidenciasById(machineId);
+    } catch (_) {
+        // Si no se puede enfocar, continuar con los demás refrescos.
+    }
+
+    try { await refreshIncidentDetailPanelIfNeeded(machineId); } catch (_) {}
+    try { await loadOperatorIncidencias(); } catch (_) {}
+    try { await loadReportFallasDashboard(); } catch (_) {}
+    try { await loadInicioKpis(); } catch (_) {}
+}
+
 async function loadAvailableMachines() {
     const role = getCurrentRole();
     const isOperator = role.toLowerCase() === 'operador';
@@ -5469,7 +5488,7 @@ function initIncidentForm() {
             showIncidentFormFeedback('✅ Incidencia registrada con estado Pendiente.', 'success');
             showIncidentWarningBanner(result.advertencia || '');
             clearIncidentForm(true);
-            await refreshIncidentDetailPanelIfNeeded(maquinaId);
+            await refreshIncidentViewsAfterCreate(maquinaId);
         } catch (err) {
             showIncidentWarningBanner('');
             showIncidentFormFeedback(`❌ Error: ${err.message}`, 'error');
@@ -5521,6 +5540,8 @@ async function initOperatorReportForm() {
             if (statusEl) statusEl.textContent = 'Incidencia registrada.';
             document.getElementById('opIncidentDescription').value = '';
             await loadOperatorIncidencias();
+            try { await loadReportFallasDashboard(); } catch (_) {}
+            try { await loadInicioKpis(); } catch (_) {}
         } catch (err) {
             console.error(err);
             if (statusEl) statusEl.textContent = `Error: ${err.message}`;
