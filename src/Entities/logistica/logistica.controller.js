@@ -166,8 +166,14 @@ async function update(req, res, next) {
         return res.status(403).json({ message: 'No puedes cambiar el estado de un evento no vinculado a una máquina' });
       }
 
+      const operadorId = Number(req.user.id_usuario);
       const contrato = await arriendosRepo.getArriendoActivoByMaquina(evento.maquinaria_id_maquina);
-      if (!contrato || contrato.cliente_id !== Number(req.user.id_usuario)) {
+      const asignacion = await maquinariaRepo.getAsignacionActivaByMaquina(evento.maquinaria_id_maquina);
+
+      const autorizadoPorContrato = Boolean(contrato && Number(contrato.cliente_id) === operadorId);
+      const autorizadoPorAsignacion = Boolean(asignacion && Number(asignacion.operador_id) === operadorId);
+
+      if (!autorizadoPorContrato && !autorizadoPorAsignacion) {
         return res.status(403).json({ message: 'Permisos insuficientes. Solo puedes gestionar eventos de tus máquinas' });
       }
 
