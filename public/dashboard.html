@@ -878,6 +878,27 @@
     </div>
 </div>
 
+<div id="logisticaStatusModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="logisticaStatusModalTitle">
+        <div class="modal-header">
+            <span class="modal-icon">⇄</span>
+            <div>
+                <div id="logisticaStatusModalTitle" class="modal-title">Actualizar estado logístico</div>
+                <div class="modal-note">Selecciona solo entre los estados permitidos para tu rol y el estado actual.</div>
+            </div>
+        </div>
+        <div id="logisticaStatusModalBody" class="modal-body">
+            <div id="logisticaStatusModalCurrent" class="modal-status"></div>
+            <div id="logisticaStatusModalOptions" style="display:grid;gap:0.5rem;margin-top:0.9rem;"></div>
+            <div id="logisticaStatusModalMessage" class="modal-note"></div>
+        </div>
+        <div class="modal-actions">
+            <button id="logisticaStatusModalClose" class="modal-button secondary" type="button">Cancelar</button>
+        </div>
+    </div>
+</div>
+
 <script>
 /* ═══════════════════════════════════════════════════
    CONFIGURACIÓN DE ROLES Y ACCESO
@@ -4220,26 +4241,13 @@ function getLogisticaStatusOptions(currentStatus, isAdmin = false) {
     return transitions[status] || [];
 }
 
-async function promptLogisticaUpdateStatus(idEvento, currentStatus) {
-    const allowedStatuses = getLogisticaStatusOptions(currentStatus, userRole === 'Administrador');
-    if (!allowedStatuses.length) {
-        setLogisticaStatus('No hay cambios de estado permitidos para este evento.', 'warning');
-        return;
-    }
+function closeLogisticaStatusModal() {
+    const modal = document.getElementById('logisticaStatusModal');
+    if (modal) modal.classList.remove('visible');
+}
 
-    const selection = window.prompt(
-        `Estado destino (opciones: ${allowedStatuses.join(', ')}):`,
-        allowedStatuses[0]
-    );
-    if (!selection) return;
-
-    const newStatus = allowedStatuses.find((estado) => estado.toLowerCase() === selection.trim().toLowerCase());
-    if (!newStatus) {
-        setLogisticaStatus('Estado no válido. Usa una de las opciones mostradas.', 'warning');
-        return;
-    }
-
-    if (newStatus === currentStatus) {
+async function applyLogisticaStatusUpdate(idEvento, newStatus, currentStatus) {
+    if (!newStatus || String(newStatus) === String(currentStatus || '')) {
         setLogisticaStatus('El evento ya tiene ese estado.', 'info');
         return;
     }
@@ -4258,10 +4266,56 @@ async function promptLogisticaUpdateStatus(idEvento, currentStatus) {
         }
 
         setLogisticaStatus(`Estado actualizado a ${newStatus}`, 'success');
+        closeLogisticaStatusModal();
         await loadLogisticaDashboard();
     } catch (error) {
         setLogisticaStatus(`Error: ${error.message}`, 'error');
     }
+}
+
+function promptLogisticaUpdateStatus(idEvento, currentStatus) {
+    const allowedStatuses = getLogisticaStatusOptions(currentStatus, userRole === 'Administrador');
+    if (!allowedStatuses.length) {
+        setLogisticaStatus('No hay cambios de estado permitidos para este evento.', 'warning');
+        return;
+    }
+
+    const modal = document.getElementById('logisticaStatusModal');
+    const titleEl = document.getElementById('logisticaStatusModalTitle');
+    const currentEl = document.getElementById('logisticaStatusModalCurrent');
+    const optionsEl = document.getElementById('logisticaStatusModalOptions');
+    const messageEl = document.getElementById('logisticaStatusModalMessage');
+    const closeBtn = document.getElementById('logisticaStatusModalClose');
+
+    if (!modal || !titleEl || !currentEl || !optionsEl || !messageEl || !closeBtn) {
+        setLogisticaStatus('No se pudo abrir el selector de estados.', 'error');
+        return;
+    }
+
+    titleEl.textContent = userRole === 'Administrador'
+        ? 'Actualizar estado logístico como administrador'
+        : 'Actualizar estado logístico como operador';
+    currentEl.textContent = `Estado actual: ${currentStatus || 'Pendiente'}`;
+    messageEl.textContent = userRole === 'Administrador'
+        ? 'Como administrador puedes definir cualquiera de los 5 estados.'
+        : 'Como operador solo puedes avanzar en la secuencia permitida por la máquina asignada.';
+
+    optionsEl.innerHTML = allowedStatuses.map((status) => `
+        <button type="button" class="modal-button ${String(status) === String(currentStatus) ? 'secondary' : 'primary'}" data-logistica-next-status="${escapeHtml(status)}">
+            ${escapeHtml(status)}
+        </button>
+    `).join('');
+
+    optionsEl.querySelectorAll('button[data-logistica-next-status]').forEach((button) => {
+        button.addEventListener('click', async () => {
+            const newStatus = button.dataset.logisticaNextStatus;
+            await applyLogisticaStatusUpdate(idEvento, newStatus, currentStatus);
+        });
+    });
+
+    closeBtn.onclick = closeLogisticaStatusModal;
+    modal.querySelector('.modal-backdrop').onclick = closeLogisticaStatusModal;
+    modal.classList.add('visible');
 }
 
 function renderArriendosTable(rows) {
