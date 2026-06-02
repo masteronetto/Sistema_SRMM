@@ -232,7 +232,7 @@ function validateIncidenciaPayload(payload) {
       descripcion,
       criticidad,
       operador_id,
-      vinculada_mantenimiento: mantenimiento_id !== null,
+      vinculada_mantenimiento: mantenimiento_id !== null || orden_trabajo_id !== null,
       mantenimiento_id,
       orden_trabajo_id
     }
@@ -272,6 +272,12 @@ async function createIncidencia(req, res, next) {
       const ordenTrabajo = await mantenimientosRepo.getOrdenTrabajoById(parsed.orden_trabajo_id);
       if (!ordenTrabajo) {
         return res.status(400).json({ message: 'orden_trabajo_id no corresponde a una orden existente' });
+      }
+
+      if (Number(ordenTrabajo.maquinaria_id_maquina) !== Number(id_maquina)) {
+        return res.status(400).json({
+          message: 'La orden seleccionada no pertenece a la máquina indicada para la incidencia'
+        });
       }
     }
 

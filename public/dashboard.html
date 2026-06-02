@@ -1922,14 +1922,17 @@ function renderIncidentOrderOptions(orders, selectedId = '') {
     const select = document.getElementById('incidentMaintenanceOrderId');
     if (!select) return;
 
+    const list = Array.isArray(orders) ? orders : [];
     const options = ['<option value="">Sin orden asociada</option>'];
-    (Array.isArray(orders) ? orders : []).forEach((order) => {
+
+    list.forEach((order) => {
         const label = `#${order.id_orden} · ${order.tipo_servicio || 'Sin tipo'} · ${order.estado_ot || '—'}`;
         const selected = String(order.id_orden) === String(selectedId) ? ' selected' : '';
         options.push(`<option value="${order.id_orden}"${selected}>${escapeHtml(label)}</option>`);
     });
 
     select.innerHTML = options.join('');
+    select.disabled = false;
 }
 
 async function loadIncidentOrdersForMachine(machineId, selectedOrderId = '') {
@@ -1947,7 +1950,15 @@ async function loadIncidentOrdersForMachine(machineId, selectedOrderId = '') {
 
         const payload = await res.json().catch(() => ({}));
         const orders = Array.isArray(payload?.data) ? payload.data : [];
-        renderIncidentOrderOptions(orders, selectedOrderId);
+        const activeOrders = orders.filter((order) => ['Programada', 'En Progreso'].includes(order.estado_ot));
+
+        if (!activeOrders.length) {
+            select.innerHTML = '<option value="">Sin orden asociada (sin órdenes activas)</option>';
+            select.value = '';
+            return;
+        }
+
+        renderIncidentOrderOptions(activeOrders, selectedOrderId);
     } catch (error) {
         console.error('Error cargando órdenes para incidencia:', error);
         select.innerHTML = '<option value="">No se pudieron cargar órdenes</option>';
