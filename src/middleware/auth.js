@@ -2,6 +2,14 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 
+function normalizeRole(role) {
+  return String(role || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 function verifyToken(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
@@ -27,7 +35,7 @@ function requireAdmin(req, res, next) {
     return res.status(401).json({ message: 'No autenticado' });
   }
 
-  if (req.user.rol_acceso !== 'Administrador') {
+  if (normalizeRole(req.user.rol_acceso) !== 'administrador') {
     return res.status(403).json({ message: 'Permisos insuficientes. Solo administradores pueden realizar esta acción.' });
   }
 
@@ -46,8 +54,8 @@ function requireMecanicoOrAdmin(req, res, next) {
     return res.status(401).json({ message: 'No autenticado' });
   }
 
-  const role = req.user.rol_acceso;
-  if (role === 'Mecanico' || role === 'Administrador') {
+  const role = normalizeRole(req.user.rol_acceso);
+  if (role === 'mecanico' || role === 'administrador') {
     return next();
   }
 
@@ -59,8 +67,8 @@ function requireOperadorOrAdmin(req, res, next) {
     return res.status(401).json({ message: 'No autenticado' });
   }
 
-  const role = req.user.rol_acceso;
-  if (role === 'Operador' || role === 'Administrador') {
+  const role = normalizeRole(req.user.rol_acceso);
+  if (role === 'operador' || role === 'administrador') {
     return next();
   }
 
@@ -72,8 +80,8 @@ function requireMecanicoOperadorOrAdmin(req, res, next) {
     return res.status(401).json({ message: 'No autenticado' });
   }
 
-  const role = req.user.rol_acceso;
-  if (role === 'Mecanico' || role === 'Operador' || role === 'Administrador') {
+  const role = normalizeRole(req.user.rol_acceso);
+  if (role === 'mecanico' || role === 'operador' || role === 'administrador') {
     return next();
   }
 

@@ -1457,7 +1457,13 @@ function getCurrentRole() {
 }
 
 function hasCurrentRole(roleName) {
-    return getCurrentRole().toLowerCase() === String(roleName || '').trim().toLowerCase();
+    const normalize = (value) => String(value || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+    return normalize(getCurrentRole()) === normalize(roleName);
 }
 
 /* ═══════════════════════════════════════════════════
@@ -5180,7 +5186,7 @@ async function loadMachineIncidencias(rows, filter) {
 }
 
 function renderIncidencias(items, rows) {
-    const canResolve = userRole === 'Mecanico' || userRole === 'Administrador';
+    const canResolve = hasCurrentRole('Mecanico') || hasCurrentRole('Administrador');
     if (!items || !items.length) {
         rows.innerHTML = '<tr><td colspan="7" class="detail-empty">No hay incidencias registradas.</td></tr>';
         return;
