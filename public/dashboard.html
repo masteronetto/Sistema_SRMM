@@ -2587,6 +2587,27 @@ async function loadSelectedMachinesReport(machineIds, fechaInicio, fechaFin) {
     const totalMantenciones = rows.filter((item) => String(item.tipo_evento || '').startsWith('Mantención')).length;
     const totalFallas = rows.filter((item) => String(item.tipo_evento || '').includes('Falla')).length;
 
+    // Para la gráfica comparativa, si una máquina no tiene eventos en el rango,
+    // crear un punto de referencia con su horómetro actual para no ocultarla visualmente.
+    const chartSeriesResults = seriesResults.map((series) => {
+        if (Array.isArray(series.rows) && series.rows.length > 0) {
+            return series;
+        }
+
+        const machineInfo = availableMachines.find((item) => String(item.id_maquina) === String(series.id));
+        const fallbackDate = fechaFin || fechaInicio || new Date().toISOString().slice(0, 10);
+
+        return {
+            ...series,
+            rows: [{
+                fecha_evento: fallbackDate,
+                horometro: Number(machineInfo?.horometro_actual || 0),
+                tipo_evento: 'Referencia',
+                detalle: 'Sin registros en el rango seleccionado'
+            }]
+        };
+    });
+
     window.__srmmReporteState = {
         rows,
         totalHoras,
@@ -2603,9 +2624,9 @@ async function loadSelectedMachinesReport(machineIds, fechaInicio, fechaFin) {
     }
 
     if (effectiveIds.length === 1) {
-        renderReportUsoChart(seriesResults[0]?.rows || [], [seriesResults[0]?.label || 'Horómetro histórico']);
+        renderReportUsoChart(chartSeriesResults[0]?.rows || [], [chartSeriesResults[0]?.label || 'Horómetro histórico']);
     } else {
-        renderComparativeUsageChart(seriesResults);
+        renderComparativeUsageChart(chartSeriesResults);
     }
 
     renderReportTable(rows);
