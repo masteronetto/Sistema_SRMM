@@ -429,7 +429,11 @@ async function completar(req, res, next) {
       return res.status(400).json({ message: 'id_orden debe ser numérico' });
     }
 
-    const horometro = req.body && req.body.horometro_registro !== undefined ? toNumberOrNull(req.body.horometro_registro) : null;
+    const hasHorometro = !!(req.body && Object.prototype.hasOwnProperty.call(req.body, 'horometro_registro'));
+    const horometro = hasHorometro ? toNumberOrNull(req.body.horometro_registro) : null;
+    if (hasHorometro && horometro === null) {
+      return res.status(400).json({ message: 'horometro_registro debe ser numérico y mayor o igual a 0' });
+    }
 
     const orden = await mantenimientosRepo.completarOrdenTrabajo(id_orden, horometro);
     if (!orden) {
@@ -440,6 +444,9 @@ async function completar(req, res, next) {
       message: 'Orden completada'
     }));
   } catch (error) {
+    if (error.code === 'INVALID_HOROMETRO') {
+      return res.status(400).json({ message: error.message });
+    }
     return next(error);
   }
 }

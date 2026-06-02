@@ -4583,7 +4583,25 @@ async function openMaintenanceById(idOrden) {
                         showConfirmModal('Completar orden', `¿Confirmar completar la orden #${orden.id_orden}?`, async () => {
                             btnComplete.disabled = true;
                             try {
-                                await completeMaintenanceOrder(orden.id_orden);
+                                const horometroInput = window.prompt('Ingresa horómetro actual para cerrar la orden (opcional).\nSi lo dejas vacío, se usará el horómetro actual registrado de la máquina.', '');
+                                if (horometroInput === null) {
+                                    btnComplete.disabled = false;
+                                    return;
+                                }
+
+                                const normalizedHorometro = String(horometroInput).trim();
+                                let horometroRegistro = null;
+                                if (normalizedHorometro !== '') {
+                                    const parsedHorometro = Number(normalizedHorometro.replace(',', '.'));
+                                    if (!Number.isFinite(parsedHorometro) || parsedHorometro < 0) {
+                                        throw new Error('El horómetro debe ser numérico y mayor o igual a 0');
+                                    }
+                                    horometroRegistro = parsedHorometro;
+                                }
+
+                                await completeMaintenanceOrder(orden.id_orden, horometroRegistro);
+                                await loadMaintenanceDashboard();
+                                await loadMaintenanceOrders(maintenanceOrdersPage);
                                 await openMaintenanceById(orden.id_orden);
                             } catch (e) {
                                 alert('Error completando orden: ' + e.message);
@@ -4630,11 +4648,16 @@ async function startMaintenanceOrder(idOrden) {
     return body;
 }
 
-async function completeMaintenanceOrder(idOrden) {
+async function completeMaintenanceOrder(idOrden, horometroRegistro = null) {
+    const bodyPayload = {};
+    if (horometroRegistro !== null && horometroRegistro !== undefined) {
+        bodyPayload.horometro_registro = horometroRegistro;
+    }
+
     const res = await fetch(`/api/mantenimientos/ordenes/${idOrden}/completar`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({})
+        body: JSON.stringify(bodyPayload)
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.message || 'No se pudo completar la orden');

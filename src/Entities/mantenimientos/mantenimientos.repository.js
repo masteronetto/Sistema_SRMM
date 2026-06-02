@@ -275,17 +275,126 @@ async function iniciarOrdenTrabajo(id_orden) {
   return rows[0] || null;
 }
 
-async function completarOrdenTrabajo(id_orden, horometro_registro) {
-  const query = `
-    UPDATE ordenes_trabajo
-    SET estado_ot = 'Completada',
-        updated_at = NOW()
-    WHERE id_orden = $1
-    RETURNING id_orden, tipo_servicio, detalle_tecnico, fecha_programada, maquinaria_id_maquina, mecanico_asignado, estado_ot, alerta_retraso_enviada, estado_maquina_al_bloquear, created_at, updated_at
-  `;
+async function completarOrdenTrabajo(id_orden, horometro_registro = null) {
+  const client = await pool.connect();
 
-  const { rows } = await pool.query(query, [id_orden]);
-  return rows[0] || null;
+  try {
+    await client.query('BEGIN');
+
+    const ordenQuery = `
+      SELECT
+        ot.id_orden,
+        ot.tipo_servicio,
+        ot.detalle_tecnico,
+        ot.fecha_programada,
+        ot.maquinaria_id_maquina,
+        ot.mecanico_asignado,
+        ot.estado_ot,
+        ot.alerta_retraso_enviada,
+        ot.estado_maquina_al_bloquear,
+        ot.created_at,
+        ot.updated_at,
+        maq.horometro_actual AS horometro_actual_maquina
+      FROM ordenes_trabajo ot
+      INNER JOIN maquinaria maq ON maq.id_maquina = ot.maquinaria_id_maquina
+      WHERE ot.id_orden = $1
+      FOR UPDATE
+    `;
+
+    const ordenResult = await client.query(ordenQuery, [id_orden]);
+    const orden = ordenResult.rows[0] || null;
+    if (!orden) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    if (!['Programada', 'En Progreso'].includes(orden.estado_ot)) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    const horometroActualMaquina = Number(orden.horometro_actual_maquina || 0);
+    const horometroFinal = horometro_registro === null
+      ? horometroActualMaquina
+      : Number(horometro_registro);
+
+    if (!Number.isFinite(horometroFinal) || horometroFinal < 0) {
+      const invalidError = new Error('horometro_registro debe ser numérico y mayor o igual a 0');
+      invalidError.code = 'INVALID_HOROMETRO';
+      throw invalidError;
+    }
+
+    if (horometroFinal < horometroActualMaquina) {
+      const invalidError = new Error('horometro_registro no puede ser menor al horometro_actual de la maquinaria');
+      invalidError.code = 'INVALID_HOROMETRO';
+      throw invalidError;
+    }
+
+    if (horometroFinal > horometroActualMaquina) {
+      await client.query(
+        `
+          UPDATE maquinaria
+          SET horometro_actual = $2,
+              updated_at = NOW()
+          WHERE id_maquina = $1
+        `,
+        [orden.maquinaria_id_maquina, horometroFinal]
+      );
+    }
+
+    const mantenimientoResult = await client.query(
+      `
+        INSERT INTO mantenimiento (
+          tipo_servicio,
+          horometro_registro,
+          detalle_tecnico,
+          fecha_servicio,
+          maquinaria_id_maquina,
+          usuarios_id_usuario
+        ) VALUES ($1, $2, $3, CURRENT_DATE, $4, $5)
+        RETURNING id_mantencion
+      `,
+      [
+        orden.tipo_servicio,
+        horometroFinal,
+        orden.detalle_tecnico,
+        orden.maquinaria_id_maquina,
+        orden.mecanico_asignado
+      ]
+    );
+
+    const completeResult = await client.query(
+      `
+        UPDATE ordenes_trabajo
+        SET estado_ot = 'Completada',
+            alerta_retraso_enviada = FALSE,
+            updated_at = NOW()
+        WHERE id_orden = $1
+          AND estado_ot IN ('Programada', 'En Progreso')
+        RETURNING id_orden, tipo_servicio, detalle_tecnico, fecha_programada, maquinaria_id_maquina, mecanico_asignado, estado_ot, alerta_retraso_enviada, estado_maquina_al_bloquear, created_at, updated_at
+      `,
+      [id_orden]
+    );
+
+    const completedOrder = completeResult.rows[0] || null;
+    if (!completedOrder) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    await client.query('COMMIT');
+
+    return {
+      ...completedOrder,
+      id_mantencion_generada: mantenimientoResult.rows[0]?.id_mantencion || null,
+      horometro_registro_aplicado: horometroFinal
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function cancelarOrdenTrabajo(id_orden) {
