@@ -1004,7 +1004,7 @@ function initAdminMaquinariaPanel() {
     }
     // Bind validation for form UX
     const submitBtn = document.querySelector('#adminMaquinariaForm .top-button.primary');
-    const inputsToWatch = ['adminMaquinaModelo','adminMaquinaHorometro','adminMaquinaEstado'];
+    const inputsToWatch = ['adminMaquinaModelo','adminMaquinaHorometro','adminMaquinaEstado','adminMaquinaTarifa'];
     inputsToWatch.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('input', validateMaquinariaForm);
@@ -1040,12 +1040,14 @@ function mapMaquinariaItem(item) {
         ? `${planNombre}${planIntervalo ? ` (${planIntervalo} hrs)` : ''}`
         : (planId || '');
 
+    const tarifaRaw = getMaquinariaValue(item, ['tarifa_diaria', 'tarifa'], null);
+
     return {
         id: getMaquinariaValue(item, ['id_maquina', 'id']),
         modelo: getMaquinariaValue(item, ['modelo_equipo', 'modelo']),
         estado: getMaquinariaValue(item, ['estado', 'estado_contrato', 'estado_asignacion']),
         horometro: getMaquinariaValue(item, ['horometro_actual', 'horometro']),
-        tarifa_diaria: getMaquinariaValue(item, ['tarifa_diaria', 'tarifa']),
+        tarifa_diaria: tarifaRaw,
         planes_mantencion_id_plan: getMaquinariaValue(item, ['planes_mantencion_id_plan']),
         plan_display: planDisplay,
         especificaciones: getMaquinariaValue(item, ['especificaciones', 'descripcion']),
@@ -1211,8 +1213,9 @@ function editMaquinariaById(maquinaId) {
     renderMaintenancePlanOptions(maquina.planes_mantencion_id_plan ?? '');
     if (specsInput) specsInput.value = maquina.especificaciones || '';
 
-    setMaquinariaStatus(`Editando maquinaria #${maquina.id}`, 'warning');
     showMaquinariaForm(true);
+    validateMaquinariaForm();
+    setMaquinariaStatus(`Editando maquinaria #${maquina.id}`, 'warning');
 }
 
 function focusMaquinariaIncidenciasById(maquinaId) {
@@ -1243,6 +1246,10 @@ function focusMaquinariaIncidenciasById(maquinaId) {
 async function saveAdminMaquinaria(event) {
     event.preventDefault();
 
+    if (!validateMaquinariaForm()) {
+        return;
+    }
+
     const idInput = document.getElementById('adminMaquinaId');
     const modeloInput = document.getElementById('adminMaquinaModelo');
     const horometroInput = document.getElementById('adminMaquinaHorometro');
@@ -1251,14 +1258,22 @@ async function saveAdminMaquinaria(event) {
     const planInput = document.getElementById('adminMaquinaPlan');
     const specsInput = document.getElementById('adminMaquinaSpecs');
 
+    const isEdit = Boolean(idInput?.value);
+
     const payload = {
         modelo_equipo: modeloInput?.value.trim(),
         horometro_actual: Number(horometroInput?.value || 0),
         estado: estadoInput?.value,
-        tarifa_diaria: tarifaInput?.value === '' ? null : Number(tarifaInput.value),
         planes_mantencion_id_plan: planInput?.value === '' ? null : Number(planInput.value),
         especificaciones: specsInput?.value.trim() || null
     };
+
+    const tarifaValue = tarifaInput?.value ?? '';
+    if (tarifaValue !== '') {
+        payload.tarifa_diaria = Number(tarifaValue);
+    } else if (!isEdit) {
+        payload.tarifa_diaria = null;
+    }
 
     if (!payload.modelo_equipo || !Number.isFinite(payload.horometro_actual)) {
         setMaquinariaStatus('Completa modelo y horómetro.', 'warning');
@@ -1266,7 +1281,6 @@ async function saveAdminMaquinaria(event) {
     }
 
     try {
-        const isEdit = Boolean(idInput?.value);
         const url = isEdit ? `/api/maquinaria/${idInput.value}` : '/api/maquinaria';
         const method = isEdit ? 'PUT' : 'POST';
         // UI: show spinner & disable
@@ -1311,6 +1325,7 @@ function validateMaquinariaForm() {
     const modelo = document.getElementById('adminMaquinaModelo')?.value.trim();
     const horometro = document.getElementById('adminMaquinaHorometro')?.value;
     const estado = document.getElementById('adminMaquinaEstado')?.value;
+    const tarifa = document.getElementById('adminMaquinaTarifa')?.value;
     const submitBtn = document.querySelector('#adminMaquinariaForm .top-button.primary');
 
     const warnings = [];
@@ -1318,6 +1333,10 @@ function validateMaquinariaForm() {
     const hnum = Number(horometro);
     if (horometro === '' || !Number.isFinite(hnum) || hnum < 0) warnings.push('Horómetro debe ser número ≥ 0.');
     if (!estado) warnings.push('Selecciona un estado.');
+    if (tarifa !== undefined && tarifa !== null && tarifa !== '') {
+        const tnum = Number(tarifa);
+        if (!Number.isFinite(tnum) || tnum < 0) warnings.push('Tarifa diaria debe ser número ≥ 0.');
+    }
 
     if (warnings.length) {
         setMaquinariaStatus(warnings.join(' '), 'warning');

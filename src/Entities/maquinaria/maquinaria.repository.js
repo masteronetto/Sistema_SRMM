@@ -433,6 +433,18 @@ async function createMaquinaria({ modelo_equipo, horometro_actual, estado, espec
 }
 
 async function updateMaquinaria(id_maquina, { modelo_equipo, horometro_actual, estado, especificaciones, planes_mantencion_id_plan, tarifa_diaria }) {
+  const current = await getMaquinariaById(id_maquina);
+  if (!current) {
+    return null;
+  }
+
+  const nextModelo = modelo_equipo === undefined ? current.modelo_equipo : modelo_equipo;
+  const nextHorometro = horometro_actual === undefined ? current.horometro_actual : horometro_actual;
+  const nextEstado = estado === undefined ? current.estado : estado;
+  const nextEspecificaciones = especificaciones === undefined ? current.especificaciones : especificaciones;
+  const nextPlan = planes_mantencion_id_plan === undefined ? current.planes_mantencion_id_plan : planes_mantencion_id_plan;
+  const nextTarifa = tarifa_diaria === undefined ? current.tarifa_diaria : tarifa_diaria;
+
   const query = `
     UPDATE maquinaria
     SET modelo_equipo = $2,
@@ -448,12 +460,12 @@ async function updateMaquinaria(id_maquina, { modelo_equipo, horometro_actual, e
 
   const values = [
     id_maquina,
-    modelo_equipo,
-    horometro_actual,
-    estado,
-    especificaciones || null,
-    planes_mantencion_id_plan || null,
-    tarifa_diaria ?? null
+    nextModelo,
+    nextHorometro,
+    nextEstado,
+    nextEspecificaciones ?? null,
+    nextPlan ?? null,
+    nextTarifa ?? null
   ];
 
   const { rows } = await pool.query(query, values);
