@@ -146,7 +146,12 @@ function validateEventoEstado(estado_evento) {
 }
 
 function isRetornoEvent(evento) {
-  return String(evento?.titulo || '').toLowerCase().includes('retorno');
+  const normalizedTitle = String(evento?.titulo || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  return normalizedTitle.includes('retorno') || normalizedTitle.includes('devolucion');
 }
 
 async function canOperadorManageEvento(req, evento) {
@@ -216,7 +221,14 @@ async function update(req, res, next) {
         await client.query('BEGIN');
 
         let machineId = Number(evento.maquinaria_id_maquina);
-        const contratoId = Number(evento.arriendos_id_contrato);
+        let contratoId = Number(evento.arriendos_id_contrato);
+
+        if ((!Number.isFinite(contratoId) || contratoId <= 0) && Number.isFinite(machineId) && machineId > 0) {
+          const contratoActivo = await arriendosRepo.getArriendoActivoByMaquina(machineId, client);
+          if (contratoActivo && Number.isFinite(Number(contratoActivo.id_contrato))) {
+            contratoId = Number(contratoActivo.id_contrato);
+          }
+        }
 
         if (Number.isFinite(contratoId) && contratoId > 0) {
           const contratoCerrado = await arriendosRepo.markArriendoAsCompleted(contratoId, client);
@@ -234,8 +246,9 @@ async function update(req, res, next) {
         }
 
         await client.query('COMMIT');
-      } catch (_) {
+      } catch (error) {
         await client.query('ROLLBACK');
+        console.error('[logistica.update] Error liberando máquina tras completar devolución/retorno:', error.message);
         // No bloquear respuesta de logística si falla la liberación de contrato/asignación.
       } finally {
         client.release();

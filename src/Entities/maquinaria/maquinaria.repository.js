@@ -401,7 +401,7 @@ async function finalizarAsignacionActivaByMaquina(maquinaria_id_maquina, fecha_f
   const query = `
     UPDATE maquinaria_operadores
     SET estado_asignacion = 'Finalizada',
-        fecha_fin = COALESCE(fecha_fin, CURRENT_DATE),
+        fecha_fin = COALESCE($2::date, fecha_fin, CURRENT_DATE),
         updated_at = NOW()
     WHERE maquinaria_id_maquina = $1
       AND estado_asignacion = 'Activa'
