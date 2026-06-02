@@ -255,18 +255,15 @@ async function createRetorno(req, res, next) {
       ? baseTitle
       : `Retorno · ${baseTitle}`;
 
-    const existingRetorno = await logisticaRepo.getRetornoActivoSimilar({
+    const existingRetorno = await logisticaRepo.getRetornoSimilar({
       maquinaria_id_maquina: evento.maquinaria_id_maquina || null,
       arriendos_id_contrato: evento.arriendos_id_contrato || null,
-      titulo: retornoTitle,
-      equipo: evento.equipo || '',
-      cliente: evento.cliente || '',
-      ruta: evento.ruta || ''
+      titulo: retornoTitle
     });
 
     if (existingRetorno) {
       return res.status(409).json({
-        message: 'Ya existe un retorno activo para este evento',
+        message: 'Ya existe un retorno para este evento',
         id_evento_retorno: existingRetorno.id_evento,
         estado_evento_retorno: existingRetorno.estado_evento
       });

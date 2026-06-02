@@ -4377,6 +4377,17 @@ function renderLogisticaTable(rows, { canDelete = false, canChangeStatus = false
     const showActions = Boolean(canDelete || canChangeStatus);
     const emptyColspan = showActions ? 9 : 8;
 
+    const normalizeTitle = (value) => String(value || '').replace(/^\s*Retorno\s*·\s*/i, '').trim().toLowerCase();
+    const retornoKeySet = new Set(
+        (Array.isArray(rows) ? rows : [])
+            .filter((item) => String(item?.titulo || '').toLowerCase().includes('retorno'))
+            .map((item) => {
+                const contrato = Number(item?.arriendos_id_contrato || 0);
+                const maquina = Number(item?.maquinaria_id_maquina || 0);
+                return `${contrato}|${maquina}|${normalizeTitle(item?.titulo)}`;
+            })
+    );
+
     const totalEventos = rows.length;
     const pendientes = rows.filter((item) => String(item.estado_evento || '').toLowerCase() === 'pendiente').length;
     const enRuta = rows.filter((item) => String(item.estado_evento || '').toLowerCase() === 'en ruta').length;
@@ -4404,6 +4415,8 @@ function renderLogisticaTable(rows, { canDelete = false, canChangeStatus = false
                         const isRetorno = String(item.titulo || '').toLowerCase().includes('retorno');
                         const status = String(item.estado_evento || '').trim();
                         const isActiveFlow = ['Pendiente', 'Confirmado', 'En Ruta'].includes(status);
+                        const retornoKey = `${Number(item?.arriendos_id_contrato || 0)}|${Number(item?.maquinaria_id_maquina || 0)}|${normalizeTitle(item?.titulo)}`;
+                        const alreadyHasRetorno = retornoKeySet.has(retornoKey);
                         const tipoTag = isRetorno
                             ? `<span class="pill ${isActiveFlow ? 'maintenance' : 'available'}" style="margin-left:0.4rem;">Retorno</span>`
                             : `<span class="pill available" style="margin-left:0.4rem;">Ida</span>`;
@@ -4424,7 +4437,7 @@ function renderLogisticaTable(rows, { canDelete = false, canChangeStatus = false
                         <td><span class="pill ${String(item.estado_evento || '').toLowerCase() === 'confirmado' ? 'success' : 'available'}">${escapeHtml(item.estado_evento || '—')}</span></td>
                         ${showActions ? `<td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
                             ${canChangeStatus ? `<button class="btn btn-secondary" type="button" data-logistica-action="update" data-evento-id="${escapeHtml(String(item.id_evento ?? ''))}" data-current-status="${escapeHtml(String(item.estado_evento || 'Pendiente'))}">Actualizar</button>` : ''}
-                            ${canChangeStatus && String(item.estado_evento || '').trim() === 'Completado' && !String(item.titulo || '').toLowerCase().includes('retorno') ? `<button class="btn" type="button" data-logistica-action="retorno" data-evento-id="${escapeHtml(String(item.id_evento ?? ''))}">Crear retorno</button>` : ''}
+                            ${canChangeStatus && String(item.estado_evento || '').trim() === 'Completado' && !String(item.titulo || '').toLowerCase().includes('retorno') && !alreadyHasRetorno ? `<button class="btn" type="button" data-logistica-action="retorno" data-evento-id="${escapeHtml(String(item.id_evento ?? ''))}">Crear retorno</button>` : ''}
                             ${canDelete ? `<button class="btn btn-danger" type="button" data-logistica-action="delete" data-evento-id="${escapeHtml(String(item.id_evento ?? ''))}">Eliminar</button>` : ''}
                         </td>` : ''}
                     </tr>
@@ -4813,6 +4826,11 @@ function loadLogisticaDashboard() {
                             headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
                         });
                         const body = await res.json().catch(() => ({}));
+                        if (res.status === 409) {
+                            setLogisticaStatus('Ya existe un retorno para este evento.', 'warning');
+                            await loadLogisticaDashboard();
+                            return;
+                        }
                         if (!res.ok) throw new Error(body.message || 'No se pudo crear el retorno');
                         setLogisticaStatus('Retorno creado en estado Pendiente', 'success');
                         await loadLogisticaDashboard();
