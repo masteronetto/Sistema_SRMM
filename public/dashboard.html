@@ -4400,10 +4400,23 @@ function renderLogisticaTable(rows, { canDelete = false, canChangeStatus = false
             <thead><tr><th>Contrato</th><th>Máquina</th><th>Título</th><th>Equipo</th><th>Cliente</th><th>Ruta</th><th>Hora</th><th>Estado</th>${showActions ? '<th>Acciones</th>' : ''}</tr></thead>
             <tbody>
                 ${rows.map((item) => `
+                    ${(() => {
+                        const isRetorno = String(item.titulo || '').toLowerCase().includes('retorno');
+                        const status = String(item.estado_evento || '').trim();
+                        const isActiveFlow = ['Pendiente', 'Confirmado', 'En Ruta'].includes(status);
+                        const tipoTag = isRetorno
+                            ? `<span class="pill ${isActiveFlow ? 'maintenance' : 'available'}" style="margin-left:0.4rem;">Retorno</span>`
+                            : `<span class="pill available" style="margin-left:0.4rem;">Ida</span>`;
+                        const contratoLabel = item.arriendos_id_contrato
+                            ? `#${escapeHtml(String(item.arriendos_id_contrato))}${item.arriendo_estado ? ` · ${escapeHtml(String(item.arriendo_estado))}` : ''}`
+                            : '—';
+                        const tituloLabel = `${escapeHtml(item.titulo || '—')} ${tipoTag}`;
+
+                        return `
                     <tr>
-                        <td>${item.arriendos_id_contrato ? `#${escapeHtml(String(item.arriendos_id_contrato))}` : '—'}</td>
+                        <td>${contratoLabel}</td>
                         <td>${escapeHtml(item.maquinaria_modelo || '—')}</td>
-                        <td>${escapeHtml(item.titulo || '—')}</td>
+                        <td>${tituloLabel}</td>
                         <td>${escapeHtml(item.equipo || '—')}</td>
                         <td>${escapeHtml(item.cliente || '—')}</td>
                         <td>${escapeHtml(item.ruta || '—')}</td>
@@ -4411,10 +4424,12 @@ function renderLogisticaTable(rows, { canDelete = false, canChangeStatus = false
                         <td><span class="pill ${String(item.estado_evento || '').toLowerCase() === 'confirmado' ? 'success' : 'available'}">${escapeHtml(item.estado_evento || '—')}</span></td>
                         ${showActions ? `<td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
                             ${canChangeStatus ? `<button class="btn btn-secondary" type="button" data-logistica-action="update" data-evento-id="${escapeHtml(String(item.id_evento ?? ''))}" data-current-status="${escapeHtml(String(item.estado_evento || 'Pendiente'))}">Actualizar</button>` : ''}
-                            ${canChangeStatus && String(item.estado_evento || '').trim() === 'Completado' ? `<button class="btn" type="button" data-logistica-action="retorno" data-evento-id="${escapeHtml(String(item.id_evento ?? ''))}">Crear retorno</button>` : ''}
+                            ${canChangeStatus && String(item.estado_evento || '').trim() === 'Completado' && !String(item.titulo || '').toLowerCase().includes('retorno') ? `<button class="btn" type="button" data-logistica-action="retorno" data-evento-id="${escapeHtml(String(item.id_evento ?? ''))}">Crear retorno</button>` : ''}
                             ${canDelete ? `<button class="btn btn-danger" type="button" data-logistica-action="delete" data-evento-id="${escapeHtml(String(item.id_evento ?? ''))}">Eliminar</button>` : ''}
                         </td>` : ''}
                     </tr>
+                `;
+                    })()}
                 `).join('')}
             </tbody>
         </table>
@@ -4786,7 +4801,12 @@ function loadLogisticaDashboard() {
 
             if (action === 'retorno') {
                 (async () => {
+                    if (targetBtn.dataset.loading === '1') {
+                        return;
+                    }
                     try {
+                        targetBtn.dataset.loading = '1';
+                        targetBtn.disabled = true;
                         setLogisticaStatus('Creando retorno...', 'info');
                         const res = await fetch(`/api/logistica/${idEvento}/retorno`, {
                             method: 'POST',
@@ -4798,6 +4818,9 @@ function loadLogisticaDashboard() {
                         await loadLogisticaDashboard();
                     } catch (error) {
                         setLogisticaStatus(`Error: ${error.message}`, 'error');
+                    } finally {
+                        targetBtn.dataset.loading = '0';
+                        targetBtn.disabled = false;
                     }
                 })();
                 return;
@@ -4857,7 +4880,8 @@ function loadLogisticaDashboard() {
 
     loadRows()
         .then((res) => {
-            renderLogisticaTable(Array.isArray(res) ? res : [], { canDelete: isAdmin, canChangeStatus: true, operatorContext: !isAdmin });
+            const rows = Array.isArray(res) ? res : [];
+            renderLogisticaTable(rows, { canDelete: isAdmin, canChangeStatus: true, operatorContext: !isAdmin });
         })
         .catch((error) => {
             if (container) container.innerHTML = `<table><tbody><tr><td colspan="${loadingColspan}" class="detail-empty">Error: ${escapeHtml(error.message)}</td></tr></tbody></table>`;

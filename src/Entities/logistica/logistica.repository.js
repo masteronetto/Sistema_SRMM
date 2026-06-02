@@ -90,10 +90,50 @@ async function updateEventoStatus(id_evento, estado_evento) {
   return rows[0] || null;
 }
 
+async function getRetornoActivoSimilar({ maquinaria_id_maquina = null, arriendos_id_contrato = null, titulo = '', equipo = '', cliente = '', ruta = '' } = {}) {
+  const query = `
+    SELECT
+      id_evento,
+      maquinaria_id_maquina,
+      arriendos_id_contrato,
+      titulo,
+      equipo,
+      cliente,
+      ruta,
+      hora_evento,
+      estado_evento,
+      created_at,
+      updated_at
+    FROM logistica_eventos
+    WHERE maquinaria_id_maquina = $1
+      AND COALESCE(arriendos_id_contrato, 0) = COALESCE($2, 0)
+      AND titulo = $3
+      AND COALESCE(equipo, '') = COALESCE($4, '')
+      AND COALESCE(cliente, '') = COALESCE($5, '')
+      AND COALESCE(ruta, '') = COALESCE($6, '')
+      AND estado_evento IN ('Pendiente', 'Confirmado', 'En Ruta')
+    ORDER BY id_evento DESC
+    LIMIT 1
+  `;
+
+  const values = [
+    maquinaria_id_maquina,
+    arriendos_id_contrato,
+    titulo,
+    equipo,
+    cliente,
+    ruta
+  ];
+
+  const { rows } = await pool.query(query, values);
+  return rows[0] || null;
+}
+
 module.exports = {
   listEventos,
   createEvento,
   getEventoById,
+  getRetornoActivoSimilar,
   updateEventoStatus,
   deleteEvento
 };

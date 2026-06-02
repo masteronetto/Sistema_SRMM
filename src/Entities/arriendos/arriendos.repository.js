@@ -120,11 +120,25 @@ async function deleteArriendo(id_contrato, db = pool) {
   return rows[0] || null;
 }
 
+async function markArriendoAsCompleted(id_contrato, db = pool) {
+  const query = `
+    UPDATE arriendos
+    SET estado_contrato = 'Completado',
+        fecha_fin = COALESCE(fecha_fin, CURRENT_DATE)
+    WHERE id_contrato = $1
+    RETURNING id_contrato, maquinaria_id_maquina, cliente_id, fecha_inicio, fecha_fin, estado_contrato
+  `;
+
+  const { rows } = await db.query(query, [id_contrato]);
+  return rows[0] || null;
+}
+
 module.exports = {
   listArriendos,
   listArriendosByCliente,
   createArriendo,
   getArriendoById,
   getArriendoActivoByMaquina,
+  markArriendoAsCompleted,
   deleteArriendo
 };

@@ -144,6 +144,10 @@ function validateEventoEstado(estado_evento) {
   return estado_evento && allowedStates.has(String(estado_evento).trim());
 }
 
+function isRetornoEvent(evento) {
+  return String(evento?.titulo || '').toLowerCase().includes('retorno');
+}
+
 async function canOperadorManageEvento(req, evento) {
   if (!evento?.maquinaria_id_maquina) {
     return false;
@@ -205,6 +209,17 @@ async function update(req, res, next) {
       return res.status(404).json({ message: 'Evento no encontrado al actualizar' });
     }
 
+    if (estado_evento === 'Completado' && isRetornoEvent(evento)) {
+      const contratoId = Number(evento.arriendos_id_contrato);
+      if (Number.isFinite(contratoId) && contratoId > 0) {
+        try {
+          await arriendosRepo.markArriendoAsCompleted(contratoId);
+        } catch (_) {
+          // No bloquear respuesta de logística si falla el cierre de contrato.
+        }
+      }
+    }
+
     return res.json(updated);
   } catch (error) {
     return next(error);
@@ -239,6 +254,23 @@ async function createRetorno(req, res, next) {
     const retornoTitle = baseTitle.toLowerCase().includes('retorno')
       ? baseTitle
       : `Retorno · ${baseTitle}`;
+
+    const existingRetorno = await logisticaRepo.getRetornoActivoSimilar({
+      maquinaria_id_maquina: evento.maquinaria_id_maquina || null,
+      arriendos_id_contrato: evento.arriendos_id_contrato || null,
+      titulo: retornoTitle,
+      equipo: evento.equipo || '',
+      cliente: evento.cliente || '',
+      ruta: evento.ruta || ''
+    });
+
+    if (existingRetorno) {
+      return res.status(409).json({
+        message: 'Ya existe un retorno activo para este evento',
+        id_evento_retorno: existingRetorno.id_evento,
+        estado_evento_retorno: existingRetorno.estado_evento
+      });
+    }
 
     const retorno = await logisticaRepo.createEvento({
       maquinaria_id_maquina: evento.maquinaria_id_maquina || null,
