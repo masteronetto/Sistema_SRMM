@@ -2896,7 +2896,9 @@ function buildProfessionalReportPdf(doc, rows, context = {}) {
         cards.forEach((text, index) => {
             const x = margin + index * (cardWidth + 6);
             doc.setFillColor(245, 247, 250);
-            doc.roundedRect(x, startY, cardWidth, 34, 4, 4, 'F');
+            doc.rect(x, startY, cardWidth, 34, 'F');
+            doc.setDrawColor(227, 233, 240);
+            doc.rect(x, startY, cardWidth, 34);
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(10);
             doc.text(text, x + 8, startY + 21);
@@ -2978,8 +2980,20 @@ function buildProfessionalReportPdf(doc, rows, context = {}) {
         y += rowHeight;
     });
 
+    if (!rows.length) {
+        ensureRoom(20);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text('Sin registros para los filtros seleccionados.', margin, y + 12);
+        y += 24;
+    }
+
     const drawAnnexSection = (title, annexRows, annexColumns) => {
         const rowsSafe = Array.isArray(annexRows) ? annexRows : [];
+
+        doc.addPage();
+        drawHeader();
+        y = 118;
 
         ensureRoom(34);
         doc.setFont('helvetica', 'bold');
@@ -3322,21 +3336,26 @@ function initReportesDashboard() {
             const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
             const machineLabel = document.getElementById('reportSelectedMachineLabel')?.textContent || 'Sin maquina seleccionada';
             const d = getEffectiveReportDates();
-            buildProfessionalReportPdf(doc, rows, {
-                title: 'Reporte historico SRMM',
-                generatedAtLabel: new Date().toLocaleString('es-CL'),
-                startDate: d.start || 'inicio',
-                endDate: d.end || 'hoy',
-                machineLabel,
-                logoDataUrl,
-                totalHoras: reportState.totalHoras || 0,
-                totalMantenciones: reportState.totalMantenciones || 0,
-                totalFallas: reportState.totalFallas || 0
-            });
+            try {
+                buildProfessionalReportPdf(doc, rows, {
+                    title: 'Reporte historico SRMM',
+                    generatedAtLabel: new Date().toLocaleString('es-CL'),
+                    startDate: d.start || 'inicio',
+                    endDate: d.end || 'hoy',
+                    machineLabel,
+                    logoDataUrl,
+                    totalHoras: reportState.totalHoras || 0,
+                    totalMantenciones: reportState.totalMantenciones || 0,
+                    totalFallas: reportState.totalFallas || 0
+                });
 
-            const today = new Date().toISOString().slice(0, 10);
-            doc.save(`reporte_historico_${selectedIds[0] || 'todas'}_${today}.pdf`);
-            setReportStatus('PDF profesional generado correctamente', 'success');
+                const today = new Date().toISOString().slice(0, 10);
+                doc.save(`reporte_historico_${selectedIds[0] || 'todas'}_${today}.pdf`);
+                setReportStatus('PDF profesional generado correctamente', 'success');
+            } catch (error) {
+                console.error('Error generando PDF:', error);
+                setReportStatus('Error generando PDF profesional', 'error');
+            }
         });
 
         const printBtn = document.getElementById('reportPrintBtn');
@@ -3407,7 +3426,8 @@ function initReportesDashboard() {
                 `;
 
                 const userName = document.getElementById('sidebarName')?.textContent || '';
-                const companyLogo = '/favicon.svg';
+                const logoDataUrl = await loadReportLogoDataUrl();
+                const companyLogo = logoDataUrl || '/img/logo-srmm.png';
                 const headerHtml = `
                     <div class="print-header">
                         <img src="${companyLogo}" class="print-logo" alt="Logo">
