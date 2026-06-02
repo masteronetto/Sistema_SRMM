@@ -4411,6 +4411,7 @@ function renderLogisticaTable(rows, { canDelete = false, canChangeStatus = false
                         <td><span class="pill ${String(item.estado_evento || '').toLowerCase() === 'confirmado' ? 'success' : 'available'}">${escapeHtml(item.estado_evento || '—')}</span></td>
                         ${showActions ? `<td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
                             ${canChangeStatus ? `<button class="btn btn-secondary" type="button" data-logistica-action="update" data-evento-id="${escapeHtml(String(item.id_evento ?? ''))}" data-current-status="${escapeHtml(String(item.estado_evento || 'Pendiente'))}">Actualizar</button>` : ''}
+                            ${canChangeStatus && String(item.estado_evento || '').trim() === 'Completado' ? `<button class="btn" type="button" data-logistica-action="retorno" data-evento-id="${escapeHtml(String(item.id_evento ?? ''))}">Crear retorno</button>` : ''}
                             ${canDelete ? `<button class="btn btn-danger" type="button" data-logistica-action="delete" data-evento-id="${escapeHtml(String(item.id_evento ?? ''))}">Eliminar</button>` : ''}
                         </td>` : ''}
                     </tr>
@@ -4780,6 +4781,25 @@ function loadLogisticaDashboard() {
             if (action === 'update') {
                 const currentStatus = String(targetBtn.dataset.currentStatus || 'Pendiente');
                 promptLogisticaUpdateStatus(idEvento, currentStatus);
+                return;
+            }
+
+            if (action === 'retorno') {
+                (async () => {
+                    try {
+                        setLogisticaStatus('Creando retorno...', 'info');
+                        const res = await fetch(`/api/logistica/${idEvento}/retorno`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+                        });
+                        const body = await res.json().catch(() => ({}));
+                        if (!res.ok) throw new Error(body.message || 'No se pudo crear el retorno');
+                        setLogisticaStatus('Retorno creado en estado Pendiente', 'success');
+                        await loadLogisticaDashboard();
+                    } catch (error) {
+                        setLogisticaStatus(`Error: ${error.message}`, 'error');
+                    }
+                })();
                 return;
             }
 

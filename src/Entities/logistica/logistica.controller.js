@@ -144,6 +144,20 @@ function validateEventoEstado(estado_evento) {
   return estado_evento && allowedStates.has(String(estado_evento).trim());
 }
 
+async function canOperadorManageEvento(req, evento) {
+  if (!evento?.maquinaria_id_maquina) {
+    return false;
+  }
+
+  const operadorId = Number(req.user.id_usuario);
+  const contrato = await arriendosRepo.getArriendoActivoByMaquina(evento.maquinaria_id_maquina);
+  const asignacion = await maquinariaRepo.getAsignacionActivaByMaquina(evento.maquinaria_id_maquina);
+
+  const autorizadoPorContrato = Boolean(contrato && Number(contrato.cliente_id) === operadorId);
+  const autorizadoPorAsignacion = Boolean(asignacion && Number(asignacion.operador_id) === operadorId);
+  return autorizadoPorContrato || autorizadoPorAsignacion;
+}
+
 async function update(req, res, next) {
   try {
     const id_evento = Number(req.params.id_evento);
@@ -166,14 +180,8 @@ async function update(req, res, next) {
         return res.status(403).json({ message: 'No puedes cambiar el estado de un evento no vinculado a una máquina' });
       }
 
-      const operadorId = Number(req.user.id_usuario);
-      const contrato = await arriendosRepo.getArriendoActivoByMaquina(evento.maquinaria_id_maquina);
-      const asignacion = await maquinariaRepo.getAsignacionActivaByMaquina(evento.maquinaria_id_maquina);
-
-      const autorizadoPorContrato = Boolean(contrato && Number(contrato.cliente_id) === operadorId);
-      const autorizadoPorAsignacion = Boolean(asignacion && Number(asignacion.operador_id) === operadorId);
-
-      if (!autorizadoPorContrato && !autorizadoPorAsignacion) {
+      const autorizado = await canOperadorManageEvento(req, evento);
+      if (!autorizado) {
         return res.status(403).json({ message: 'Permisos insuficientes. Solo puedes gestionar eventos de tus máquinas' });
       }
 
@@ -203,9 +211,56 @@ async function update(req, res, next) {
   }
 }
 
+async function createRetorno(req, res, next) {
+  try {
+    const id_evento = Number(req.params.id_evento);
+    if (!Number.isFinite(id_evento)) {
+      return res.status(400).json({ message: 'id_evento debe ser numerico' });
+    }
+
+    const evento = await logisticaRepo.getEventoById(id_evento);
+    if (!evento) {
+      return res.status(404).json({ message: 'Evento no encontrado' });
+    }
+
+    const currentStatus = String(evento.estado_evento || '').trim();
+    if (currentStatus !== 'Completado') {
+      return res.status(400).json({ message: 'Solo se puede crear retorno desde eventos en estado Completado' });
+    }
+
+    if (req.user.rol_acceso === 'Operador') {
+      const autorizado = await canOperadorManageEvento(req, evento);
+      if (!autorizado) {
+        return res.status(403).json({ message: 'Permisos insuficientes. Solo puedes crear retorno para tus máquinas' });
+      }
+    }
+
+    const baseTitle = String(evento.titulo || 'Evento logístico').trim();
+    const retornoTitle = baseTitle.toLowerCase().includes('retorno')
+      ? baseTitle
+      : `Retorno · ${baseTitle}`;
+
+    const retorno = await logisticaRepo.createEvento({
+      maquinaria_id_maquina: evento.maquinaria_id_maquina || null,
+      arriendos_id_contrato: evento.arriendos_id_contrato || null,
+      titulo: retornoTitle,
+      equipo: evento.equipo || '',
+      cliente: evento.cliente || '',
+      ruta: evento.ruta || '',
+      hora_evento: evento.hora_evento || '09:00 hrs',
+      estado_evento: 'Pendiente'
+    });
+
+    return res.status(201).json(retorno);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   list,
   create,
+  createRetorno,
   update,
   remove
 };
