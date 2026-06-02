@@ -325,6 +325,35 @@
                         </div>
                     </section>
 
+                    <section id="maintenancePlanAssignPanel" class="section-card admin-only">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+                            <div>
+                                <div class="section-title">Asignar plan de mantención</div>
+                                <div class="muted">Asocia un plan existente a una maquinaria desde esta vista.</div>
+                            </div>
+                            <span id="maintenancePlanAssignStatus" class="form-status"></span>
+                        </div>
+
+                        <form id="maintenancePlanAssignForm" class="incident-form" style="margin-top:1rem;">
+                            <div class="incident-grid">
+                                <label>Máquina
+                                    <select id="maintenancePlanMachine" required>
+                                        <option value="">Cargando máquinas…</option>
+                                    </select>
+                                </label>
+                                <label>Plan de mantención
+                                    <select id="maintenancePlanSelect" required>
+                                        <option value="">Cargando planes…</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="incident-actions">
+                                <button type="submit" class="top-button primary">Asignar plan</button>
+                                <button type="button" id="maintenancePlanClearBtn" class="top-button secondary">Limpiar</button>
+                            </div>
+                        </form>
+                    </section>
+
                     <section id="maintenanceHighlights" class="mini-grid"></section>
 
                     <section id="maintenanceOrdersList" class="section-card" style="margin-top:1rem;">
@@ -566,6 +595,7 @@
 
                                 <div class="incident-actions">
                                     <button id="opIncidentSubmit" type="button" class="top-button primary">Registrar incidencia</button>
+                                    <button id="incidentClearBtn" type="button" class="top-button secondary">Limpiar</button>
                                     <span id="opIncidentStatus" class="form-status"></span>
                                 </div>
                             </form>
@@ -1158,6 +1188,7 @@ async function saveAdminMaquinaria(event) {
             if (formPanel) formPanel.style.display = 'none';
         } catch (e) { /* ignore */ }
         await loadAdminMaquinaria();
+        try { await loadMaintenanceDashboard(); } catch (e) { console.warn('No se pudo refrescar mantenimiento tras crear/editar maquinaria', e); }
         try { await loadInicioKpis(); } catch (e) { console.warn('No se pudo refrescar KPIs tras crear/editar maquinaria', e); }
     } catch (err) {
         setMaquinariaStatus(`Error: ${err.message}`, 'error');
@@ -1234,6 +1265,7 @@ async function deleteMaquinariaById(maquinaId) {
             }
             setMaquinariaStatus('Maquinaria eliminada', 'success');
             await loadAdminMaquinaria();
+            try { await loadMaintenanceDashboard(); } catch (e) { console.warn('No se pudo refrescar mantenimiento tras eliminar maquinaria', e); }
             try { await loadInicioKpis(); } catch (e) { console.warn('No se pudo refrescar KPIs tras eliminar maquinaria', e); }
         } catch (err) {
             setMaquinariaStatus(`Error: ${err.message}`, 'error');
@@ -1270,6 +1302,7 @@ let currentReportMachines = [];
 let availableMaintenancePlans = [];
 let reportsInitialized = false;
 let adminMaquinariaInitialized = false;
+let maintenancePlanAssignInitialized = false;
 let reportTopChart = null;
 let reportUsoChart = null;
 let reportSelectedMachineId = '';
@@ -1634,6 +1667,142 @@ async function loadMaintenancePlans() {
         planSelect.innerHTML = '<option value="">No se pudieron cargar los planes</option>';
         console.error('Error cargando planes de mantención:', err);
     }
+}
+
+function renderMaintenancePlanAssignOptions(selectedPlanId = '') {
+    const planSelect = document.getElementById('maintenancePlanSelect');
+    if (!planSelect) return;
+
+    if (!availableMaintenancePlans.length) {
+        planSelect.innerHTML = '<option value="">Sin planes disponibles</option>';
+        return;
+    }
+
+    const options = ['<option value="">Selecciona un plan</option>'];
+    availableMaintenancePlans.forEach((plan) => {
+        const label = `${plan.nombre}${plan.intervalo_horas ? ` (${plan.intervalo_horas} hrs)` : ''}`;
+        const selected = String(plan.id) === String(selectedPlanId) ? ' selected' : '';
+        options.push(`<option value="${plan.id}"${selected}>${escapeHtml(label)}</option>`);
+    });
+
+    planSelect.innerHTML = options.join('');
+}
+
+async function ensureMaintenancePlanAssignData() {
+    const machineSelect = document.getElementById('maintenancePlanMachine');
+    const planSelect = document.getElementById('maintenancePlanSelect');
+    if (!machineSelect || !planSelect) return;
+
+    try {
+        if (!availableMaintenancePlans.length) {
+            await loadMaintenancePlans();
+        }
+
+        const machines = await loadAvailableMachines();
+        const machineOptions = ['<option value="">Selecciona una máquina</option>'];
+        (Array.isArray(machines) ? machines : []).forEach((machine) => {
+            const label = `${machine.modelo_equipo || `Máquina #${machine.id_maquina}`} · ${machine.estado || '—'}`;
+            machineOptions.push(`<option value="${machine.id_maquina}">${escapeHtml(label)}</option>`);
+        });
+        machineSelect.innerHTML = machineOptions.join('');
+        renderMaintenancePlanAssignOptions(planSelect.value || '');
+    } catch (error) {
+        console.error('Error cargando datos para asignar plan:', error);
+        machineSelect.innerHTML = '<option value="">No se pudieron cargar máquinas</option>';
+        planSelect.innerHTML = '<option value="">No se pudieron cargar planes</option>';
+    }
+}
+
+function setMaintenancePlanAssignStatus(message, type = 'info') {
+    const statusEl = document.getElementById('maintenancePlanAssignStatus');
+    if (!statusEl) return;
+
+    const colors = {
+        info: '#2980b9',
+        success: '#27ae60',
+        warning: '#d97706',
+        error: '#c0392b'
+    };
+
+    statusEl.textContent = message;
+    statusEl.style.color = colors[type] || colors.info;
+}
+
+function clearIncidentForm(preserveFeedback = false) {
+    const machineSelect = document.getElementById('incidentMachine');
+    const dateInput = document.getElementById('incidentDate');
+    const operatorSelect = document.getElementById('incidentOperator');
+    const severitySelect = document.getElementById('incidentSeverity');
+    const descriptionInput = document.getElementById('incidentDescription');
+    const maintenanceInput = document.getElementById('incidentMaintenanceId');
+
+    if (machineSelect) machineSelect.value = '';
+    if (dateInput) {
+        const today = new Date();
+        dateInput.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    }
+    if (operatorSelect) operatorSelect.value = '';
+    if (severitySelect) severitySelect.value = 'Media';
+    if (descriptionInput) descriptionInput.value = '';
+    if (maintenanceInput) maintenanceInput.value = '';
+    showIncidentWarningBanner('');
+    if (!preserveFeedback) {
+        showIncidentFormFeedback('', 'info');
+    }
+}
+
+function initMaintenancePlanAssignForm() {
+    const form = document.getElementById('maintenancePlanAssignForm');
+    const clearBtn = document.getElementById('maintenancePlanClearBtn');
+    if (!form || maintenancePlanAssignInitialized) return;
+
+    maintenancePlanAssignInitialized = true;
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', async () => {
+            form.reset();
+            setMaintenancePlanAssignStatus('', 'info');
+            await ensureMaintenancePlanAssignData();
+        });
+    }
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const maquinaId = Number(document.getElementById('maintenancePlanMachine')?.value);
+        const planId = Number(document.getElementById('maintenancePlanSelect')?.value);
+
+        if (!Number.isFinite(maquinaId) || maquinaId <= 0) {
+            setMaintenancePlanAssignStatus('Selecciona una máquina.', 'warning');
+            return;
+        }
+
+        if (!Number.isFinite(planId) || planId <= 0) {
+            setMaintenancePlanAssignStatus('Selecciona un plan de mantención.', 'warning');
+            return;
+        }
+
+        try {
+            setMaintenancePlanAssignStatus('Asignando plan...', 'info');
+            const res = await fetch(`/api/planes-mantencion/${planId}/asignar-maquina/${maquinaId}`, {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(body.error || body.message || 'No se pudo asignar el plan');
+            }
+
+            setMaintenancePlanAssignStatus('Plan asignado correctamente', 'success');
+            form.reset();
+            await loadMaintenanceDashboard();
+            try { await loadAdminMaquinaria(); } catch (e) { console.warn('No se pudo refrescar inventario tras asignar plan', e); }
+            try { await loadInicioKpis(); } catch (e) { console.warn('No se pudo refrescar KPIs tras asignar plan', e); }
+        } catch (error) {
+            setMaintenancePlanAssignStatus(`Error: ${error.message}`, 'error');
+        }
+    });
 }
 
 function showIncidentFormFeedback(message, type = 'info') {
@@ -3018,6 +3187,8 @@ async function loadMaintenanceDashboard() {
     const pendingEl = document.getElementById('maintenancePendientes');
     const programadosEl = document.getElementById('maintenanceProgramados');
     const historialEl = document.getElementById('maintenanceHistorial');
+    const maintenancePlanMachine = document.getElementById('maintenancePlanMachine');
+    const maintenancePlanSelect = document.getElementById('maintenancePlanSelect');
 
     if (highlights) {
         highlights.innerHTML = '<article class="section-card machine-card"><div class="machine-body"><div><strong>Cargando…</strong><span>Consultando órdenes y mantenimiento real</span></div></div></article>';
@@ -3031,13 +3202,35 @@ async function loadMaintenanceDashboard() {
             fetch('/api/maquinaria/urgent-maintenance?umbral=0&limit=5', { headers })
         ]);
 
-        const ordersBody = ordersRes.ok ? await ordersRes.json() : [];
-        const stats = statsRes.ok ? await statsRes.json() : [];
+        const [machinesRes, plansRes] = await Promise.all([
+            fetch('/api/maquinaria', { headers }),
+            fetch('/api/planes-mantencion', { headers })
+        ]);
+
+        const ordersBody = ordersRes.ok ? await ordersRes.json() : { data: [] };
+        const statsBody = statsRes.ok ? await statsRes.json() : [];
         const urgent = urgentRes.ok ? await urgentRes.json() : [];
+        const machines = machinesRes.ok ? await machinesRes.json() : [];
+        const plansBody = plansRes.ok ? await plansRes.json() : { planes: [] };
 
-        const orders = ordersBody.data || [];
+        const orders = Array.isArray(ordersBody?.data) ? ordersBody.data : [];
+        const stats = Array.isArray(statsBody) ? statsBody : [];
+        const machinesList = Array.isArray(machines) ? machines : [];
+        const plansList = Array.isArray(plansBody?.planes) ? plansBody.planes : [];
 
-        const pendientes = orders.filter((item) => ['Programada', 'En Progreso'].includes(item.estado_ot)).length;
+        if (maintenancePlanMachine) {
+            maintenancePlanMachine.innerHTML = ['<option value="">Selecciona una máquina</option>']
+                .concat(machinesList.map((machine) => `<option value="${machine.id_maquina}">${escapeHtml(`${machine.modelo_equipo || `Máquina #${machine.id_maquina}`} · ${machine.estado || '—'}`)}</option>`))
+                .join('');
+        }
+
+        if (maintenancePlanSelect) {
+            availableMaintenancePlans = plansList.map(mapMaintenancePlan);
+            renderMaintenancePlanAssignOptions(maintenancePlanSelect.value || '');
+        }
+
+        const machinesWithoutPlan = machinesList.filter((item) => !item.planes_mantencion_id_plan).length;
+        const pendientes = machinesWithoutPlan + urgent.length + orders.filter((item) => ['Programada', 'En Progreso'].includes(item.estado_ot)).length;
         const programados = orders.filter((item) => item.estado_ot === 'Programada').length;
         const historial = stats.reduce((acc, item) => acc + Number(item.total_mantenciones || 0), 0);
 
@@ -3046,7 +3239,8 @@ async function loadMaintenanceDashboard() {
         if (historialEl) historialEl.textContent = historial || '—';
 
         if (highlights) {
-            const cards = (orders.length ? orders : urgent).slice(0, 3).map((item) => {
+            const sourceItems = orders.length ? orders : (urgent.length ? urgent : machinesList.filter((item) => !item.planes_mantencion_id_plan));
+            const cards = sourceItems.slice(0, 3).map((item) => {
                 const machineId = item.maquinaria_id_maquina ?? item.id_maquina ?? '';
                 const name = item.modelo_equipo || item.nombre || `Máquina #${machineId || '—'}`;
                 const state = item.estado_ot || item.estado || 'Pendiente';
@@ -3080,6 +3274,9 @@ async function loadMaintenanceDashboard() {
                 });
             });
         }
+
+        initMaintenancePlanAssignForm();
+        await ensureMaintenancePlanAssignData();
     } catch (error) {
         console.error('Error cargando mantenimiento:', error);
         if (highlights) {
@@ -3648,6 +3845,7 @@ async function loadArriendosDashboard() {
                 await loadArriendosDashboard();
                 // actualizar inventario y métricas en Inicio
                 try { await loadAdminMaquinaria(); } catch (e) { console.warn('No se pudo refrescar maquinaria tras arriendo', e); }
+                try { await loadMaintenanceDashboard(); } catch (e) { console.warn('No se pudo refrescar mantenimiento tras arriendo', e); }
                 try { await loadInicioKpis(); } catch (e) { console.warn('No se pudieron refrescar KPIs tras arriendo', e); }
             } catch (error) {
                 setArriendoStatus(`Error: ${error.message}`, 'error');
@@ -3680,6 +3878,7 @@ async function deleteArriendoById(idContrato) {
             }
             await loadArriendosDashboard();
             try { await loadAdminMaquinaria(); } catch (e) { console.warn('No se pudo refrescar maquinaria tras eliminar arriendo', e); }
+            try { await loadMaintenanceDashboard(); } catch (e) { console.warn('No se pudo refrescar mantenimiento tras eliminar arriendo', e); }
             try { await loadInicioKpis(); } catch (e) { console.warn('No se pudieron refrescar KPIs tras eliminar arriendo', e); }
         } catch (error) {
             setArriendoStatus(`Error: ${error.message}`, 'error');
@@ -4116,6 +4315,7 @@ function initIncidentForm() {
     const operatorSelect = document.getElementById('incidentOperator');
     const form           = document.getElementById('incidentRegisterForm');
     const formStatus     = document.getElementById('incidentFormStatus');
+    const clearBtn       = document.getElementById('incidentClearBtn');
 
     // Fecha de hoy
     const today = new Date();
@@ -4138,6 +4338,13 @@ function initIncidentForm() {
             operatorSelect.innerHTML = '<option value="">No se pudieron cargar operadores</option>';
         }
     })();
+
+    if (clearBtn && !clearBtn.dataset.bound) {
+        clearBtn.dataset.bound = '1';
+        clearBtn.addEventListener('click', () => {
+            clearIncidentForm();
+        });
+    }
 
     form.addEventListener('submit', async e => {
         e.preventDefault();
@@ -4168,8 +4375,7 @@ function initIncidentForm() {
             if (!res.ok) throw new Error(result.message || 'Error al registrar');
             showIncidentFormFeedback('✅ Incidencia registrada con estado Pendiente.', 'success');
             showIncidentWarningBanner(result.advertencia || '');
-            document.getElementById('incidentDescription').value = '';
-            document.getElementById('incidentMaintenanceId').value = '';
+            clearIncidentForm(true);
             await refreshIncidentDetailPanelIfNeeded(maquinaId);
         } catch (err) {
             showIncidentWarningBanner('');
