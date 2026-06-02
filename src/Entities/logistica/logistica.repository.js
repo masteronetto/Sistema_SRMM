@@ -15,8 +15,10 @@ async function listEventos({ maquinariaIds = [] } = {}) {
   const query = `
     SELECT
       l.id_evento,
+      l.arriendos_id_contrato,
       l.maquinaria_id_maquina,
       m.modelo_equipo AS maquinaria_modelo,
+      a.estado_contrato AS arriendo_estado,
       l.titulo,
       l.equipo,
       l.cliente,
@@ -27,6 +29,7 @@ async function listEventos({ maquinariaIds = [] } = {}) {
       l.updated_at
     FROM logistica_eventos l
     LEFT JOIN maquinaria m ON m.id_maquina = l.maquinaria_id_maquina
+    LEFT JOIN arriendos a ON a.id_contrato = l.arriendos_id_contrato
     ${whereClause}
     ORDER BY l.created_at DESC, l.id_evento DESC
   `;
@@ -35,14 +38,14 @@ async function listEventos({ maquinariaIds = [] } = {}) {
   return rows;
 }
 
-async function createEvento({ titulo, equipo, cliente, ruta, hora_evento, estado_evento = 'Pendiente', maquinaria_id_maquina = null }) {
+async function createEvento({ titulo, equipo, cliente, ruta, hora_evento, estado_evento = 'Pendiente', maquinaria_id_maquina = null, arriendos_id_contrato = null }) {
   const query = `
-    INSERT INTO logistica_eventos (maquinaria_id_maquina, titulo, equipo, cliente, ruta, hora_evento, estado_evento)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING id_evento, maquinaria_id_maquina, titulo, equipo, cliente, ruta, hora_evento, estado_evento, created_at, updated_at
+    INSERT INTO logistica_eventos (maquinaria_id_maquina, arriendos_id_contrato, titulo, equipo, cliente, ruta, hora_evento, estado_evento)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING id_evento, maquinaria_id_maquina, arriendos_id_contrato, titulo, equipo, cliente, ruta, hora_evento, estado_evento, created_at, updated_at
   `;
 
-  const { rows } = await pool.query(query, [maquinaria_id_maquina || null, titulo, equipo, cliente, ruta, hora_evento, estado_evento]);
+  const { rows } = await pool.query(query, [maquinaria_id_maquina || null, arriendos_id_contrato || null, titulo, equipo, cliente, ruta, hora_evento, estado_evento]);
   return rows[0] || null;
 }
 
@@ -57,6 +60,7 @@ async function getEventoById(id_evento) {
     SELECT
       id_evento,
       maquinaria_id_maquina,
+      arriendos_id_contrato,
       titulo,
       equipo,
       cliente,
@@ -80,7 +84,7 @@ async function updateEventoStatus(id_evento, estado_evento) {
     SET estado_evento = $2,
         updated_at = NOW()
     WHERE id_evento = $1
-    RETURNING id_evento, maquinaria_id_maquina, titulo, equipo, cliente, ruta, hora_evento, estado_evento, created_at, updated_at
+    RETURNING id_evento, maquinaria_id_maquina, arriendos_id_contrato, titulo, equipo, cliente, ruta, hora_evento, estado_evento, created_at, updated_at
   `;
   const { rows } = await pool.query(query, [id_evento, estado_evento]);
   return rows[0] || null;

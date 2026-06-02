@@ -1,11 +1,15 @@
 const maquinariaRepo = require('../maquinaria/maquinaria.repository');
 const logisticaRepo = require('./logistica.repository');
 const arriendosRepo = require('../arriendos/arriendos.repository');
+const usuariosRepo = require('../usuarios/usuarios.repository');
 
 function validateEventoPayload(payload) {
   const maquinaria_id_maquina = payload.maquinaria_id_maquina === undefined || payload.maquinaria_id_maquina === null || payload.maquinaria_id_maquina === ''
     ? null
     : Number(payload.maquinaria_id_maquina);
+  const arriendos_id_contrato = payload.arriendos_id_contrato === undefined || payload.arriendos_id_contrato === null || payload.arriendos_id_contrato === ''
+    ? null
+    : Number(payload.arriendos_id_contrato);
   const titulo = payload.titulo ? String(payload.titulo).trim() : '';
   const equipo = payload.equipo ? String(payload.equipo).trim() : '';
   const cliente = payload.cliente ? String(payload.cliente).trim() : '';
@@ -21,7 +25,23 @@ function validateEventoPayload(payload) {
     return { error: 'maquinaria_id_maquina debe ser numerico si se envia', parsed: null };
   }
 
-  return { error: null, parsed: { titulo, equipo, cliente, ruta, hora_evento, estado_evento, maquinaria_id_maquina } };
+  if (arriendos_id_contrato !== null && !Number.isFinite(arriendos_id_contrato)) {
+    return { error: 'arriendos_id_contrato debe ser numerico si se envia', parsed: null };
+  }
+
+  return {
+    error: null,
+    parsed: {
+      titulo,
+      equipo,
+      cliente,
+      ruta,
+      hora_evento,
+      estado_evento,
+      maquinaria_id_maquina,
+      arriendos_id_contrato
+    }
+  };
 }
 
 async function list(req, res, next) {
@@ -44,14 +64,56 @@ async function create(req, res, next) {
       return res.status(400).json({ message: error });
     }
 
-    if (parsed.maquinaria_id_maquina !== null) {
-      const maquina = await maquinariaRepo.getMaquinariaById(parsed.maquinaria_id_maquina);
+    let resolvedMachineId = parsed.maquinaria_id_maquina;
+    let resolvedEquipo = parsed.equipo;
+    let resolvedCliente = parsed.cliente;
+
+    if (parsed.arriendos_id_contrato !== null) {
+      const contrato = await arriendosRepo.getArriendoById(parsed.arriendos_id_contrato);
+      if (!contrato) {
+        return res.status(404).json({ message: 'El arriendo asociado no existe' });
+      }
+
+      if (String(contrato.estado_contrato || '').toLowerCase() !== 'activo') {
+        return res.status(400).json({ message: 'Solo se pueden asociar eventos a contratos de arriendo activos' });
+      }
+
+      resolvedMachineId = Number(contrato.maquinaria_id_maquina);
+
+      if (parsed.maquinaria_id_maquina !== null && Number(parsed.maquinaria_id_maquina) !== resolvedMachineId) {
+        return res.status(400).json({ message: 'La máquina seleccionada no coincide con la del contrato de arriendo' });
+      }
+
+      const maquinariaContrato = await maquinariaRepo.getMaquinariaById(resolvedMachineId);
+      if (maquinariaContrato) {
+        resolvedEquipo = resolvedEquipo || maquinariaContrato.modelo_equipo || resolvedEquipo;
+      }
+
+      if (contrato.cliente_id !== null) {
+        const clienteContrato = await usuariosRepo.getUsuarioById(contrato.cliente_id);
+        if (clienteContrato) {
+          resolvedCliente = resolvedCliente || clienteContrato.nombre_completo || clienteContrato.email || resolvedCliente;
+        }
+      }
+    }
+
+    if (!resolvedEquipo || !resolvedCliente) {
+      return res.status(400).json({ message: 'equipo y cliente son obligatorios (directos o desde arriendo asociado)' });
+    }
+
+    if (resolvedMachineId !== null) {
+      const maquina = await maquinariaRepo.getMaquinariaById(resolvedMachineId);
       if (!maquina) {
         return res.status(404).json({ message: 'La máquina asociada no existe' });
       }
     }
 
-    const evento = await logisticaRepo.createEvento(parsed);
+    const evento = await logisticaRepo.createEvento({
+      ...parsed,
+      maquinaria_id_maquina: resolvedMachineId,
+      equipo: resolvedEquipo,
+      cliente: resolvedCliente
+    });
     return res.status(201).json(evento);
   } catch (error) {
     return next(error);

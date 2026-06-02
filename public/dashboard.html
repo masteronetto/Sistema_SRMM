@@ -516,6 +516,11 @@
                         <div class="muted">Registra entregas, recepciones o traslados y, si corresponde, vincúlalos a una máquina.</div>
                         <form id="logisticaForm" class="incident-form" style="margin-top:1rem;">
                             <div class="incident-grid">
+                                <label>Arriendo activo
+                                    <select id="logisticaArriendo">
+                                        <option value="">Sin arriendo asociado</option>
+                                    </select>
+                                </label>
                                 <label>Máquina<select id="logisticaMaquina"><option value="">Sin vincular</option></select></label>
                                 <label>Título<input id="logisticaTitulo" type="text" required placeholder="Entrega a obra / recepción / traslado"></label>
                                 <label>Equipo<input id="logisticaEquipo" type="text" required placeholder="Ej. Komatsu PC200"></label>
@@ -540,8 +545,8 @@
                         <div id="logisticaSubtitle" class="muted"></div>
                         <div id="logisticaTable" class="table-wrap">
                             <table>
-                                <thead><tr><th>Máquina</th><th>Título</th><th>Equipo</th><th>Cliente</th><th>Ruta</th><th>Hora</th><th>Estado</th><th>Acciones</th></tr></thead>
-                                <tbody><tr><td colspan="8" class="detail-empty">Cargando eventos…</td></tr></tbody>
+                                <thead><tr><th>Contrato</th><th>Máquina</th><th>Título</th><th>Equipo</th><th>Cliente</th><th>Ruta</th><th>Hora</th><th>Estado</th><th>Acciones</th></tr></thead>
+                                <tbody><tr><td colspan="9" class="detail-empty">Cargando eventos…</td></tr></tbody>
                             </table>
                         </div>
                     </section>
@@ -3789,6 +3794,55 @@ function setLogisticaStatus(message, type = 'info') {
     status.style.color = colors[type] || colors.info;
 }
 
+function renderLogisticaArriendoOptions(arriendos, selectedContratoId = '') {
+    const select = document.getElementById('logisticaArriendo');
+    if (!select) return;
+
+    const options = ['<option value="">Sin arriendo asociado</option>'];
+    (Array.isArray(arriendos) ? arriendos : []).forEach((contrato) => {
+        const contratoId = Number(contrato.id_contrato);
+        if (!Number.isFinite(contratoId)) return;
+
+        const label = `#${contratoId} · ${contrato.modelo_equipo || 'Máquina'} · ${contrato.cliente_nombre || 'Sin cliente'}`;
+        const selected = String(contratoId) === String(selectedContratoId) ? ' selected' : '';
+        options.push(`<option value="${contratoId}"${selected}>${escapeHtml(label)}</option>`);
+    });
+
+    select.innerHTML = options.join('');
+}
+
+function applyLogisticaArriendoSelection(contratoIdRaw) {
+    const contratoId = Number(contratoIdRaw);
+    const maquinaSelect = document.getElementById('logisticaMaquina');
+    const equipoInput = document.getElementById('logisticaEquipo');
+    const clienteInput = document.getElementById('logisticaCliente');
+    const arriendos = Array.isArray(window.cachedLogisticaArriendos) ? window.cachedLogisticaArriendos : [];
+
+    if (!Number.isFinite(contratoId) || contratoId <= 0) {
+        if (maquinaSelect) maquinaSelect.disabled = false;
+        return;
+    }
+
+    const contrato = arriendos.find((item) => Number(item.id_contrato) === contratoId);
+    if (!contrato) {
+        if (maquinaSelect) maquinaSelect.disabled = false;
+        return;
+    }
+
+    if (maquinaSelect && contrato.maquinaria_id_maquina !== undefined && contrato.maquinaria_id_maquina !== null) {
+        maquinaSelect.disabled = true;
+        maquinaSelect.value = String(contrato.maquinaria_id_maquina);
+    }
+
+    if (equipoInput && !equipoInput.value.trim()) {
+        equipoInput.value = contrato.modelo_equipo || '';
+    }
+
+    if (clienteInput && !clienteInput.value.trim()) {
+        clienteInput.value = contrato.cliente_nombre || '';
+    }
+}
+
 function getLogisticaStatusOptions(currentStatus, isAdmin = false) {
     const status = String(currentStatus || 'Pendiente').trim();
     if (isAdmin) {
@@ -3913,7 +3967,7 @@ function renderLogisticaTable(rows, { canDelete = false, canChangeStatus = false
     const container = document.getElementById('logisticaTable');
     if (!container) return;
     const showActions = Boolean(canDelete || canChangeStatus);
-    const emptyColspan = showActions ? 8 : 7;
+    const emptyColspan = showActions ? 9 : 8;
 
     const totalEventos = rows.length;
     const pendientes = rows.filter((item) => String(item.estado_evento || '').toLowerCase() === 'pendiente').length;
@@ -3935,10 +3989,11 @@ function renderLogisticaTable(rows, { canDelete = false, canChangeStatus = false
 
     container.innerHTML = `
         <table>
-            <thead><tr><th>Máquina</th><th>Título</th><th>Equipo</th><th>Cliente</th><th>Ruta</th><th>Hora</th><th>Estado</th>${showActions ? '<th>Acciones</th>' : ''}</tr></thead>
+            <thead><tr><th>Contrato</th><th>Máquina</th><th>Título</th><th>Equipo</th><th>Cliente</th><th>Ruta</th><th>Hora</th><th>Estado</th>${showActions ? '<th>Acciones</th>' : ''}</tr></thead>
             <tbody>
                 ${rows.map((item) => `
                     <tr>
+                        <td>${item.arriendos_id_contrato ? `#${escapeHtml(String(item.arriendos_id_contrato))}` : '—'}</td>
                         <td>${escapeHtml(item.maquinaria_modelo || '—')}</td>
                         <td>${escapeHtml(item.titulo || '—')}</td>
                         <td>${escapeHtml(item.equipo || '—')}</td>
@@ -4222,6 +4277,8 @@ function loadLogisticaDashboard() {
     const isAdmin = userRole === 'Administrador';
     const form = document.getElementById('logisticaForm');
     const formPanel = document.getElementById('logisticaFormPanel');
+    const arriendoSelect = document.getElementById('logisticaArriendo');
+    const maquinaSelect = document.getElementById('logisticaMaquina');
     if (formPanel) {
         formPanel.style.display = isAdmin ? '' : 'none';
     }
@@ -4229,15 +4286,41 @@ function loadLogisticaDashboard() {
     const subtitle = document.getElementById('logisticaSubtitle');
     if (subtitle) {
         subtitle.textContent = isAdmin
-            ? 'Admin puede registrar eventos y asociarlos a una máquina. Operador ve solo eventos de sus contratos activos.'
+            ? 'Admin puede registrar eventos y asociarlos a contratos de arriendo activos o a una máquina.'
             : 'Eventos filtrados por tus máquinas asignadas.';
     }
 
     if (form && isAdmin && !form.dataset.initialized) {
         form.dataset.initialized = '1';
+
+        if (arriendoSelect && !arriendoSelect.dataset.bound) {
+            arriendoSelect.dataset.bound = '1';
+            arriendoSelect.addEventListener('change', () => {
+                applyLogisticaArriendoSelection(arriendoSelect.value);
+            });
+        }
+
+        if (maquinaSelect && !maquinaSelect.dataset.bound) {
+            maquinaSelect.dataset.bound = '1';
+            maquinaSelect.addEventListener('change', () => {
+                if (!arriendoSelect || arriendoSelect.value) return;
+
+                const maquinaId = Number(maquinaSelect.value);
+                if (!Number.isFinite(maquinaId) || maquinaId <= 0) return;
+
+                const machines = Array.isArray(availableMachines) ? availableMachines : [];
+                const maquina = machines.find((item) => Number(item.id_maquina) === maquinaId);
+                const equipoInput = document.getElementById('logisticaEquipo');
+                if (maquina && equipoInput && !equipoInput.value.trim()) {
+                    equipoInput.value = maquina.modelo_equipo || '';
+                }
+            });
+        }
+
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
             const payload = {
+                arriendos_id_contrato: document.getElementById('logisticaArriendo')?.value ? Number(document.getElementById('logisticaArriendo').value) : null,
                 maquinaria_id_maquina: document.getElementById('logisticaMaquina')?.value ? Number(document.getElementById('logisticaMaquina').value) : null,
                 titulo: document.getElementById('logisticaTitulo')?.value.trim(),
                 equipo: document.getElementById('logisticaEquipo')?.value.trim(),
@@ -4270,23 +4353,37 @@ function loadLogisticaDashboard() {
     }
 
     const container = document.getElementById('logisticaTable');
-    const loadingColspan = isAdmin ? 8 : 7;
+    const loadingColspan = isAdmin ? 9 : 8;
     if (container) container.innerHTML = `<table><tbody><tr><td colspan="${loadingColspan}" class="detail-empty">Cargando eventos…</td></tr></tbody></table>`;
 
     const loadRows = async () => {
         if (isAdmin) {
-            if (form && !form.dataset.machineOptionsLoaded) {
-                try {
-                    const machines = await loadAvailableMachines();
-                    const select = document.getElementById('logisticaMaquina');
-                    if (select) {
-                        select.innerHTML = '<option value="">Sin vincular</option>' + (Array.isArray(machines) ? machines.map((machine) => `<option value="${machine.id_maquina}">${escapeHtml(machine.modelo_equipo || 'Máquina')} — ${escapeHtml(machine.estado || '—')}</option>`).join('') : '');
-                    }
-                    form.dataset.machineOptionsLoaded = '1';
-                } catch (error) {
-                    console.error('Error cargando máquinas para logística:', error);
+            try {
+                const [machines, arriendosRes] = await Promise.all([
+                    loadAvailableMachines(),
+                    fetch('/api/arriendos', { headers: getAuthHeaders() })
+                ]);
+
+                const select = document.getElementById('logisticaMaquina');
+                if (select) {
+                    select.innerHTML = '<option value="">Sin vincular</option>' + (Array.isArray(machines)
+                        ? machines.map((machine) => `<option value="${machine.id_maquina}">${escapeHtml(machine.modelo_equipo || 'Máquina')} — ${escapeHtml(machine.estado || '—')}</option>`).join('')
+                        : '');
                 }
+
+                let arriendos = [];
+                if (arriendosRes.ok) {
+                    const body = await arriendosRes.json();
+                    arriendos = Array.isArray(body) ? body : [];
+                }
+
+                window.cachedLogisticaArriendos = arriendos.filter((item) => String(item.estado_contrato || '').toLowerCase() === 'activo');
+                renderLogisticaArriendoOptions(window.cachedLogisticaArriendos, document.getElementById('logisticaArriendo')?.value || '');
+                applyLogisticaArriendoSelection(document.getElementById('logisticaArriendo')?.value || '');
+            } catch (error) {
+                console.error('Error cargando datos para logística:', error);
             }
+
             const res = await fetch('/api/logistica', { headers: getAuthHeaders() });
             if (!res.ok) throw new Error('No se pudieron cargar los eventos');
             return res.json();
@@ -4308,7 +4405,7 @@ function loadLogisticaDashboard() {
             renderLogisticaTable(Array.isArray(res) ? res : [], { canDelete: isAdmin, canChangeStatus: true, operatorContext: !isAdmin });
         })
         .catch((error) => {
-            if (container) container.innerHTML = `<table><tbody><tr><td colspan="8" class="detail-empty">Error: ${escapeHtml(error.message)}</td></tr></tbody></table>`;
+            if (container) container.innerHTML = `<table><tbody><tr><td colspan="${loadingColspan}" class="detail-empty">Error: ${escapeHtml(error.message)}</td></tr></tbody></table>`;
         });
 }
 

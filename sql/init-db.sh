@@ -35,4 +35,12 @@ else
 	echo "  4️⃣  004_incidencias_orden_trabajo.sql no encontrado, se omite"
 fi
 
+# 5. Vinculo logística con contratos de arriendo
+if [ -f /docker-entrypoint-initdb.d/005_logistica_arriendo_link.sql ]; then
+	echo "  5️⃣  Aplicando vínculo logística-arriendo (005_logistica_arriendo_link.sql)..."
+	psql -U postgres -d srmm_db -f /docker-entrypoint-initdb.d/005_logistica_arriendo_link.sql
+else
+	echo "  5️⃣  005_logistica_arriendo_link.sql no encontrado, se omite"
+fi
+
 echo "✅ Base de datos inicializada correctamente"
