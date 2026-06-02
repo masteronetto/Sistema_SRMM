@@ -2841,80 +2841,43 @@ function buildProfessionalReportPdf(doc, rows, context = {}) {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 36;
+    const safeRows = Array.isArray(rows) ? rows : [];
 
-    const columns = [
-        { key: 'fecha_evento', label: 'Fecha', width: 72 },
-        { key: 'tipo_evento', label: 'Tipo', width: 108 },
-        { key: 'maquina_label', label: 'Maquina', width: 108 },
-        { key: 'horometro', label: 'Horometro', width: 68 },
-        { key: 'detalle', label: 'Detalle', width: 208 },
-        { key: 'usuario_responsable', label: 'Usuario', width: 96 },
-        { key: 'fecha_sistema', label: 'Registro', width: 88 }
+    const mainColumns = [
+        { key: 'fecha_evento', label: 'Fecha', width: 86 },
+        { key: 'tipo_evento', label: 'Tipo', width: 120 },
+        { key: 'maquina_label', label: 'Maquina', width: 120 },
+        { key: 'horometro', label: 'Horometro', width: 76 },
+        { key: 'detalle', label: 'Detalle', width: 220 },
+        { key: 'usuario_responsable', label: 'Usuario', width: 108 },
+        { key: 'fecha_sistema', label: 'Registro', width: 102 }
     ];
 
-    const drawHeader = () => {
+    const drawHeader = (title = context.title || 'Reporte historico SRMM') => {
         doc.setFillColor(36, 52, 71);
         doc.rect(0, 0, pageWidth, 92, 'F');
 
         doc.setTextColor(255, 255, 255);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(17);
-        doc.text(context.title || 'Reporte historico SRMM', margin, 34);
+        doc.text(title, margin, 34);
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
         doc.text(`Generado: ${context.generatedAtLabel || new Date().toLocaleString('es-CL')}`, margin, 54);
         doc.text(`Rango: ${context.startDate || 'inicio'} a ${context.endDate || 'hoy'}`, margin, 68);
-        doc.text(`Maquinas: ${context.machineLabel || 'Todas'}`, margin, 82);
+        doc.text(`Maquinas: ${context.machineLabel || 'Todas las maquinas'}`, margin, 82);
 
         if (context.logoDataUrl) {
             try {
-                const logoSize = 38;
-                doc.addImage(context.logoDataUrl, 'PNG', pageWidth - margin - logoSize, 24, logoSize, logoSize);
-            } catch (firstError) {
-                try {
-                    const logoSize = 38;
-                    doc.addImage(context.logoDataUrl, 'JPEG', pageWidth - margin - logoSize, 24, logoSize, logoSize);
-                } catch (_) {
-                    // No bloquear exportación si el logo falla.
-                }
+                const logoSize = 34;
+                doc.addImage(context.logoDataUrl, undefined, pageWidth - margin - logoSize, 26, logoSize, logoSize);
+            } catch (_) {
+                // No bloquear el PDF por error de logo.
             }
         }
 
         doc.setTextColor(33, 37, 41);
-    };
-
-    const drawKpis = (startY) => {
-        const cards = [
-            `Registros: ${rows.length}`,
-            `Horometro total: ${context.totalHoras ?? 0}`,
-            `Mantenciones: ${context.totalMantenciones ?? 0}`,
-            `Fallas: ${context.totalFallas ?? 0}`
-        ];
-
-        const cardWidth = (pageWidth - margin * 2 - 18) / 4;
-        cards.forEach((text, index) => {
-            const x = margin + index * (cardWidth + 6);
-            doc.setFillColor(245, 247, 250);
-            doc.rect(x, startY, cardWidth, 34, 'F');
-            doc.setDrawColor(227, 233, 240);
-            doc.rect(x, startY, cardWidth, 34);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10);
-            doc.text(text, x + 8, startY + 21);
-        });
-    };
-
-    const drawTableHeader = (y) => {
-        doc.setFillColor(230, 235, 241);
-        doc.rect(margin, y, pageWidth - margin * 2, 20, 'F');
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
-        let x = margin + 4;
-        columns.forEach((col) => {
-            doc.text(col.label, x, y + 13);
-            x += col.width;
-        });
     };
 
     const drawFooter = () => {
@@ -2927,145 +2890,130 @@ function buildProfessionalReportPdf(doc, rows, context = {}) {
             doc.setFontSize(9);
             doc.setTextColor(105, 112, 119);
             doc.text('SRMM · Reporte tecnico', margin, pageHeight - 16);
-            doc.text(`Pagina ${p} de ${pageCount}`, pageWidth - margin - 72, pageHeight - 16);
+            doc.text(`Pagina ${p} de ${pageCount}`, pageWidth - margin - 76, pageHeight - 16);
             doc.setTextColor(33, 37, 41);
         }
     };
 
-    drawHeader();
-    drawKpis(104);
+    const drawKpis = () => {
+        const y = 110;
+        const text = [
+            `Registros: ${safeRows.length}`,
+            `Horometro total: ${context.totalHoras ?? 0}`,
+            `Mantenciones: ${context.totalMantenciones ?? 0}`,
+            `Fallas: ${context.totalFallas ?? 0}`
+        ].join('   |   ');
 
-    let y = 152;
-    drawTableHeader(y);
-    y += 24;
-
-    const ensureRoom = (height) => {
-        if (y + height > pageHeight - 44) {
-            doc.addPage();
-            drawHeader();
-            y = 118;
-        }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10.5);
+        doc.text(text, margin, y);
     };
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
+    const drawTableSection = (title, tableRows, columns, startY) => {
+        let y = startY;
+        const rowsSafe = Array.isArray(tableRows) ? tableRows : [];
+        const totalWidth = columns.reduce((acc, col) => acc + col.width, 0);
 
-    rows.forEach((row, index) => {
-        const rowValues = columns.map((col) => normalizeReportExportValue(row?.[col.key]));
-        const wrappedValues = rowValues.map((value, idx) => doc.splitTextToSize(value || '-', Math.max(columns[idx].width - 6, 20)));
-        const rowHeight = Math.max(...wrappedValues.map((lines) => (Array.isArray(lines) ? lines.length : 1))) * 10 + 6;
+        const drawColumnHeader = () => {
+            doc.setFillColor(230, 235, 241);
+            doc.rect(margin, y, totalWidth, 18, 'F');
+            doc.setDrawColor(214, 220, 228);
+            doc.rect(margin, y, totalWidth, 18);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8.8);
+            let x = margin + 4;
+            columns.forEach((col) => {
+                doc.text(col.label, x, y + 12);
+                x += col.width;
+            });
+            y += 20;
+        };
 
-        if (y + rowHeight > pageHeight - 44) {
-            doc.addPage();
-            drawHeader();
-            y = 118;
-            drawTableHeader(y);
-            y += 24;
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8.5);
-        }
+        const ensureRowRoom = (rowHeight) => {
+            if (y + rowHeight > pageHeight - 46) {
+                doc.addPage();
+                drawHeader(title);
+                y = 118;
+                drawColumnHeader();
+            }
+        };
 
-        if (index % 2 === 0) {
-            doc.setFillColor(249, 251, 253);
-            doc.rect(margin, y - 2, pageWidth - margin * 2, rowHeight, 'F');
-        }
-
-        let x = margin + 4;
-        wrappedValues.forEach((lines, idx) => {
-            const valueLines = Array.isArray(lines) ? lines : [String(lines || '-')];
-            doc.text(valueLines, x, y + 8);
-            x += columns[idx].width;
-        });
-
-        y += rowHeight;
-    });
-
-    if (!rows.length) {
-        ensureRoom(20);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        doc.text('Sin registros para los filtros seleccionados.', margin, y + 12);
-        y += 24;
-    }
-
-    const drawAnnexSection = (title, annexRows, annexColumns) => {
-        const rowsSafe = Array.isArray(annexRows) ? annexRows : [];
-
-        doc.addPage();
-        drawHeader();
-        y = 118;
-
-        ensureRoom(34);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
-        doc.text(title, margin, y + 10);
-        y += 18;
+        doc.text(title, margin, y);
+        y += 12;
+
+        drawColumnHeader();
 
         if (!rowsSafe.length) {
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(9);
-            doc.text('Sin registros para este anexo.', margin, y + 10);
-            y += 22;
-            return;
+            doc.setFontSize(10);
+            doc.text('Sin informacion para este bloque.', margin, y + 12);
+            return y + 24;
         }
 
-        ensureRoom(24);
-        doc.setFillColor(230, 235, 241);
-        doc.rect(margin, y, pageWidth - margin * 2, 18, 'F');
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8.5);
-        let hx = margin + 4;
-        annexColumns.forEach((col) => {
-            doc.text(col.label, hx, y + 12);
-            hx += col.width;
-        });
-        y += 20;
-
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8.2);
+        doc.setFontSize(8.5);
 
-        rowsSafe.forEach((row, idx) => {
-            const wrapped = annexColumns.map((col) => doc.splitTextToSize(normalizeReportExportValue(row?.[col.key]) || '-', Math.max(col.width - 6, 18)));
-            const rowHeight = Math.max(...wrapped.map((lines) => (Array.isArray(lines) ? lines.length : 1))) * 9 + 5;
+        rowsSafe.forEach((row, index) => {
+            const wrapped = columns.map((col) => {
+                const value = normalizeReportExportValue(row?.[col.key]) || '-';
+                return doc.splitTextToSize(value, Math.max(col.width - 8, 20));
+            });
 
-            ensureRoom(rowHeight + 8);
+            const lineCount = Math.max(...wrapped.map((lines) => (Array.isArray(lines) ? lines.length : 1)));
+            const rowHeight = lineCount * 9 + 6;
 
-            if (idx % 2 === 0) {
+            ensureRowRoom(rowHeight);
+
+            if (index % 2 === 0) {
                 doc.setFillColor(249, 251, 253);
-                doc.rect(margin, y - 2, pageWidth - margin * 2, rowHeight, 'F');
+                doc.rect(margin, y - 2, totalWidth, rowHeight, 'F');
             }
 
+            doc.setDrawColor(236, 240, 244);
+            doc.rect(margin, y - 2, totalWidth, rowHeight);
+
             let x = margin + 4;
-            wrapped.forEach((lines, colIdx) => {
-                const linesSafe = Array.isArray(lines) ? lines : [String(lines || '-')];
-                doc.text(linesSafe, x, y + 7);
-                x += annexColumns[colIdx].width;
+            wrapped.forEach((lines, idx) => {
+                const valueLines = Array.isArray(lines) ? lines : [String(lines || '-')];
+                doc.text(valueLines, x, y + 7);
+                x += columns[idx].width;
             });
 
             y += rowHeight;
         });
 
-        y += 10;
+        return y + 8;
     };
 
     const fallasRows = Array.isArray(window.reportFallasState?.rows) ? window.reportFallasState.rows : [];
-    drawAnnexSection('Anexo A · Incidencias', fallasRows, [
-        { key: 'periodo', label: 'Periodo', width: 88 },
-        { key: 'total_incidencias', label: 'Total', width: 58 },
-        { key: 'criticidad_alta', label: 'Alta', width: 48 },
-        { key: 'criticidad_media', label: 'Media', width: 56 },
-        { key: 'criticidad_baja', label: 'Baja', width: 48 },
-        { key: 'porcentaje_vinculadas', label: '% Vinc.', width: 62 },
-        { key: 'advertencia', label: 'Advertencia', width: 270 }
-    ]);
+    const mantRows = Array.isArray(window.reportMantenimientosState?.rows) ? window.reportMantenimientosState.rows : [];
 
-    const mantenimientosRows = Array.isArray(window.reportMantenimientosState?.rows) ? window.reportMantenimientosState.rows : [];
-    drawAnnexSection('Anexo B · Mantenimientos', mantenimientosRows, [
-        { key: 'modelo_equipo', label: 'Maquina', width: 180 },
-        { key: 'total_mantenimientos', label: 'Mant.', width: 66 },
-        { key: 'total_servicios_registrados', label: 'Servicios', width: 72 },
-        { key: 'ultima_fecha_servicio', label: 'Ultimo servicio', width: 116 }
-    ]);
+    drawHeader();
+    drawKpis();
+    drawTableSection('Detalle historico de eventos', safeRows, mainColumns, 132);
+
+    doc.addPage();
+    drawHeader('Anexo A · Incidencias');
+    drawTableSection('Resumen de incidencias', fallasRows, [
+        { key: 'periodo', label: 'Periodo', width: 120 },
+        { key: 'total_incidencias', label: 'Total', width: 70 },
+        { key: 'criticidad_alta', label: 'Alta', width: 70 },
+        { key: 'criticidad_media', label: 'Media', width: 70 },
+        { key: 'criticidad_baja', label: 'Baja', width: 70 },
+        { key: 'porcentaje_vinculadas', label: '% Vinc.', width: 90 },
+        { key: 'advertencia', label: 'Advertencia', width: 300 }
+    ], 118);
+
+    doc.addPage();
+    drawHeader('Anexo B · Mantenimientos');
+    drawTableSection('Resumen de mantenimientos', mantRows, [
+        { key: 'modelo_equipo', label: 'Maquina', width: 260 },
+        { key: 'total_mantenimientos', label: 'Mantenciones', width: 110 },
+        { key: 'total_servicios_registrados', label: 'Servicios', width: 110 },
+        { key: 'ultima_fecha_servicio', label: 'Ultimo servicio', width: 200 }
+    ], 118);
 
     drawFooter();
 }
@@ -3080,12 +3028,15 @@ function blobToDataUrl(blob) {
 }
 
 async function loadReportLogoDataUrl() {
+    const origin = window.location.origin || '';
     const candidates = [
         window.SRMM_REPORT_LOGO_URL,
         '/imagenes/logo-srmm.png',
         '/imagenes/logo.png',
         '/img/logo-srmm.png',
         '/img/logo.png',
+        origin ? `${origin}/img/logo-srmm.png` : null,
+        origin ? `${origin}/img/logo.png` : null,
         '/favicon.svg'
     ].filter(Boolean);
 
@@ -3311,14 +3262,25 @@ function initReportesDashboard() {
         }
 
         pdfBtn.addEventListener('click', async () => {
-            const reportState = window.__srmmReporteState || {};
-            const rows = Array.isArray(reportState.rows) ? reportState.rows : [];
+            let reportState = window.__srmmReporteState || {};
+            let rows = Array.isArray(reportState.rows) ? reportState.rows : [];
             const jsPDF = window.jspdf && window.jspdf.jsPDF;
             const selectedIds = getSelectedReportMachineIds(machineSelect);
 
             if (!jsPDF) {
                 setReportStatus('No se pudo cargar jsPDF', 'error');
                 return;
+            }
+
+            if (!rows.length) {
+                try {
+                    const d = getEffectiveReportDates();
+                    await loadSelectedMachinesReport(selectedIds, d.start, d.end);
+                    reportState = window.__srmmReporteState || {};
+                    rows = Array.isArray(reportState.rows) ? reportState.rows : [];
+                } catch (_) {
+                    // Validación final más abajo.
+                }
             }
 
             if (!rows.length) {
@@ -3427,10 +3389,10 @@ function initReportesDashboard() {
 
                 const userName = document.getElementById('sidebarName')?.textContent || '';
                 const logoDataUrl = await loadReportLogoDataUrl();
-                const companyLogo = logoDataUrl || '/img/logo-srmm.png';
+                const companyLogo = logoDataUrl || `${window.location.origin}/img/logo-srmm.png`;
                 const headerHtml = `
                     <div class="print-header">
-                        <img src="${companyLogo}" class="print-logo" alt="Logo">
+                        <img src="${companyLogo}" class="print-logo" alt="Logo" onerror="this.onerror=null;this.src='${window.location.origin}/favicon.svg';">
                         <div>
                             <div class="print-title">Historial de mantenciones</div>
                             <div class="print-meta">Máquina: ${escapeHtml(machineLabel)} · Rango: ${escapeHtml(startDate || '-') } — ${escapeHtml(endDate || '-')}</div>
