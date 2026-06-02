@@ -3409,7 +3409,7 @@ async function loadMaintenanceDashboard() {
     try {
         const headers = getAuthHeaders();
         const [ordersRes, statsRes, urgentRes] = await Promise.all([
-            fetch('/api/mantenimientos/ordenes/atrasadas', { headers }),
+            fetch('/api/mantenimientos/ordenes?page=1&perPage=200', { headers }),
             fetch('/api/reportes/estadisticas', { headers }),
             fetch('/api/maquinaria/urgent-maintenance?umbral=0&limit=5', { headers })
         ]);
@@ -3441,38 +3441,117 @@ async function loadMaintenanceDashboard() {
             renderMaintenancePlanAssignOptions(maintenancePlanSelect.value || '');
         }
 
-        const machinesWithoutPlan = machinesList.filter((item) => !item.planes_mantencion_id_plan).length;
-        const pendientes = machinesWithoutPlan + urgent.length + orders.filter((item) => ['Programada', 'En Progreso'].includes(item.estado_ot)).length;
+        const machinesWithoutPlanItems = machinesList.filter((item) => !item.planes_mantencion_id_plan);
+        const openOrders = orders.filter((item) => ['Programada', 'En Progreso'].includes(item.estado_ot));
+        const machinesWithoutPlan = machinesWithoutPlanItems.length;
+        const pendientes = machinesWithoutPlan + urgent.length + openOrders.length;
         const programados = orders.filter((item) => item.estado_ot === 'Programada').length;
         const historial = stats.reduce((acc, item) => acc + Number(item.total_mantenciones || 0), 0);
 
-        if (pendingEl) pendingEl.textContent = pendientes || '—';
-        if (programadosEl) programadosEl.textContent = programados || '—';
-        if (historialEl) historialEl.textContent = historial || '—';
+        if (pendingEl) pendingEl.textContent = String(pendientes);
+        if (programadosEl) programadosEl.textContent = String(programados);
+        if (historialEl) historialEl.textContent = String(historial);
 
         if (highlights) {
-            const sourceItems = orders.length ? orders : (urgent.length ? urgent : machinesList.filter((item) => !item.planes_mantencion_id_plan));
-            const cards = sourceItems.slice(0, 3).map((item) => {
-                const machineId = item.maquinaria_id_maquina ?? item.id_maquina ?? '';
-                const name = item.modelo_equipo || item.nombre || `Máquina #${machineId || '—'}`;
-                const state = item.estado_ot || item.estado || 'Pendiente';
-                const motive = item.detalle_tecnico || item.motivo_bloqueo || item.tipo_alerta || 'Seguimiento operativo';
-                const subtitle = item.fecha_programada ? `Programada: ${formatCLDate(item.fecha_programada)}` : (item.created_at ? `Actualizado: ${formatCLDate(item.created_at)}` : '');
+            const normalizeDate = (dateRaw) => {
+                if (!dateRaw) return '';
+                return formatCLDate(dateRaw);
+            };
+
+            const getCardVisualState = (stateRaw) => {
+                const state = String(stateRaw || '').toLowerCase();
+
+                if (state.includes('alta') || state.includes('bloque') || state.includes('no operativa') || state.includes('atras')) {
+                    return {
+                        indicatorClass: 'status-locked',
+                        indicatorIcon: '⚠',
+                        pillClass: 'blocked'
+                    };
+                }
+
+                if (state.includes('progreso') || state.includes('media') || state.includes('programada') || state.includes('mantencion')) {
+                    return {
+                        indicatorClass: 'status-warning',
+                        indicatorIcon: '◔',
+                        pillClass: 'maintenance'
+                    };
+                }
+
+                if (state.includes('complet') || state.includes('disponible') || state.includes('baja')) {
+                    return {
+                        indicatorClass: 'status-available',
+                        indicatorIcon: '✓',
+                        pillClass: 'success'
+                    };
+                }
+
+                return {
+                    indicatorClass: 'status-warning',
+                    indicatorIcon: '•',
+                    pillClass: 'maintenance'
+                };
+            };
+
+            const openOrderCards = openOrders
+                .slice()
+                .sort((a, b) => new Date(a.fecha_programada || 0) - new Date(b.fecha_programada || 0))
+                .map((item) => ({
+                    machineId: item.maquinaria_id_maquina,
+                    name: item.modelo_equipo || `Máquina #${item.maquinaria_id_maquina || '—'}`,
+                    state: item.estado_ot || 'Programada',
+                    title: item.tipo_servicio || 'Orden de mantenimiento',
+                    subtitle: `OT #${item.id_orden || '—'} · ${normalizeDate(item.fecha_programada) || 'Sin fecha'}`,
+                    mainLabel: 'Detalle',
+                    mainValue: item.detalle_tecnico || 'Sin detalle técnico',
+                    sideLabel: 'Orden',
+                    sideValue: `#${item.id_orden || '—'}`
+                }));
+
+            const urgentCards = urgent.map((item) => ({
+                machineId: item.id_maquina,
+                name: item.modelo_equipo || `Máquina #${item.id_maquina || '—'}`,
+                state: item.prioridad || item.estado || 'Urgente',
+                title: 'Mantenimiento urgente',
+                subtitle: `Horas restantes: ${Number(item.horas_restantes || 0)}`,
+                mainLabel: 'Uso del plan',
+                mainValue: `${Number(item.porcentaje_uso || 0).toFixed(1)}%`,
+                sideLabel: 'Intervalo',
+                sideValue: `${Number(item.intervalo_horas || 0)} h`
+            }));
+
+            const withoutPlanCards = machinesWithoutPlanItems.map((item) => ({
+                machineId: item.id_maquina,
+                name: item.modelo_equipo || `Máquina #${item.id_maquina || '—'}`,
+                state: item.estado || 'Sin plan',
+                title: 'Sin plan de mantención',
+                subtitle: 'Requiere asignación de plan',
+                mainLabel: 'Estado',
+                mainValue: item.estado || '—',
+                sideLabel: 'Máquina',
+                sideValue: `#${item.id_maquina || '—'}`
+            }));
+
+            const sourceItems = [...openOrderCards, ...urgentCards, ...withoutPlanCards].slice(0, 3);
+            const cards = sourceItems.map((item) => {
+                const machineId = item.machineId ?? '';
+                const name = item.name || `Máquina #${machineId || '—'}`;
+                const state = item.state || 'Pendiente';
+                const visual = getCardVisualState(state);
                 return `
-                    <article class="section-card machine-card" data-maquina-id="${escapeHtml(machineId)}" data-nombre="${escapeHtml(name)}" data-estado="${escapeHtml(state)}" data-motivo="${escapeHtml(motive)}">
+                    <article class="section-card machine-card" data-maquina-id="${escapeHtml(machineId)}" data-nombre="${escapeHtml(name)}" data-estado="${escapeHtml(state)}" data-motivo="${escapeHtml(item.mainValue || item.subtitle || 'Seguimiento operativo')}">
                         <div class="machine-head">
                             <div class="machine-head-info">
-                                <span class="status-indicator status-warning" title="${escapeHtml(state)}">⚠</span>
+                                <span class="status-indicator ${escapeHtml(visual.indicatorClass)}" title="${escapeHtml(state)}">${escapeHtml(visual.indicatorIcon)}</span>
                                 <div>
-                                    <div class="machine-name">${escapeHtml(name)} — ${escapeHtml(item.tipo_servicio || item.tipo_alerta || 'Seguimiento')}</div>
-                                    <div class="machine-sub">${escapeHtml(subtitle || 'Datos reales desde la base de datos')}</div>
+                                    <div class="machine-name">${escapeHtml(name)} — ${escapeHtml(item.title || 'Seguimiento')}</div>
+                                    <div class="machine-sub">${escapeHtml(item.subtitle || 'Datos reales desde la base de datos')}</div>
                                 </div>
                             </div>
-                            <span class="pill maintenance">${escapeHtml(state)}</span>
+                            <span class="pill ${escapeHtml(visual.pillClass)}">${escapeHtml(state)}</span>
                         </div>
                         <div class="machine-body">
-                            <div><strong>Detalle</strong><span>${escapeHtml(motive)}</span></div>
-                            <div><strong>ID</strong><span>${escapeHtml(String(machineId || '—'))}</span></div>
+                            <div><strong>${escapeHtml(item.mainLabel || 'Detalle')}</strong><span>${escapeHtml(item.mainValue || '—')}</span></div>
+                            <div><strong>${escapeHtml(item.sideLabel || 'ID')}</strong><span>${escapeHtml(item.sideValue || String(machineId || '—'))}</span></div>
                         </div>
                     </article>
                 `;
@@ -4398,12 +4477,14 @@ function initMachineCards() {
 async function loadMachineIncidencias(rows, filter) {
     if (!currentMachineId) return;
     rows.innerHTML = '<tr><td colspan="6" class="detail-empty">Cargando incidencias…</td></tr>';
-    const solo = filter.checked ? 'true' : 'false';
+    const solo = filter && filter.checked ? 'true' : 'false';
     try {
-        const res = await fetch(`/api/maquinaria/${currentMachineId}/incidencias?solo_no_resueltas=${solo}`);
+        const res = await fetch(`/api/maquinaria/${currentMachineId}/incidencias?solo_no_resueltas=${solo}`, {
+            headers: getAuthHeaders()
+        });
         if (!res.ok) throw new Error('No se pudo cargar el listado.');
         const data = await res.json();
-        renderIncidencias(data, rows);
+        renderIncidencias(Array.isArray(data) ? data : [], rows);
     } catch (err) {
         rows.innerHTML = `<tr><td colspan="6" class="detail-empty">Error: ${err.message}</td></tr>`;
     }
@@ -4417,16 +4498,16 @@ function renderIncidencias(items, rows) {
     rows.innerHTML = items.map(i => {
         const c = i.criticidad || 'Media';
         const ordenId = i.orden_trabajo_id || i.mantenimiento_id || null;
-        const vinc = (i.vinculada_mantenimiento && ordenId)
+        const vinc = ordenId
             ? `<a href="#" onclick="openMaintenanceById(${ordenId});return false;">#${ordenId}</a>`
             : (i.vinculada_mantenimiento ? 'Sí' : 'No');
         return `<tr>
             <td>${new Date(i.fecha).toLocaleDateString('es-CL')}</td>
-            <td>${i.descripcion}</td>
+            <td>${escapeHtml(i.descripcion || '—')}</td>
             <td><span class="pill tag ${c.toLowerCase()}">${c}</span></td>
-            <td>${i.operador_nombre || `#${i.operador_id}`}</td>
+            <td>${escapeHtml(i.operador_nombre || `#${i.operador_id || '—'}`)}</td>
             <td>${vinc}</td>
-            <td>${i.estado || 'Pendiente'}</td>
+            <td>${escapeHtml(i.estado || 'Pendiente')}</td>
         </tr>`;
     }).join('');
 }
