@@ -17,8 +17,9 @@ function validateEventoPayload(payload) {
   const hora_evento = payload.hora_evento ? String(payload.hora_evento).trim() : '';
   const estado_evento = payload.estado_evento ? String(payload.estado_evento).trim() : 'Pendiente';
 
-  if (!titulo || !equipo || !cliente || !ruta || !hora_evento) {
-    return { error: 'Campos obligatorios: titulo, equipo, cliente, ruta, hora_evento', parsed: null };
+  const requiereClienteManual = arriendos_id_contrato === null;
+  if (!titulo || !equipo || !ruta || !hora_evento || (requiereClienteManual && !cliente)) {
+    return { error: 'Campos obligatorios: titulo, equipo, ruta, hora_evento y cliente (si no asocias arriendo)', parsed: null };
   }
 
   if (maquinaria_id_maquina !== null && !Number.isFinite(maquinaria_id_maquina)) {

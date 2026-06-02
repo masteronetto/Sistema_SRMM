@@ -3820,12 +3820,14 @@ function applyLogisticaArriendoSelection(contratoIdRaw) {
 
     if (!Number.isFinite(contratoId) || contratoId <= 0) {
         if (maquinaSelect) maquinaSelect.disabled = false;
+        if (clienteInput) clienteInput.readOnly = false;
         return;
     }
 
     const contrato = arriendos.find((item) => Number(item.id_contrato) === contratoId);
     if (!contrato) {
         if (maquinaSelect) maquinaSelect.disabled = false;
+        if (clienteInput) clienteInput.readOnly = false;
         return;
     }
 
@@ -3834,12 +3836,13 @@ function applyLogisticaArriendoSelection(contratoIdRaw) {
         maquinaSelect.value = String(contrato.maquinaria_id_maquina);
     }
 
-    if (equipoInput && !equipoInput.value.trim()) {
+    if (equipoInput) {
         equipoInput.value = contrato.modelo_equipo || '';
     }
 
-    if (clienteInput && !clienteInput.value.trim()) {
+    if (clienteInput) {
         clienteInput.value = contrato.cliente_nombre || '';
+        clienteInput.readOnly = true;
     }
 }
 
@@ -4330,8 +4333,9 @@ function loadLogisticaDashboard() {
                 estado_evento: document.getElementById('logisticaEstado')?.value || 'Pendiente'
             };
 
-            if (!payload.titulo || !payload.equipo || !payload.cliente || !payload.ruta || !payload.hora_evento) {
-                setLogisticaStatus('Completa todos los campos.', 'warning');
+            const needsManualClient = !payload.arriendos_id_contrato;
+            if (!payload.titulo || !payload.equipo || !payload.ruta || !payload.hora_evento || (needsManualClient && !payload.cliente)) {
+                setLogisticaStatus('Completa los campos obligatorios. Si no hay arriendo asociado, cliente es obligatorio.', 'warning');
                 return;
             }
 
