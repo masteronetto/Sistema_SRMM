@@ -889,9 +889,13 @@
         </div>
         <div id="logisticaStatusModalBody" class="modal-body">
             <div id="logisticaStatusModalCurrent" class="modal-status"></div>
-            <div id="logisticaStatusModalOptions" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.65rem;margin-top:0.9rem;"></div>
+            <div style="display:grid;gap:0.45rem;margin-top:0.9rem;">
+                <span class="small muted" style="font-weight:700;">Nuevo estado</span>
+                <select id="logisticaStatusModalSelect" class="p-3 border border-slate-300 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+            </div>
         </div>
         <div class="modal-actions">
+            <button id="logisticaStatusModalApply" class="modal-button primary" type="button">Actualizar</button>
             <button id="logisticaStatusModalClose" class="modal-button secondary" type="button">Cancelar</button>
         </div>
     </div>
@@ -4281,10 +4285,11 @@ function promptLogisticaUpdateStatus(idEvento, currentStatus) {
     const modal = document.getElementById('logisticaStatusModal');
     const titleEl = document.getElementById('logisticaStatusModalTitle');
     const currentEl = document.getElementById('logisticaStatusModalCurrent');
-    const optionsEl = document.getElementById('logisticaStatusModalOptions');
+    const statusSelect = document.getElementById('logisticaStatusModalSelect');
+    const applyBtn = document.getElementById('logisticaStatusModalApply');
     const closeBtn = document.getElementById('logisticaStatusModalClose');
 
-    if (!modal || !titleEl || !currentEl || !optionsEl || !closeBtn) {
+    if (!modal || !titleEl || !currentEl || !statusSelect || !applyBtn || !closeBtn) {
         setLogisticaStatus('No se pudo abrir el selector de estados.', 'error');
         return;
     }
@@ -4292,18 +4297,15 @@ function promptLogisticaUpdateStatus(idEvento, currentStatus) {
     titleEl.textContent = 'Cambiar estado';
     currentEl.textContent = `Estado actual: ${currentStatus || 'Pendiente'}`;
 
-    optionsEl.innerHTML = allowedStatuses.map((status) => `
-        <button type="button" class="modal-button ${String(status) === String(currentStatus) ? 'secondary' : 'primary'}" data-logistica-next-status="${escapeHtml(status)}">
-            ${escapeHtml(status)}
-        </button>
-    `).join('');
+    statusSelect.innerHTML = allowedStatuses
+        .map((status) => `<option value="${escapeHtml(status)}">${escapeHtml(status)}</option>`)
+        .join('');
+    statusSelect.value = allowedStatuses[0] || '';
 
-    optionsEl.querySelectorAll('button[data-logistica-next-status]').forEach((button) => {
-        button.addEventListener('click', async () => {
-            const newStatus = button.dataset.logisticaNextStatus;
-            await applyLogisticaStatusUpdate(idEvento, newStatus, currentStatus);
-        });
-    });
+    applyBtn.onclick = async () => {
+        const nextStatus = statusSelect.value;
+        await applyLogisticaStatusUpdate(idEvento, nextStatus, currentStatus);
+    };
 
     closeBtn.onclick = closeLogisticaStatusModal;
     modal.querySelector('.modal-backdrop').onclick = closeLogisticaStatusModal;
