@@ -585,7 +585,7 @@
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
                             <div>
                                 <div class="section-title">Visualización de reportes históricos</div>
-                                <div class="muted">La barra superior define el rango global. Aquí eliges máquinas y exportas la vista activa.</div>
+                                <div class="muted">La barra superior define el rango global. Aquí eliges máquinas y descargas la vista activa en PDF.</div>
                             </div>
                             <div id="reportesStatus" class="role-badge" style="background:rgba(52,152,219,0.14);color:#2980b9;">Listo</div>
                         </div>
@@ -601,8 +601,6 @@
                             </label>
                             <div class="report-actions report-machine-actions">
                                 <button id="reportRefreshBtn" class="btn">Actualizar reporte</button>
-                                <button id="reportExportBtn" class="btn btn-secondary">Generar CSV</button>
-                                <button id="reportExportIngresosBtn" class="btn btn-secondary admin-only">CSV ingresos</button>
                                 <button id="reportPdfBtn" class="btn btn-secondary">Generar PDF</button>
                                 <button id="reportPrintBtn" class="btn btn-secondary">Imprimir</button>
                             </div>
@@ -2806,37 +2804,6 @@ function getReportExportColumns(rows) {
     return [...orderedPreferred, ...extras];
 }
 
-function buildProfessionalReportCsv(rows, context = {}) {
-    const exportRows = Array.isArray(rows) ? rows : [];
-    const columns = getReportExportColumns(exportRows);
-    const generatedAt = new Date().toISOString();
-
-    const metaLines = [
-        ['reporte', context.title || 'Reporte historico SRMM'],
-        ['generado_en', generatedAt],
-        ['rango_inicio', context.startDate || 'inicio'],
-        ['rango_fin', context.endDate || 'hoy'],
-        ['seleccion_maquinas', context.machineLabel || 'Todas'],
-        ['total_registros', String(exportRows.length)],
-        ['total_horometro', String(context.totalHoras ?? '')],
-        ['total_mantenciones', String(context.totalMantenciones ?? '')],
-        ['total_fallas', String(context.totalFallas ?? '')],
-        ['detalle', context.summary || '']
-    ];
-
-    const lines = [];
-    lines.push('"meta_key","meta_value"');
-    metaLines.forEach(([k, v]) => lines.push(`${csvEscape(k)},${csvEscape(v)}`));
-    lines.push('');
-
-    lines.push(columns.map(csvEscape).join(','));
-    exportRows.forEach((row) => {
-        lines.push(columns.map((col) => csvEscape(row?.[col])).join(','));
-    });
-
-    return lines.join('\n');
-}
-
 function buildProfessionalReportPdf(doc, rows, context = {}) {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -2897,12 +2864,18 @@ function buildProfessionalReportPdf(doc, rows, context = {}) {
 
     const drawKpis = () => {
         const y = 110;
-        const text = [
+        const kpis = [
             `Registros: ${safeRows.length}`,
             `Horometro total: ${context.totalHoras ?? 0}`,
             `Mantenciones: ${context.totalMantenciones ?? 0}`,
             `Fallas: ${context.totalFallas ?? 0}`
-        ].join('   |   ');
+        ];
+
+        if (context.showIngresos) {
+            kpis.push(`Ingresos: ${formatCurrency(context.totalIngresos ?? 0)}`);
+        }
+
+        const text = kpis.join('   |   ');
 
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10.5);
@@ -2987,7 +2960,88 @@ function buildProfessionalReportPdf(doc, rows, context = {}) {
         return y + 8;
     };
 
-    const fallasRows = Array.isArray(window.reportFallasState?.rows) ? window.reportFallasState.rows : [];
+    const buildFallasAnnexRows = (sourceRows) => {
+        const input = Array.isArray(sourceRows) ? sourceRows : [];
+        if (!input.length) return [];
+
+        // Si ya viene en formato de anexo, reutilizar directo.
+        const hasAnnexShape = input.some((row) => row && Object.prototype.hasOwnProperty.call(row, 'total_incidencias'));
+        if (hasAnnexShape) {
+            return input.map((row) => ({
+                periodo: normalizeReportExportValue(row?.periodo || row?.periodo_bucket || '-'),
+                total_incidencias: Number(row?.total_incidencias || 0),
+                criticidad_alta: Number(row?.criticidad_alta || 0),
+                criticidad_media: Number(row?.criticidad_media || 0),
+                criticidad_baja: Number(row?.criticidad_baja || 0),
+                porcentaje_vinculadas: Number(row?.porcentaje_vinculadas || 0),
+                advertencia: normalizeReportExportValue(row?.advertencia || '') || 'Sin advertencias'
+            }));
+        }
+
+        // Formato real de /api/reportes/fallas: agrupados por periodo/criticidad/máquina.
+        const byPeriodo = new Map();
+
+        input.forEach((row) => {
+            const periodo = normalizeReportExportValue(row?.periodo || row?.periodo_bucket || '-');
+            const criticidadRaw = normalizeReportExportValue(row?.criticidad || '').toLowerCase();
+            const total = Number(row?.total_fallas || row?.total_incidencias || 0);
+            const vinculadas = Number(row?.total_vinculadas || 0);
+
+            if (!byPeriodo.has(periodo)) {
+                byPeriodo.set(periodo, {
+                    periodo,
+                    total_incidencias: 0,
+                    criticidad_alta: 0,
+                    criticidad_media: 0,
+                    criticidad_baja: 0,
+                    total_vinculadas: 0,
+                    advertencia: ''
+                });
+            }
+
+            const bucket = byPeriodo.get(periodo);
+            bucket.total_incidencias += total;
+            bucket.total_vinculadas += vinculadas;
+
+            if (criticidadRaw === 'alta') bucket.criticidad_alta += total;
+            else if (criticidadRaw === 'media') bucket.criticidad_media += total;
+            else if (criticidadRaw === 'baja') bucket.criticidad_baja += total;
+
+            const warningText = normalizeReportExportValue(row?.advertencia || '').trim();
+            if (warningText) {
+                bucket.advertencia = bucket.advertencia
+                    ? `${bucket.advertencia} | ${warningText}`
+                    : warningText;
+            }
+        });
+
+        return Array.from(byPeriodo.values())
+            .map((item) => {
+                const porcentaje = item.total_incidencias > 0
+                    ? Math.round((item.total_vinculadas / item.total_incidencias) * 100)
+                    : 0;
+                let advertencia = item.advertencia || '';
+                if (!advertencia) {
+                    if (porcentaje >= 50) advertencia = 'Alta recurrencia vinculada a mantenimiento';
+                    else if (porcentaje >= 20) advertencia = 'Revisar plan preventivo';
+                    else advertencia = 'Sin advertencias';
+                }
+
+                return {
+                    periodo: item.periodo,
+                    total_incidencias: item.total_incidencias,
+                    criticidad_alta: item.criticidad_alta,
+                    criticidad_media: item.criticidad_media,
+                    criticidad_baja: item.criticidad_baja,
+                    porcentaje_vinculadas: porcentaje,
+                    advertencia
+                };
+            })
+            .sort((a, b) => String(b.periodo).localeCompare(String(a.periodo), 'es'));
+    };
+
+    const fallasRowsRaw = Array.isArray(window.reportFallasState?.rows) ? window.reportFallasState.rows : [];
+    const fallasRows = buildFallasAnnexRows(fallasRowsRaw);
     const mantRows = Array.isArray(window.reportMantenimientosState?.rows) ? window.reportMantenimientosState.rows : [];
 
     drawHeader();
@@ -3014,6 +3068,24 @@ function buildProfessionalReportPdf(doc, rows, context = {}) {
         { key: 'total_servicios_registrados', label: 'Servicios', width: 110 },
         { key: 'ultima_fecha_servicio', label: 'Ultimo servicio', width: 200 }
     ], 118);
+
+    if (context.showIngresos) {
+        const ingresosRows = Array.isArray(context.ingresosRows) ? context.ingresosRows : [];
+        doc.addPage();
+        drawHeader('Anexo C · Ingresos por arriendo');
+        drawTableSection('Detalle de ingresos por maquina', ingresosRows, [
+            { key: 'id_maquina', label: 'ID', width: 70 },
+            { key: 'modelo_equipo', label: 'Maquina', width: 230 },
+            { key: 'contratos', label: 'Contratos', width: 100 },
+            { key: 'dias_arrendados', label: 'Dias', width: 90 },
+            { key: 'tarifa_usada_fmt', label: 'Tarifa diaria', width: 130 },
+            { key: 'ingresos_fmt', label: 'Ingresos', width: 170 }
+        ], 118);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text(`Total ingresos del periodo: ${formatCurrency(context.totalIngresos ?? 0)}`, margin, pageHeight - 48);
+    }
 
     drawFooter();
 }
@@ -3076,13 +3148,11 @@ function initReportesDashboard() {
     const fallasCriticidadSelect = document.getElementById('reportFallasCriticidad');
     const fallasWarningToggle = document.getElementById('reportFallasShowWarning');
     const refreshBtn = document.getElementById('reportRefreshBtn');
-    const exportBtn = document.getElementById('reportExportBtn');
-    const exportIngresosBtn = document.getElementById('reportExportIngresosBtn');
     const pdfBtn = document.getElementById('reportPdfBtn');
     const fallasRefreshBtn = document.getElementById('reportFallasRefreshBtn');
     const fallasPrintBtn = document.getElementById('reportFallasPrintBtn');
 
-    if (!machineSelect || !refreshBtn || !exportBtn || !pdfBtn) return;
+    if (!machineSelect || !refreshBtn || !pdfBtn) return;
 
     const beginReportInteraction = () => ++reportInteractionRequestId;
     const isStaleInteraction = (interactionId) => interactionId !== reportInteractionRequestId;
@@ -3186,81 +3256,6 @@ function initReportesDashboard() {
             }
         });
 
-        exportBtn.addEventListener('click', () => {
-            const reportState = window.__srmmReporteState || {};
-            const rows = Array.isArray(reportState.rows) ? reportState.rows : [];
-            const selectedIds = getSelectedReportMachineIds(machineSelect);
-
-            if (!rows.length) {
-                setReportStatus('No hay datos para exportar', 'error');
-                return;
-            }
-
-            const machineLabel = document.getElementById('reportSelectedMachineLabel')?.textContent || (selectedIds[0] || 'Todas');
-            const d = getEffectiveReportDates();
-            const csvContent = buildProfessionalReportCsv(rows, {
-                title: 'Reporte historico SRMM',
-                startDate: d.start || 'inicio',
-                endDate: d.end || 'hoy',
-                machineLabel,
-                summary: reportState.detalle || '',
-                totalHoras: reportState.totalHoras || 0,
-                totalMantenciones: reportState.totalMantenciones || 0,
-                totalFallas: reportState.totalFallas || 0
-            });
-
-            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            const today = new Date().toISOString().slice(0, 10);
-            link.download = `reporte_historico_${selectedIds[0] || 'todas'}_${today}.csv`;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            URL.revokeObjectURL(url);
-            setReportStatus('CSV completo generado correctamente', 'success');
-        });
-
-        if (exportIngresosBtn) {
-            exportIngresosBtn.addEventListener('click', async () => {
-                try {
-                    // Solo administradores pueden descargar reportes de ingresos
-                    const role = typeof userRole !== 'undefined' ? userRole : '';
-                    if (role !== 'Administrador') {
-                        setReportStatus('No tienes permiso para descargar reportes de ingresos', 'error');
-                        return;
-                    }
-
-                    const headers = getAuthHeaders();
-                    const q = new URLSearchParams();
-                    const d = getEffectiveReportDates();
-                    if (d.start) q.append('fecha_inicio', d.start);
-                    if (d.end) q.append('fecha_fin', d.end);
-                    const url = `/api/reportes/ingresos/csv?${q.toString()}`;
-                    const res = await fetch(url, { headers });
-                    if (!res.ok) {
-                        setReportStatus('Error descargando CSV de ingresos', 'error');
-                        return;
-                    }
-                    const blob = await res.blob();
-                    const disposition = res.headers.get('content-disposition') || '';
-                    const filenameMatch = disposition.match(/filename="?(.*)"?/);
-                    const filename = filenameMatch ? filenameMatch[1] : `ingresos_${d.start || 'from'}_${d.end || 'to'}.csv`;
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = filename;
-                    document.body.appendChild(link);
-                    link.click();
-                    link.remove();
-                    setReportStatus('CSV de ingresos descargado', 'success');
-                } catch (err) {
-                    console.error(err);
-                    setReportStatus('Error descargando CSV de ingresos', 'error');
-                }
-            });
-        }
-
         pdfBtn.addEventListener('click', async () => {
             let reportState = window.__srmmReporteState || {};
             let rows = Array.isArray(reportState.rows) ? reportState.rows : [];
@@ -3293,6 +3288,42 @@ function initReportesDashboard() {
             try { await loadReportFallasDashboard(); } catch (_) {}
             try { await loadReportMantenimientosDashboard(); } catch (_) {}
 
+            const roleName = getCurrentRole();
+            const isAdmin = roleName === 'Administrador';
+            let ingresosRows = [];
+            let totalIngresos = 0;
+
+            if (isAdmin) {
+                try {
+                    const headers = getAuthHeaders();
+                    const q = new URLSearchParams();
+                    const d = getEffectiveReportDates();
+                    if (d.start) q.append('fecha_inicio', d.start);
+                    if (d.end) q.append('fecha_fin', d.end);
+                    const ingresosRes = await fetch(`/api/reportes/ingresos?${q.toString()}`, { headers });
+                    if (ingresosRes.ok) {
+                        const ingresosPayload = await ingresosRes.json();
+                        const rawRows = Array.isArray(ingresosPayload?.by_maquina) ? ingresosPayload.by_maquina : [];
+                        const selectedSet = new Set((selectedIds || []).map((id) => String(id)));
+                        const filteredRows = selectedSet.size
+                            ? rawRows.filter((row) => selectedSet.has(String(row?.id_maquina)))
+                            : rawRows;
+                        ingresosRows = filteredRows.map((row) => ({
+                            id_maquina: row?.id_maquina ?? '-',
+                            modelo_equipo: row?.modelo_equipo || '—',
+                            contratos: Number(row?.contratos || 0),
+                            dias_arrendados: Number(row?.dias_arrendados || 0),
+                            tarifa_usada_fmt: formatCurrency(row?.tarifa_usada || 0),
+                            ingresos_fmt: formatCurrency(row?.ingresos || 0),
+                            ingresos_num: Number(row?.ingresos || 0)
+                        }));
+                        totalIngresos = ingresosRows.reduce((acc, item) => acc + (Number(item.ingresos_num) || 0), 0);
+                    }
+                } catch (ingresosError) {
+                    console.error('Error cargando ingresos para PDF:', ingresosError);
+                }
+            }
+
             const logoDataUrl = await loadReportLogoDataUrl();
 
             const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
@@ -3308,7 +3339,10 @@ function initReportesDashboard() {
                     logoDataUrl,
                     totalHoras: reportState.totalHoras || 0,
                     totalMantenciones: reportState.totalMantenciones || 0,
-                    totalFallas: reportState.totalFallas || 0
+                    totalFallas: reportState.totalFallas || 0,
+                    showIngresos: isAdmin,
+                    ingresosRows,
+                    totalIngresos
                 });
 
                 const today = new Date().toISOString().slice(0, 10);
