@@ -1364,6 +1364,15 @@ window.reportFallasState = {
     resumen: null,
     filtros: null
 };
+window.reportMantenimientosState = {
+    rows: [],
+    resumen: {
+        totalMaquinas: 0,
+        totalMantenciones: 0,
+        totalServicios: 0,
+        ultimaFechaServicio: null
+    }
+};
 
 function getCurrentRole() {
     return String((typeof userRole !== 'undefined' && userRole) || currentUser?.rol_acceso || '').trim();
@@ -2480,6 +2489,16 @@ async function loadReportMantenimientosDashboard() {
                 <tbody>${rowsHtml}</tbody>
             </table>` : '<p class="muted">No hay mantenimientos registrados.</p>';
 
+        window.reportMantenimientosState = {
+            rows: reportRows,
+            resumen: {
+                totalMaquinas: totalMachines,
+                totalMantenciones: totalMaintenances,
+                totalServicios: totalServices,
+                ultimaFechaServicio: lastServiceDate ? lastServiceDate.toISOString() : null
+            }
+        };
+
         if (statusBadge) {
             statusBadge.textContent = 'Actualizado';
             statusBadge.style.background = 'rgba(39,174,96,0.14)';
@@ -2489,6 +2508,15 @@ async function loadReportMantenimientosDashboard() {
         setReportStatus('Reporte de mantenimientos actualizado', 'success');
     } catch (error) {
         console.error('Error cargando reporte de mantenimientos:', error);
+        window.reportMantenimientosState = {
+            rows: [],
+            resumen: {
+                totalMaquinas: 0,
+                totalMantenciones: 0,
+                totalServicios: 0,
+                ultimaFechaServicio: null
+            }
+        };
         if (statusBadge) {
             statusBadge.textContent = 'Error';
             statusBadge.style.background = 'rgba(231,76,60,0.14)';
@@ -2745,6 +2773,323 @@ function getEffectiveReportDates() {
     return { start, end, useCustom: false };
 }
 
+function normalizeReportExportValue(value) {
+    if (value === null || value === undefined) return '';
+    if (value instanceof Date) return value.toISOString();
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+}
+
+function csvEscape(value) {
+    return `"${normalizeReportExportValue(value).replace(/"/g, '""')}"`;
+}
+
+function getReportExportColumns(rows) {
+    const preferred = [
+        'maquinaria_id_maquina',
+        'maquina_label',
+        'fecha_evento',
+        'tipo_evento',
+        'horometro',
+        'detalle',
+        'usuario_responsable',
+        'fecha_sistema'
+    ];
+
+    const keys = new Set();
+    (Array.isArray(rows) ? rows : []).forEach((row) => {
+        Object.keys(row || {}).forEach((key) => keys.add(key));
+    });
+
+    const orderedPreferred = preferred.filter((key) => keys.has(key));
+    const extras = Array.from(keys).filter((key) => !orderedPreferred.includes(key)).sort((a, b) => a.localeCompare(b, 'es'));
+    return [...orderedPreferred, ...extras];
+}
+
+function buildProfessionalReportCsv(rows, context = {}) {
+    const exportRows = Array.isArray(rows) ? rows : [];
+    const columns = getReportExportColumns(exportRows);
+    const generatedAt = new Date().toISOString();
+
+    const metaLines = [
+        ['reporte', context.title || 'Reporte historico SRMM'],
+        ['generado_en', generatedAt],
+        ['rango_inicio', context.startDate || 'inicio'],
+        ['rango_fin', context.endDate || 'hoy'],
+        ['seleccion_maquinas', context.machineLabel || 'Todas'],
+        ['total_registros', String(exportRows.length)],
+        ['total_horometro', String(context.totalHoras ?? '')],
+        ['total_mantenciones', String(context.totalMantenciones ?? '')],
+        ['total_fallas', String(context.totalFallas ?? '')],
+        ['detalle', context.summary || '']
+    ];
+
+    const lines = [];
+    lines.push('"meta_key","meta_value"');
+    metaLines.forEach(([k, v]) => lines.push(`${csvEscape(k)},${csvEscape(v)}`));
+    lines.push('');
+
+    lines.push(columns.map(csvEscape).join(','));
+    exportRows.forEach((row) => {
+        lines.push(columns.map((col) => csvEscape(row?.[col])).join(','));
+    });
+
+    return lines.join('\n');
+}
+
+function buildProfessionalReportPdf(doc, rows, context = {}) {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 36;
+
+    const columns = [
+        { key: 'fecha_evento', label: 'Fecha', width: 72 },
+        { key: 'tipo_evento', label: 'Tipo', width: 108 },
+        { key: 'maquina_label', label: 'Maquina', width: 108 },
+        { key: 'horometro', label: 'Horometro', width: 68 },
+        { key: 'detalle', label: 'Detalle', width: 208 },
+        { key: 'usuario_responsable', label: 'Usuario', width: 96 },
+        { key: 'fecha_sistema', label: 'Registro', width: 88 }
+    ];
+
+    const drawHeader = () => {
+        doc.setFillColor(36, 52, 71);
+        doc.rect(0, 0, pageWidth, 92, 'F');
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(17);
+        doc.text(context.title || 'Reporte historico SRMM', margin, 34);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(`Generado: ${context.generatedAtLabel || new Date().toLocaleString('es-CL')}`, margin, 54);
+        doc.text(`Rango: ${context.startDate || 'inicio'} a ${context.endDate || 'hoy'}`, margin, 68);
+        doc.text(`Maquinas: ${context.machineLabel || 'Todas'}`, margin, 82);
+
+        if (context.logoDataUrl) {
+            try {
+                const logoSize = 38;
+                doc.addImage(context.logoDataUrl, 'PNG', pageWidth - margin - logoSize, 24, logoSize, logoSize);
+            } catch (firstError) {
+                try {
+                    const logoSize = 38;
+                    doc.addImage(context.logoDataUrl, 'JPEG', pageWidth - margin - logoSize, 24, logoSize, logoSize);
+                } catch (_) {
+                    // No bloquear exportación si el logo falla.
+                }
+            }
+        }
+
+        doc.setTextColor(33, 37, 41);
+    };
+
+    const drawKpis = (startY) => {
+        const cards = [
+            `Registros: ${rows.length}`,
+            `Horometro total: ${context.totalHoras ?? 0}`,
+            `Mantenciones: ${context.totalMantenciones ?? 0}`,
+            `Fallas: ${context.totalFallas ?? 0}`
+        ];
+
+        const cardWidth = (pageWidth - margin * 2 - 18) / 4;
+        cards.forEach((text, index) => {
+            const x = margin + index * (cardWidth + 6);
+            doc.setFillColor(245, 247, 250);
+            doc.roundedRect(x, startY, cardWidth, 34, 4, 4, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.text(text, x + 8, startY + 21);
+        });
+    };
+
+    const drawTableHeader = (y) => {
+        doc.setFillColor(230, 235, 241);
+        doc.rect(margin, y, pageWidth - margin * 2, 20, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        let x = margin + 4;
+        columns.forEach((col) => {
+            doc.text(col.label, x, y + 13);
+            x += col.width;
+        });
+    };
+
+    const drawFooter = () => {
+        const pageCount = doc.getNumberOfPages();
+        for (let p = 1; p <= pageCount; p += 1) {
+            doc.setPage(p);
+            doc.setDrawColor(225, 229, 234);
+            doc.line(margin, pageHeight - 30, pageWidth - margin, pageHeight - 30);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(105, 112, 119);
+            doc.text('SRMM · Reporte tecnico', margin, pageHeight - 16);
+            doc.text(`Pagina ${p} de ${pageCount}`, pageWidth - margin - 72, pageHeight - 16);
+            doc.setTextColor(33, 37, 41);
+        }
+    };
+
+    drawHeader();
+    drawKpis(104);
+
+    let y = 152;
+    drawTableHeader(y);
+    y += 24;
+
+    const ensureRoom = (height) => {
+        if (y + height > pageHeight - 44) {
+            doc.addPage();
+            drawHeader();
+            y = 118;
+        }
+    };
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+
+    rows.forEach((row, index) => {
+        const rowValues = columns.map((col) => normalizeReportExportValue(row?.[col.key]));
+        const wrappedValues = rowValues.map((value, idx) => doc.splitTextToSize(value || '-', Math.max(columns[idx].width - 6, 20)));
+        const rowHeight = Math.max(...wrappedValues.map((lines) => (Array.isArray(lines) ? lines.length : 1))) * 10 + 6;
+
+        if (y + rowHeight > pageHeight - 44) {
+            doc.addPage();
+            drawHeader();
+            y = 118;
+            drawTableHeader(y);
+            y += 24;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.5);
+        }
+
+        if (index % 2 === 0) {
+            doc.setFillColor(249, 251, 253);
+            doc.rect(margin, y - 2, pageWidth - margin * 2, rowHeight, 'F');
+        }
+
+        let x = margin + 4;
+        wrappedValues.forEach((lines, idx) => {
+            const valueLines = Array.isArray(lines) ? lines : [String(lines || '-')];
+            doc.text(valueLines, x, y + 8);
+            x += columns[idx].width;
+        });
+
+        y += rowHeight;
+    });
+
+    const drawAnnexSection = (title, annexRows, annexColumns) => {
+        const rowsSafe = Array.isArray(annexRows) ? annexRows : [];
+
+        ensureRoom(34);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text(title, margin, y + 10);
+        y += 18;
+
+        if (!rowsSafe.length) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text('Sin registros para este anexo.', margin, y + 10);
+            y += 22;
+            return;
+        }
+
+        ensureRoom(24);
+        doc.setFillColor(230, 235, 241);
+        doc.rect(margin, y, pageWidth - margin * 2, 18, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        let hx = margin + 4;
+        annexColumns.forEach((col) => {
+            doc.text(col.label, hx, y + 12);
+            hx += col.width;
+        });
+        y += 20;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.2);
+
+        rowsSafe.forEach((row, idx) => {
+            const wrapped = annexColumns.map((col) => doc.splitTextToSize(normalizeReportExportValue(row?.[col.key]) || '-', Math.max(col.width - 6, 18)));
+            const rowHeight = Math.max(...wrapped.map((lines) => (Array.isArray(lines) ? lines.length : 1))) * 9 + 5;
+
+            ensureRoom(rowHeight + 8);
+
+            if (idx % 2 === 0) {
+                doc.setFillColor(249, 251, 253);
+                doc.rect(margin, y - 2, pageWidth - margin * 2, rowHeight, 'F');
+            }
+
+            let x = margin + 4;
+            wrapped.forEach((lines, colIdx) => {
+                const linesSafe = Array.isArray(lines) ? lines : [String(lines || '-')];
+                doc.text(linesSafe, x, y + 7);
+                x += annexColumns[colIdx].width;
+            });
+
+            y += rowHeight;
+        });
+
+        y += 10;
+    };
+
+    const fallasRows = Array.isArray(window.reportFallasState?.rows) ? window.reportFallasState.rows : [];
+    drawAnnexSection('Anexo A · Incidencias', fallasRows, [
+        { key: 'periodo', label: 'Periodo', width: 88 },
+        { key: 'total_incidencias', label: 'Total', width: 58 },
+        { key: 'criticidad_alta', label: 'Alta', width: 48 },
+        { key: 'criticidad_media', label: 'Media', width: 56 },
+        { key: 'criticidad_baja', label: 'Baja', width: 48 },
+        { key: 'porcentaje_vinculadas', label: '% Vinc.', width: 62 },
+        { key: 'advertencia', label: 'Advertencia', width: 270 }
+    ]);
+
+    const mantenimientosRows = Array.isArray(window.reportMantenimientosState?.rows) ? window.reportMantenimientosState.rows : [];
+    drawAnnexSection('Anexo B · Mantenimientos', mantenimientosRows, [
+        { key: 'modelo_equipo', label: 'Maquina', width: 180 },
+        { key: 'total_mantenimientos', label: 'Mant.', width: 66 },
+        { key: 'total_servicios_registrados', label: 'Servicios', width: 72 },
+        { key: 'ultima_fecha_servicio', label: 'Ultimo servicio', width: 116 }
+    ]);
+
+    drawFooter();
+}
+
+function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error('No se pudo convertir imagen a DataURL'));
+        reader.readAsDataURL(blob);
+    });
+}
+
+async function loadReportLogoDataUrl() {
+    const candidates = [
+        window.SRMM_REPORT_LOGO_URL,
+        '/imagenes/logo-srmm.png',
+        '/imagenes/logo.png',
+        '/img/logo-srmm.png',
+        '/img/logo.png',
+        '/favicon.svg'
+    ].filter(Boolean);
+
+    for (const candidate of candidates) {
+        try {
+            const response = await fetch(candidate, { cache: 'no-store' });
+            if (!response.ok) continue;
+            const blob = await response.blob();
+            if (!blob || !blob.size) continue;
+            return await blobToDataUrl(blob);
+        } catch (_) {
+            // Intentar siguiente ruta.
+        }
+    }
+
+    return null;
+}
+
 function initReportesDashboard() {
     const machineSelect = document.getElementById('reportMachineSelect');
     const role = getCurrentRole();
@@ -2886,27 +3231,30 @@ function initReportesDashboard() {
                 return;
             }
 
-            const header = ['fecha_evento', 'tipo_evento', 'horometro', 'detalle'];
-            const csvLines = [header.join(',')];
-            rows.forEach((row) => {
-                csvLines.push([
-                    row.fecha_evento,
-                    row.tipo_evento,
-                    row.horometro,
-                    row.detalle
-                ].map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`).join(','));
+            const machineLabel = document.getElementById('reportSelectedMachineLabel')?.textContent || (selectedIds[0] || 'Todas');
+            const d = getEffectiveReportDates();
+            const csvContent = buildProfessionalReportCsv(rows, {
+                title: 'Reporte historico SRMM',
+                startDate: d.start || 'inicio',
+                endDate: d.end || 'hoy',
+                machineLabel,
+                summary: reportState.detalle || '',
+                totalHoras: reportState.totalHoras || 0,
+                totalMantenciones: reportState.totalMantenciones || 0,
+                totalFallas: reportState.totalFallas || 0
             });
 
-            const blob = new Blob(['\uFEFF' + csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `reporte_maquina_${selectedIds[0] || 'sin_seleccion'}.csv`;
+            const today = new Date().toISOString().slice(0, 10);
+            link.download = `reporte_historico_${selectedIds[0] || 'todas'}_${today}.csv`;
             document.body.appendChild(link);
             link.click();
             link.remove();
             URL.revokeObjectURL(url);
-            setReportStatus('CSV generado correctamente', 'success');
+            setReportStatus('CSV completo generado correctamente', 'success');
         });
 
         if (exportIngresosBtn) {
@@ -2948,7 +3296,7 @@ function initReportesDashboard() {
             });
         }
 
-        pdfBtn.addEventListener('click', () => {
+        pdfBtn.addEventListener('click', async () => {
             const reportState = window.__srmmReporteState || {};
             const rows = Array.isArray(reportState.rows) ? reportState.rows : [];
             const jsPDF = window.jspdf && window.jspdf.jsPDF;
@@ -2964,46 +3312,31 @@ function initReportesDashboard() {
                 return;
             }
 
+            setReportStatus('Preparando PDF con anexos...', 'info');
+
+            try { await loadReportFallasDashboard(); } catch (_) {}
+            try { await loadReportMantenimientosDashboard(); } catch (_) {}
+
+            const logoDataUrl = await loadReportLogoDataUrl();
+
             const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-            const title = 'Reporte histórico SRMM';
-            const machineLabel = document.getElementById('reportSelectedMachineLabel')?.textContent || 'Sin máquina seleccionada';
+            const machineLabel = document.getElementById('reportSelectedMachineLabel')?.textContent || 'Sin maquina seleccionada';
             const d = getEffectiveReportDates();
-            const startDate = d.start || 'inicio';
-            const endDate = d.end || 'hoy';
-            const summary = reportState.detalle || '';
-
-            doc.setFontSize(16);
-            doc.text(title, 40, 40);
-            doc.setFontSize(10);
-            doc.text(`Máquina: ${machineLabel}`, 40, 60);
-            doc.text(`Rango: ${startDate} - ${endDate}`, 40, 76);
-            doc.text(`Resumen: ${summary}`, 40, 92);
-
-            const headers = ['Fecha', 'Tipo', 'Horómetro', 'Detalle'];
-            const tableRows = rows.slice(0, 40).map((row) => ([
-                row.fecha_evento || '-',
-                row.tipo_evento || '-',
-                row.horometro ?? '-',
-                row.detalle || '-'
-            ]));
-
-            let y = 120;
-            doc.setFontSize(11);
-            doc.text(headers.join(' | '), 40, y);
-            y += 18;
-
-            tableRows.forEach((row) => {
-                const line = row.map((value) => String(value).slice(0, 30)).join(' | ');
-                if (y > 520) {
-                    doc.addPage();
-                    y = 40;
-                }
-                doc.text(line, 40, y);
-                y += 16;
+            buildProfessionalReportPdf(doc, rows, {
+                title: 'Reporte historico SRMM',
+                generatedAtLabel: new Date().toLocaleString('es-CL'),
+                startDate: d.start || 'inicio',
+                endDate: d.end || 'hoy',
+                machineLabel,
+                logoDataUrl,
+                totalHoras: reportState.totalHoras || 0,
+                totalMantenciones: reportState.totalMantenciones || 0,
+                totalFallas: reportState.totalFallas || 0
             });
 
-            doc.save(`reporte_maquina_${selectedIds[0] || 'sin_seleccion'}.pdf`);
-            setReportStatus('PDF generado correctamente', 'success');
+            const today = new Date().toISOString().slice(0, 10);
+            doc.save(`reporte_historico_${selectedIds[0] || 'todas'}_${today}.pdf`);
+            setReportStatus('PDF profesional generado correctamente', 'success');
         });
 
         const printBtn = document.getElementById('reportPrintBtn');

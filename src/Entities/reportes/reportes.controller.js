@@ -96,18 +96,32 @@ async function obtenerIngresosCsv(req, res, next) {
 
     const data = await reportesRepo.getIngresosPorArriendos(fecha_inicio, fecha_fin, tarifa_diaria);
 
-    // Build CSV
+    const escapeCsv = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+
+    // Build CSV with metadata and summary
     const headers = ['id_maquina', 'modelo_equipo', 'contratos', 'dias_arrendados', 'tarifa_usada', 'ingresos'];
-    const lines = [headers.join(',')];
+    const lines = [];
+
+    lines.push('"meta_key","meta_value"');
+    lines.push(`${escapeCsv('generado_en')},${escapeCsv(new Date().toISOString())}`);
+    lines.push(`${escapeCsv('fecha_inicio')},${escapeCsv(fecha_inicio || 'from')}`);
+    lines.push(`${escapeCsv('fecha_fin')},${escapeCsv(fecha_fin || 'to')}`);
+    lines.push(`${escapeCsv('tarifa_diaria')},${escapeCsv(tarifa_diaria)}`);
+    lines.push(`${escapeCsv('total_contratos')},${escapeCsv(data.total_contratos || 0)}`);
+    lines.push(`${escapeCsv('total_dias_arrendados')},${escapeCsv(data.total_dias_arrendados || 0)}`);
+    lines.push(`${escapeCsv('total_ingresos')},${escapeCsv(data.total_ingresos || 0)}`);
+    lines.push('');
+    lines.push(headers.map(escapeCsv).join(','));
+
     data.by_maquina.forEach(row => {
       const line = [
         row.id_maquina,
-        '"' + String(row.modelo_equipo || '').replace(/"/g, '""') + '"',
+        row.modelo_equipo || '',
         row.contratos,
         row.dias_arrendados,
         row.tarifa_usada,
         row.ingresos
-      ].join(',');
+      ].map(escapeCsv).join(',');
       lines.push(line);
     });
 
