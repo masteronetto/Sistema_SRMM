@@ -450,10 +450,10 @@
                         <div id="detailMachineMotive" class="detail-subtitle"></div>
                         <table class="detail-table">
                             <thead>
-                                <tr><th>Fecha</th><th>Descripción</th><th>Criticidad</th><th>Operador</th><th>Vinculada</th><th>Estado</th></tr>
+                                <tr><th>Fecha</th><th>Descripción</th><th>Criticidad</th><th>Operador</th><th>Vinculada</th><th>Estado</th><th>Acciones</th></tr>
                             </thead>
                             <tbody id="detailIncidentRows">
-                                <tr><td colspan="6" class="detail-empty">Selecciona una máquina para cargar incidencias.</td></tr>
+                                <tr><td colspan="7" class="detail-empty">Selecciona una máquina para cargar incidencias.</td></tr>
                             </tbody>
                         </table>
                     </section>
@@ -5165,7 +5165,7 @@ function initMachineCards() {
 
 async function loadMachineIncidencias(rows, filter) {
     if (!currentMachineId) return;
-    rows.innerHTML = '<tr><td colspan="6" class="detail-empty">Cargando incidencias…</td></tr>';
+    rows.innerHTML = '<tr><td colspan="7" class="detail-empty">Cargando incidencias…</td></tr>';
     const solo = filter && filter.checked ? 'true' : 'false';
     try {
         const res = await fetch(`/api/maquinaria/${currentMachineId}/incidencias?solo_no_resueltas=${solo}`, {
@@ -5175,30 +5175,71 @@ async function loadMachineIncidencias(rows, filter) {
         const data = await res.json();
         renderIncidencias(Array.isArray(data) ? data : [], rows);
     } catch (err) {
-        rows.innerHTML = `<tr><td colspan="6" class="detail-empty">Error: ${err.message}</td></tr>`;
+        rows.innerHTML = `<tr><td colspan="7" class="detail-empty">Error: ${err.message}</td></tr>`;
     }
 }
 
 function renderIncidencias(items, rows) {
+    const canResolve = userRole === 'Mecanico' || userRole === 'Administrador';
     if (!items || !items.length) {
-        rows.innerHTML = '<tr><td colspan="6" class="detail-empty">No hay incidencias registradas.</td></tr>';
+        rows.innerHTML = '<tr><td colspan="7" class="detail-empty">No hay incidencias registradas.</td></tr>';
         return;
     }
     rows.innerHTML = items.map(i => {
         const c = i.criticidad || 'Media';
+        const estado = String(i.estado || 'Pendiente');
+        const isResolved = estado.toLowerCase() === 'resuelta';
         const ordenId = i.orden_trabajo_id || i.mantenimiento_id || null;
         const vinc = ordenId
             ? `<a href="#" onclick="openMaintenanceById(${ordenId});return false;">#${ordenId}</a>`
             : (i.vinculada_mantenimiento ? 'Sí' : 'No');
+        const acciones = canResolve
+            ? (isResolved
+                ? '<span class="muted">Resuelta</span>'
+                : `<button class="btn btn-secondary" type="button" onclick="resolveIncidenciaById(${Number(i.id_incidencia)})">Resolver</button>`)
+            : '<span class="muted">—</span>';
         return `<tr>
             <td>${new Date(i.fecha).toLocaleDateString('es-CL')}</td>
             <td>${escapeHtml(i.descripcion || '—')}</td>
             <td><span class="pill tag ${c.toLowerCase()}">${c}</span></td>
             <td>${escapeHtml(i.operador_nombre || `#${i.operador_id || '—'}`)}</td>
             <td>${vinc}</td>
-            <td>${escapeHtml(i.estado || 'Pendiente')}</td>
+            <td>${escapeHtml(estado)}</td>
+            <td>${acciones}</td>
         </tr>`;
     }).join('');
+}
+
+async function resolveIncidenciaById(idIncidencia) {
+    if (!Number.isFinite(Number(idIncidencia)) || Number(idIncidencia) <= 0) {
+        setMaintenanceOrderStatus('ID de incidencia inválido', 'warning');
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/incidencias/${idIncidencia}/resolver`, {
+            method: 'PATCH',
+            headers: getAuthHeaders()
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(body.message || body.error || 'No se pudo resolver la incidencia');
+        }
+
+        const detailFilterPending = document.getElementById('detailFilterPending');
+        const detailIncidentRows = document.getElementById('detailIncidentRows');
+        if (detailIncidentRows) {
+            await loadMachineIncidencias(detailIncidentRows, detailFilterPending);
+        }
+
+        try { await loadReportFallasDashboard(); } catch (_) {}
+        try { await loadOperatorIncidencias(); } catch (_) {}
+        try { await loadInicioKpis(); } catch (_) {}
+
+        setMaintenanceOrderStatus('Incidencia marcada como resuelta', 'success');
+    } catch (error) {
+        setMaintenanceOrderStatus(`Error: ${error.message}`, 'error');
+    }
 }
 
 async function openMaintenanceById(idOrden) {

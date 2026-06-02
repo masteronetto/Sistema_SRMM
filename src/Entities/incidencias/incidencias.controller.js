@@ -75,7 +75,41 @@ async function listarIncidencias(req, res, next) {
     }
 }
 
+async function resolverIncidencia(req, res, next) {
+    try {
+        const idIncidencia = Number(req.params.id_incidencia);
+        if (!Number.isFinite(idIncidencia) || idIncidencia <= 0) {
+            return res.status(400).json({ message: 'id_incidencia debe ser numérico' });
+        }
+
+        const incidenciaActual = await incidenciasRepository.getIncidenciaById(idIncidencia);
+        if (!incidenciaActual) {
+            return res.status(404).json({ message: 'Incidencia no encontrada' });
+        }
+
+        if (String(incidenciaActual.estado || '').toLowerCase() === 'resuelta') {
+            return res.status(200).json({
+                message: 'La incidencia ya estaba resuelta',
+                incidencia: incidenciaActual
+            });
+        }
+
+        const incidencia = await incidenciasRepository.resolverIncidencia(idIncidencia);
+        if (!incidencia) {
+            return res.status(404).json({ message: 'Incidencia no encontrada al actualizar' });
+        }
+
+        return res.json({
+            message: 'Incidencia marcada como resuelta',
+            incidencia
+        });
+    } catch (error) {
+        return next(error);
+    }
+}
+
 module.exports = {
     crearIncidencia,
-    listarIncidencias
+    listarIncidencias,
+    resolverIncidencia
 };

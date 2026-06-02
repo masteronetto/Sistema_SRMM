@@ -122,7 +122,46 @@ async function listIncidencias({ maquinaria_ids = [], fecha_inicio = null, fecha
     return rows;
 }
 
+async function getIncidenciaById(id_incidencia) {
+    const query = `
+        SELECT
+            i.id_incidencia,
+            i.maquinaria_id_maquina,
+            i.fecha,
+            i.descripcion,
+            i.criticidad,
+            i.vinculada_mantenimiento,
+            i.mantenimiento_id,
+            i.orden_trabajo_id,
+            i.estado,
+            i.operador_id,
+            i.created_at,
+            i.updated_at
+        FROM incidencias_maquina i
+        WHERE i.id_incidencia = $1
+        LIMIT 1
+    `;
+
+    const { rows } = await pool.query(query, [id_incidencia]);
+    return rows[0] || null;
+}
+
+async function resolverIncidencia(id_incidencia) {
+    const query = `
+        UPDATE incidencias_maquina
+        SET estado = 'Resuelta',
+            updated_at = NOW()
+        WHERE id_incidencia = $1
+        RETURNING id_incidencia, maquinaria_id_maquina, operador_id, fecha, descripcion, criticidad, vinculada_mantenimiento, mantenimiento_id, orden_trabajo_id, estado, created_at, updated_at
+    `;
+
+    const { rows } = await pool.query(query, [id_incidencia]);
+    return rows[0] || null;
+}
+
 module.exports = {
     registrarIncidencia,
-    listIncidencias
+    listIncidencias,
+    getIncidenciaById,
+    resolverIncidencia
 };
