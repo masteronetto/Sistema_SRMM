@@ -169,11 +169,15 @@ async function listIncidenciasByMaquina(maquinaria_id_maquina, solo_no_resueltas
       i.criticidad,
       i.vinculada_mantenimiento,
       i.mantenimiento_id,
+      i.orden_trabajo_id,
       i.estado,
       i.operador_id,
-      u.nombre_completo AS operador_nombre
+      u.nombre_completo AS operador_nombre,
+      ot.tipo_servicio AS orden_tipo_servicio,
+      ot.estado_ot AS orden_estado_ot
     FROM incidencias_maquina i
     LEFT JOIN usuarios u ON u.id_usuario = i.operador_id
+    LEFT JOIN ordenes_trabajo ot ON ot.id_orden = i.orden_trabajo_id
     WHERE i.maquinaria_id_maquina = $1
       ${solo_no_resueltas ? "AND i.estado = 'Pendiente'" : ''}
     ORDER BY i.fecha DESC, i.id_incidencia DESC
@@ -183,7 +187,7 @@ async function listIncidenciasByMaquina(maquinaria_id_maquina, solo_no_resueltas
   return rows;
 }
 
-async function createIncidenciaForMaquina({ maquinaria_id_maquina, operador_id, fecha, descripcion, criticidad, vinculada_mantenimiento = false, mantenimiento_id = null }) {
+async function createIncidenciaForMaquina({ maquinaria_id_maquina, operador_id, fecha, descripcion, criticidad, vinculada_mantenimiento = false, mantenimiento_id = null, orden_trabajo_id = null }) {
   const query = `
     INSERT INTO incidencias_maquina (
       maquinaria_id_maquina,
@@ -193,9 +197,10 @@ async function createIncidenciaForMaquina({ maquinaria_id_maquina, operador_id, 
       criticidad,
       vinculada_mantenimiento,
       mantenimiento_id,
+      orden_trabajo_id,
       estado
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'Pendiente')
-    RETURNING id_incidencia, maquinaria_id_maquina, operador_id, fecha, descripcion, criticidad, vinculada_mantenimiento, mantenimiento_id, estado, created_at, updated_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Pendiente')
+    RETURNING id_incidencia, maquinaria_id_maquina, operador_id, fecha, descripcion, criticidad, vinculada_mantenimiento, mantenimiento_id, orden_trabajo_id, estado, created_at, updated_at
   `;
 
   const values = [
@@ -205,7 +210,8 @@ async function createIncidenciaForMaquina({ maquinaria_id_maquina, operador_id, 
     descripcion,
     criticidad || 'Media',
     vinculada_mantenimiento,
-    mantenimiento_id
+    mantenimiento_id,
+    orden_trabajo_id
   ];
 
   const { rows } = await pool.query(query, values);

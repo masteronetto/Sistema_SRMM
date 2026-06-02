@@ -1,6 +1,6 @@
 const pool = require('../../db/pool');
 
-async function registrarIncidencia(id_maquina, id_usuario, descripcion, criticidad) {
+async function registrarIncidencia(id_maquina, id_usuario, descripcion, criticidad, orden_trabajo_id = null) {
     const queryAnalisis = `
         SELECT 
             m.horometro_actual,
@@ -11,15 +11,20 @@ async function registrarIncidencia(id_maquina, id_usuario, descripcion, criticid
                  ORDER BY fecha_servicio DESC LIMIT 1), 
             0) as ultimo_mantenimiento
         FROM maquinaria m
-        JOIN planes_mantencion p ON m.planes_mantencion_id_plan = p.id_plan
+        LEFT JOIN planes_mantencion p ON m.planes_mantencion_id_plan = p.id_plan
         WHERE m.id_maquina = $1
     `;
 
     const { rows } = await pool.query(queryAnalisis, [id_maquina]);
     const maquinaInfo = rows[0];
 
-    const limiteSeguro = Number(maquinaInfo.ultimo_mantenimiento) + Number(maquinaInfo.intervalo_horas);
-    const horasExcedidas = maquinaInfo.horometro_actual - limiteSeguro;
+    if (!maquinaInfo) {
+        throw new Error('Maquinaria no encontrada');
+    }
+
+    const intervaloHoras = Number(maquinaInfo.intervalo_horas || 0);
+    const limiteSeguro = Number(maquinaInfo.ultimo_mantenimiento || 0) + intervaloHoras;
+    const horasExcedidas = intervaloHoras > 0 ? (Number(maquinaInfo.horometro_actual || 0) - limiteSeguro) : 0;
 
     let vinculada = 0;
     let advertencia = null;
@@ -31,8 +36,8 @@ async function registrarIncidencia(id_maquina, id_usuario, descripcion, criticid
 
     const insertQuery = `
         INSERT INTO incidencias_maquina 
-        (maquinaria_id_maquina, operador_id, fecha, descripcion, criticidad, vinculada_mantenimiento, estado)
-        VALUES ($1, $2, CURRENT_DATE, $3, $4, $5, 'Pendiente')
+        (maquinaria_id_maquina, operador_id, fecha, descripcion, criticidad, vinculada_mantenimiento, orden_trabajo_id, estado)
+        VALUES ($1, $2, CURRENT_DATE, $3, $4, $5, $6, 'Pendiente')
         RETURNING *
     `;
 
@@ -41,7 +46,8 @@ async function registrarIncidencia(id_maquina, id_usuario, descripcion, criticid
         id_usuario,
         descripcion,
         criticidad,
-        vinculada
+        vinculada,
+        orden_trabajo_id
     ]);
 
     return {
@@ -101,6 +107,7 @@ async function listIncidencias({ maquinaria_ids = [], fecha_inicio = null, fecha
             i.criticidad,
             i.vinculada_mantenimiento,
             i.mantenimiento_id,
+            i.orden_trabajo_id,
             i.estado,
             i.operador_id,
             u.nombre_completo as operador_nombre

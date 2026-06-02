@@ -27,4 +27,12 @@ else
 	echo "  3️⃣  003_maquinaria_operadores.sql no encontrado, se omite"
 fi
 
+# 4. Vinculo incidencias con ordenes de trabajo
+if [ -f /docker-entrypoint-initdb.d/004_incidencias_orden_trabajo.sql ]; then
+	echo "  4️⃣  Aplicando vínculo incidencias-ordenes (004_incidencias_orden_trabajo.sql)..."
+	psql -U postgres -d srmm_db -f /docker-entrypoint-initdb.d/004_incidencias_orden_trabajo.sql
+else
+	echo "  4️⃣  004_incidencias_orden_trabajo.sql no encontrado, se omite"
+fi
+
 echo "✅ Base de datos inicializada correctamente"

@@ -325,6 +325,44 @@
                         </div>
                     </section>
 
+                    <section class="section-card mecanico-only">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+                            <div>
+                                <div class="section-title">Programar orden de mantenimiento</div>
+                                <div class="muted">Crea una orden preventiva o correctiva para una máquina concreta.</div>
+                            </div>
+                            <span id="maintenanceOrderStatus" class="form-status"></span>
+                        </div>
+
+                        <form id="maintenanceOrderForm" class="incident-form" style="margin-top:1rem;">
+                            <div class="incident-grid">
+                                <label>Máquina
+                                    <select id="maintenanceOrderMachine" required>
+                                        <option value="">Cargando máquinas…</option>
+                                    </select>
+                                </label>
+                                <label>Mecánico
+                                    <select id="maintenanceOrderMechanic" required>
+                                        <option value="">Cargando mecánicos…</option>
+                                    </select>
+                                </label>
+                                <label>Tipo de servicio
+                                    <input id="maintenanceOrderType" type="text" required placeholder="Ej. Preventivo" />
+                                </label>
+                                <label>Fecha programada
+                                    <input id="maintenanceOrderDate" type="date" required />
+                                </label>
+                            </div>
+                            <label>Detalle técnico
+                                <textarea id="maintenanceOrderDetailInput" required placeholder="Describe el trabajo a realizar"></textarea>
+                            </label>
+                            <div class="incident-actions">
+                                <button type="submit" class="top-button primary">Programar orden</button>
+                                <button type="button" id="maintenanceOrderClearBtn" class="top-button secondary">Limpiar</button>
+                            </div>
+                        </form>
+                    </section>
+
                     <section id="maintenancePlanAssignPanel" class="section-card admin-only">
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
                             <div>
@@ -382,7 +420,11 @@
                                     </select>
                                 </label>
                                 <label>Operador responsable<select id="incidentOperator" required><option value="">Cargando operadores…</option></select></label>
-                                <label>Orden de mantención (ID)<input id="incidentMaintenanceId" type="number" min="1" placeholder="Opcional" /></label>
+                                <label>Orden de mantenimiento
+                                    <select id="incidentMaintenanceOrderId">
+                                        <option value="">Sin orden asociada</option>
+                                    </select>
+                                </label>
                             </div>
                             <label>Descripción de la falla<textarea id="incidentDescription" required placeholder="Describir el evento, el lugar y el impacto"></textarea></label>
                             <div class="incident-actions">
@@ -1303,6 +1345,7 @@ let availableMaintenancePlans = [];
 let reportsInitialized = false;
 let adminMaquinariaInitialized = false;
 let maintenancePlanAssignInitialized = false;
+let maintenanceOrderFormInitialized = false;
 let reportTopChart = null;
 let reportUsoChart = null;
 let reportSelectedMachineId = '';
@@ -1734,7 +1777,7 @@ function clearIncidentForm(preserveFeedback = false) {
     const operatorSelect = document.getElementById('incidentOperator');
     const severitySelect = document.getElementById('incidentSeverity');
     const descriptionInput = document.getElementById('incidentDescription');
-    const maintenanceInput = document.getElementById('incidentMaintenanceId');
+    const maintenanceInput = document.getElementById('incidentMaintenanceOrderId');
 
     if (machineSelect) machineSelect.value = '';
     if (dateInput) {
@@ -1801,6 +1844,175 @@ function initMaintenancePlanAssignForm() {
             try { await loadInicioKpis(); } catch (e) { console.warn('No se pudo refrescar KPIs tras asignar plan', e); }
         } catch (error) {
             setMaintenancePlanAssignStatus(`Error: ${error.message}`, 'error');
+        }
+    });
+}
+
+function setMaintenanceOrderStatus(message, type = 'info') {
+    const statusEl = document.getElementById('maintenanceOrderStatus');
+    if (!statusEl) return;
+
+    const colors = {
+        info: '#2980b9',
+        success: '#27ae60',
+        warning: '#d97706',
+        error: '#c0392b'
+    };
+
+    statusEl.textContent = message;
+    statusEl.style.color = colors[type] || colors.info;
+}
+
+function renderMaintenanceOrderMachineOptions(selectedMachineId = '') {
+    const select = document.getElementById('maintenanceOrderMachine');
+    if (!select) return;
+
+    const options = ['<option value="">Selecciona una máquina</option>'];
+    (Array.isArray(availableMachines) ? availableMachines : []).forEach((machine) => {
+        const label = `${machine.modelo_equipo || `Máquina #${machine.id_maquina}`} · ${machine.estado || '—'}`;
+        const selected = String(machine.id_maquina) === String(selectedMachineId) ? ' selected' : '';
+        options.push(`<option value="${machine.id_maquina}"${selected}>${escapeHtml(label)}</option>`);
+    });
+
+    select.innerHTML = options.join('');
+}
+
+function renderMaintenanceMechanicOptions(selectedMechanicId = '') {
+    const select = document.getElementById('maintenanceOrderMechanic');
+    if (!select) return;
+
+    const options = ['<option value="">Selecciona un mecánico</option>'];
+    const mecanicos = Array.isArray(window.cachedUsersForMaintenance) ? window.cachedUsersForMaintenance : [];
+    mecanicos.forEach((user) => {
+        const selected = String(user.id_usuario) === String(selectedMechanicId) ? ' selected' : '';
+        options.push(`<option value="${user.id_usuario}"${selected}>${escapeHtml(user.nombre_completo || user.email || `#${user.id_usuario}`)}</option>`);
+    });
+
+    select.innerHTML = options.join('');
+}
+
+async function ensureMaintenanceOrderFormData() {
+    const machineSelect = document.getElementById('maintenanceOrderMachine');
+    const mechanicSelect = document.getElementById('maintenanceOrderMechanic');
+    if (!machineSelect || !mechanicSelect) return;
+
+    try {
+        const [machines, usersRes] = await Promise.all([
+            loadAvailableMachines(),
+            fetch('/api/usuarios', { headers: getAuthHeaders() })
+        ]);
+
+        availableMachines = Array.isArray(machines) ? machines : availableMachines;
+        window.cachedUsersForMaintenance = [];
+        if (usersRes.ok) {
+            const users = await usersRes.json();
+            window.cachedUsersForMaintenance = (Array.isArray(users) ? users : []).filter((user) => user.rol_acceso === 'Mecanico');
+        }
+
+        renderMaintenanceOrderMachineOptions(machineSelect.value || '');
+        renderMaintenanceMechanicOptions(mechanicSelect.value || '');
+    } catch (error) {
+        console.error('Error cargando datos para programar mantenimiento:', error);
+        machineSelect.innerHTML = '<option value="">No se pudieron cargar máquinas</option>';
+        mechanicSelect.innerHTML = '<option value="">No se pudieron cargar mecánicos</option>';
+    }
+}
+
+function renderIncidentOrderOptions(orders, selectedId = '') {
+    const select = document.getElementById('incidentMaintenanceOrderId');
+    if (!select) return;
+
+    const options = ['<option value="">Sin orden asociada</option>'];
+    (Array.isArray(orders) ? orders : []).forEach((order) => {
+        const label = `#${order.id_orden} · ${order.tipo_servicio || 'Sin tipo'} · ${order.estado_ot || '—'}`;
+        const selected = String(order.id_orden) === String(selectedId) ? ' selected' : '';
+        options.push(`<option value="${order.id_orden}"${selected}>${escapeHtml(label)}</option>`);
+    });
+
+    select.innerHTML = options.join('');
+}
+
+async function loadIncidentOrdersForMachine(machineId, selectedOrderId = '') {
+    const select = document.getElementById('incidentMaintenanceOrderId');
+    if (!select) return;
+
+    if (!machineId) {
+        select.innerHTML = '<option value="">Sin orden asociada</option>';
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/mantenimientos/ordenes/maquina/${machineId}`, { headers: getAuthHeaders() });
+        if (!res.ok) throw new Error('No se pudieron cargar las órdenes de mantenimiento');
+
+        const payload = await res.json().catch(() => ({}));
+        const orders = Array.isArray(payload?.data) ? payload.data : [];
+        renderIncidentOrderOptions(orders, selectedOrderId);
+    } catch (error) {
+        console.error('Error cargando órdenes para incidencia:', error);
+        select.innerHTML = '<option value="">No se pudieron cargar órdenes</option>';
+    }
+}
+
+function initMaintenanceOrderForm() {
+    const form = document.getElementById('maintenanceOrderForm');
+    const clearBtn = document.getElementById('maintenanceOrderClearBtn');
+    const machineSelect = document.getElementById('maintenanceOrderMachine');
+    const mechanicSelect = document.getElementById('maintenanceOrderMechanic');
+    if (!form || maintenanceOrderFormInitialized) return;
+
+    maintenanceOrderFormInitialized = true;
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', async () => {
+            form.reset();
+            setMaintenanceOrderStatus('', 'info');
+            await ensureMaintenanceOrderFormData();
+        });
+    }
+
+    if (machineSelect) {
+        machineSelect.addEventListener('change', async () => {
+            await loadIncidentOrdersForMachine(machineSelect.value, '');
+        });
+    }
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const payload = {
+            tipo_servicio: document.getElementById('maintenanceOrderType')?.value.trim(),
+            detalle_tecnico: document.getElementById('maintenanceOrderDetailInput')?.value.trim(),
+            fecha_programada: document.getElementById('maintenanceOrderDate')?.value || null,
+            maquinaria_id_maquina: machineSelect?.value ? Number(machineSelect.value) : null,
+            mecanico_asignado: mechanicSelect?.value ? Number(mechanicSelect.value) : null
+        };
+
+        if (!payload.tipo_servicio || !payload.detalle_tecnico || !payload.fecha_programada || !payload.maquinaria_id_maquina || !payload.mecanico_asignado) {
+            setMaintenanceOrderStatus('Completa todos los campos de la orden.', 'warning');
+            return;
+        }
+
+        try {
+            setMaintenanceOrderStatus('Programando orden...', 'info');
+            const res = await fetch('/api/mantenimientos/programar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                body: JSON.stringify(payload)
+            });
+
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(body.message || body.error || 'No se pudo programar la orden');
+            }
+
+            setMaintenanceOrderStatus('Orden programada correctamente', 'success');
+            form.reset();
+            await loadMaintenanceDashboard();
+            try { await loadAdminMaquinaria(); } catch (e) { console.warn('No se pudo refrescar inventario tras programar orden', e); }
+            try { await loadInicioKpis(); } catch (e) { console.warn('No se pudieron refrescar KPIs tras programar orden', e); }
+        } catch (error) {
+            setMaintenanceOrderStatus(`Error: ${error.message}`, 'error');
         }
     });
 }
@@ -3275,7 +3487,9 @@ async function loadMaintenanceDashboard() {
             });
         }
 
+        initMaintenanceOrderForm();
         initMaintenancePlanAssignForm();
+        await ensureMaintenanceOrderFormData();
         await ensureMaintenancePlanAssignData();
     } catch (error) {
         console.error('Error cargando mantenimiento:', error);
@@ -4174,8 +4388,9 @@ function renderIncidencias(items, rows) {
     }
     rows.innerHTML = items.map(i => {
         const c = i.criticidad || 'Media';
-        const vinc = (i.vinculada_mantenimiento && i.mantenimiento_id)
-            ? `<a href="#" onclick="openMaintenanceById(${i.mantenimiento_id});return false;">#${i.mantenimiento_id}</a>`
+        const ordenId = i.orden_trabajo_id || i.mantenimiento_id || null;
+        const vinc = (i.vinculada_mantenimiento && ordenId)
+            ? `<a href="#" onclick="openMaintenanceById(${ordenId});return false;">#${ordenId}</a>`
             : (i.vinculada_mantenimiento ? 'Sí' : 'No');
         return `<tr>
             <td>${new Date(i.fecha).toLocaleDateString('es-CL')}</td>
@@ -4333,11 +4548,21 @@ function initIncidentForm() {
             operatorSelect.innerHTML = ops.length
                 ? '<option value="">Selecciona un operador</option>' + ops.map(o => `<option value="${o.id_usuario}">${o.nombre_completo}</option>`).join('')
                 : '<option value="">Sin operadores disponibles</option>';
+            if (machineSelect.value) {
+                await loadIncidentOrdersForMachine(machineSelect.value, '');
+            }
         } catch {
             machineSelect.innerHTML  = '<option value="">No se pudieron cargar máquinas</option>';
             operatorSelect.innerHTML = '<option value="">No se pudieron cargar operadores</option>';
         }
     })();
+
+    if (machineSelect && !machineSelect.dataset.boundMaintenanceOrders) {
+        machineSelect.dataset.boundMaintenanceOrders = '1';
+        machineSelect.addEventListener('change', () => {
+            loadIncidentOrdersForMachine(machineSelect.value, document.getElementById('incidentMaintenanceOrderId')?.value || '');
+        });
+    }
 
     if (clearBtn && !clearBtn.dataset.bound) {
         clearBtn.dataset.bound = '1';
@@ -4353,7 +4578,7 @@ function initIncidentForm() {
         const fecha      = dateInput.value;
         const criticidad = document.getElementById('incidentSeverity').value;
         const descripcion= document.getElementById('incidentDescription').value.trim();
-        const mantId     = document.getElementById('incidentMaintenanceId').value.trim();
+        const ordenId    = document.getElementById('incidentMaintenanceOrderId').value.trim();
 
         const validationMessage = validateIncidentFormFields({ maquinaId, operadorId, fecha, descripcion });
         if (validationMessage) {
@@ -4368,7 +4593,7 @@ function initIncidentForm() {
                 headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                 body: JSON.stringify({
                     operador_id: Number(operadorId), fecha, criticidad, descripcion,
-                    mantenimiento_id: mantId ? Number(mantId) : null
+                    orden_trabajo_id: ordenId ? Number(ordenId) : null
                 })
             });
             const result = await res.json();

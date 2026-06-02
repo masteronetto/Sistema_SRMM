@@ -1,8 +1,9 @@
 const incidenciasRepository = require('./incidencias.repository');
+const mantenimientosRepo = require('../mantenimientos/mantenimientos.repository');
 
 async function crearIncidencia(req, res) {
     try {
-        const { id_maquina, id_usuario: bodyUsuarioId, descripcion, criticidad } = req.body;
+        const { id_maquina, id_usuario: bodyUsuarioId, descripcion, criticidad, orden_trabajo_id } = req.body;
         const authenticatedUserId = Number(req.user?.id_usuario);
         const role = req.user?.rol_acceso;
         const id_usuario = role === 'Operador'
@@ -14,12 +15,25 @@ async function crearIncidencia(req, res) {
             return res.status(400).json({ error: 'Faltan campos obligatorios.' });
         }
 
+        if (orden_trabajo_id !== undefined && orden_trabajo_id !== null && String(orden_trabajo_id).trim() !== '') {
+            const ordenTrabajoId = Number(orden_trabajo_id);
+            if (!Number.isFinite(ordenTrabajoId) || ordenTrabajoId <= 0) {
+                return res.status(400).json({ error: 'orden_trabajo_id debe ser numérico' });
+            }
+
+            const ordenTrabajo = await mantenimientosRepo.getOrdenTrabajoById(ordenTrabajoId);
+            if (!ordenTrabajo) {
+                return res.status(404).json({ error: 'orden_trabajo_id no corresponde a una orden existente' });
+            }
+        }
+
         // Llamamos al repositorio que creamos en el paso anterior para procesar la regla del horómetro
         const resultado = await incidenciasRepository.registrarIncidencia(
             id_maquina,
             id_usuario,
             descripcion,
-            criticidad
+            criticidad,
+            orden_trabajo_id && Number.isFinite(Number(orden_trabajo_id)) ? Number(orden_trabajo_id) : null
         );
 
         // Devolvemos un código 201 (Creado) junto con la alerta si el mantenimiento estaba vencido

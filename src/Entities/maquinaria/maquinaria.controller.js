@@ -197,6 +197,9 @@ function validateIncidenciaPayload(payload) {
   const mantenimiento_id = payload.mantenimiento_id !== undefined && payload.mantenimiento_id !== null && payload.mantenimiento_id !== ''
     ? toNumberOrNull(payload.mantenimiento_id)
     : null;
+  const orden_trabajo_id = payload.orden_trabajo_id !== undefined && payload.orden_trabajo_id !== null && payload.orden_trabajo_id !== ''
+    ? toNumberOrNull(payload.orden_trabajo_id)
+    : null;
 
   if (!descripcion) {
     return { error: 'descripcion es obligatoria', parsed: null };
@@ -218,6 +221,10 @@ function validateIncidenciaPayload(payload) {
     return { error: 'mantenimiento_id debe ser numerico y mayor o igual a 0', parsed: null };
   }
 
+  if (orden_trabajo_id !== null && orden_trabajo_id < 0) {
+    return { error: 'orden_trabajo_id debe ser numerico y mayor o igual a 0', parsed: null };
+  }
+
   return {
     error: null,
     parsed: {
@@ -226,7 +233,8 @@ function validateIncidenciaPayload(payload) {
       criticidad,
       operador_id,
       vinculada_mantenimiento: mantenimiento_id !== null,
-      mantenimiento_id
+      mantenimiento_id,
+      orden_trabajo_id
     }
   };
 }
@@ -256,7 +264,14 @@ async function createIncidencia(req, res, next) {
     if (parsed.mantenimiento_id !== null) {
       const mantenimiento = await mantenimientosRepo.getMantenimientoById(parsed.mantenimiento_id);
       if (!mantenimiento) {
-        return res.status(400).json({ message: 'mantenimiento_id no corresponde a una orden existente' });
+        return res.status(400).json({ message: 'mantenimiento_id no corresponde a un mantenimiento existente' });
+      }
+    }
+
+    if (parsed.orden_trabajo_id !== null) {
+      const ordenTrabajo = await mantenimientosRepo.getOrdenTrabajoById(parsed.orden_trabajo_id);
+      if (!ordenTrabajo) {
+        return res.status(400).json({ message: 'orden_trabajo_id no corresponde a una orden existente' });
       }
     }
 
@@ -267,7 +282,8 @@ async function createIncidencia(req, res, next) {
       descripcion: parsed.descripcion,
       criticidad: parsed.criticidad,
       vinculada_mantenimiento: parsed.vinculada_mantenimiento,
-      mantenimiento_id: parsed.mantenimiento_id
+      mantenimiento_id: parsed.mantenimiento_id,
+      orden_trabajo_id: parsed.orden_trabajo_id
     });
 
     return res.status(201).json({ message: 'Incidencia registrada con estado Pendiente', incidencia });
