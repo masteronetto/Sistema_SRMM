@@ -1497,11 +1497,16 @@ function getCurrentUserDisplayName() {
 function applyRolePermissions() {
     const role = getCurrentRole();
     const allowed = ROLE_PERMISSIONS[role] || ['inicio'];
+    const alertsBtn = document.getElementById('topAlertsBtn');
 
     document.body.classList.toggle('user-view', hasCurrentRole('Usuario'));
     document.body.classList.toggle('mecanico-view', hasCurrentRole('Mecanico'));
     document.body.classList.toggle('operator-view', hasCurrentRole('Operador'));
     document.body.classList.toggle('admin-view', hasCurrentRole('Administrador'));
+
+    if (alertsBtn) {
+        alertsBtn.textContent = hasCurrentRole('Operador') ? '⚠ Mis alertas' : '⚠ Alertas';
+    }
 
     // Mostrar solo los botones de menú permitidos
     document.querySelectorAll('.nav-link[data-role-required]').forEach(btn => {
@@ -1510,7 +1515,9 @@ function applyRolePermissions() {
     });
 
     if (hasCurrentRole('Usuario')) {
-        document.getElementById('topAlertsBtn').style.display = 'none';
+        if (alertsBtn) alertsBtn.style.display = 'none';
+    } else if (alertsBtn) {
+        alertsBtn.style.display = '';
     }
 }
 
@@ -1619,7 +1626,7 @@ function updateGlobalDateControlsVisibility(activeView = document.querySelector(
     const controls = document.getElementById('globalDateControls');
     const label = document.getElementById('reportActiveRangeLabel');
     const currentRole = getCurrentRole().toLowerCase();
-    const shouldShow = currentRole !== 'usuario' && ['inicio', 'inventario', 'mantenimiento', 'reportes'].includes(activeView);
+    const shouldShow = ['administrador', 'mecanico'].includes(currentRole) && ['inicio', 'inventario', 'mantenimiento', 'reportes'].includes(activeView);
 
     if (controls) controls.style.display = shouldShow ? 'flex' : 'none';
     if (label) label.style.display = shouldShow ? 'block' : 'none';
@@ -3646,9 +3653,7 @@ async function loadInicioKpis() {
         setReportStatus('Cargando métricas iniciales...', 'info');
 
         const headers = getAuthHeaders();
-        const [topRes] = await Promise.all([
-            fetch('/api/reportes/top-maquinas', { headers })
-        ]);
+        const topRes = await fetch('/api/reportes/top-maquinas', { headers });
 
             const [alertsRes, urgentRes] = await Promise.all([
                 fetch('/api/alertas-criticas?limit=5', { headers }),
@@ -3658,24 +3663,51 @@ async function loadInicioKpis() {
             if (!topRes.ok) throw new Error('No se pudieron cargar top máquinas');
 
             const role = typeof userRole !== 'undefined' ? userRole : (currentUser?.rol_acceso || '');
+            const isOperator = String(role).toLowerCase() === 'operador';
 
             let machines = [];
-            if (role.toLowerCase() === 'operador') {
-                // Para operadores, usar máquinas asignadas por contrato
+            if (isOperator) {
+                // Para operadores, usar solo máquinas asignadas.
                 machines = await loadAvailableMachines();
             } else {
                 const machinesRes = await fetch('/api/maquinaria', { headers });
                 machines = machinesRes.ok ? await machinesRes.json() : [];
             }
 
-            const alerts = alertsRes.ok ? await alertsRes.json() : [];
-            const urgent = urgentRes.ok ? await urgentRes.json() : [];
+            const machineIdsSet = new Set((Array.isArray(machines) ? machines : [])
+                .map((item) => Number(item.id_maquina || item.maquinaria_id_maquina))
+                .filter((value) => Number.isFinite(value) && value > 0));
+
+            const allAlerts = alertsRes.ok ? await alertsRes.json() : [];
+            const allUrgent = urgentRes.ok ? await urgentRes.json() : [];
+
+            const alerts = isOperator
+                ? (Array.isArray(allAlerts) ? allAlerts : []).filter((item) => {
+                    const id = Number(item?.maquinaria_id_maquina);
+                    return Number.isFinite(id) && machineIdsSet.has(id);
+                })
+                : (Array.isArray(allAlerts) ? allAlerts : []);
+
+            const urgent = isOperator
+                ? (Array.isArray(allUrgent) ? allUrgent : []).filter((item) => {
+                    const id = Number(item?.id_maquina || item?.maquinaria_id_maquina);
+                    return Number.isFinite(id) && machineIdsSet.has(id);
+                })
+                : (Array.isArray(allUrgent) ? allUrgent : []);
+
             availableMachines = Array.isArray(machines) ? machines : [];
 
-            const top = await topRes.json();
+            const top = topRes.ok ? await topRes.json() : [];
+            const topScoped = isOperator
+                ? [...availableMachines]
+                    .sort((a, b) => Number(b?.horometro_actual || 0) - Number(a?.horometro_actual || 0))
+                    .slice(0, 5)
+                : (Array.isArray(top) ? top : []);
 
         const totalMaquinaria = machines.length;
-        const disponibles = machines.filter((item) => item.estado === 'Disponible').length;
+        const disponibles = isOperator
+            ? machines.length
+            : machines.filter((item) => item.estado === 'Disponible').length;
         const arrendadas = machines.filter((item) => item.estado === 'Arrendada').length;
         const mantencion = machines.filter((item) => item.estado === 'Mantencion').length;
         const bloqueadas = machines.filter((item) => item.estado === 'Bloqueada').length;
@@ -3694,13 +3726,13 @@ async function loadInicioKpis() {
         const mantNoteEl = document.getElementById('inicioMantenimientoUrgenteNote');
 
         if (totalMaquinariaEl) totalMaquinariaEl.textContent = totalMaquinaria || '—';
-        if (totalMaquinariaNoteEl) totalMaquinariaNoteEl.textContent = `${distinctStates} categorías de estado`;
+        if (totalMaquinariaNoteEl) totalMaquinariaNoteEl.textContent = isOperator ? 'Máquinas asignadas a tu usuario' : `${distinctStates} categorías de estado`;
         if (disponiblesEl) disponiblesEl.textContent = disponibles || '—';
-        if (disponiblesNoteEl) disponiblesNoteEl.textContent = 'Listas para uso';
+        if (disponiblesNoteEl) disponiblesNoteEl.textContent = isOperator ? 'Disponibles para tu operación' : 'Listas para uso';
         if (arrendEl) arrendEl.textContent = arrendadas || '—';
-        if (arrendNoteEl) arrendNoteEl.textContent = 'Activos hoy';
+        if (arrendNoteEl) arrendNoteEl.textContent = isOperator ? 'Tus máquinas en arriendo' : 'Activos hoy';
         if (mantEl) mantEl.textContent = urgentCount || '—';
-        if (mantNoteEl) mantNoteEl.textContent = urgentCount > 0 ? 'Acción requerida' : 'Sin urgencias';
+        if (mantNoteEl) mantNoteEl.textContent = urgentCount > 0 ? (isOperator ? 'Acción requerida en tus máquinas' : 'Acción requerida') : 'Sin urgencias';
 
         // Animar KPIs para dar feedback visual en la actualización
         try {
@@ -3766,9 +3798,9 @@ async function loadInicioKpis() {
         }
 
         // Render chart de top máquinas en Inicio
-        if (window.Chart && Array.isArray(top)) {
-            const labels = top.map(t => t.modelo_equipo || t.modelo || `#${t.id_maquina || t.id}`);
-            const values = top.map(t => Number(t.horometro_actual ?? t.horometro ?? 0));
+        if (window.Chart && Array.isArray(topScoped)) {
+            const labels = topScoped.map(t => t.modelo_equipo || t.modelo || `#${t.id_maquina || t.id}`);
+            const values = topScoped.map(t => Number(t.horometro_actual ?? t.horometro ?? 0));
             const canvas = document.getElementById('inicioTopChart');
             if (canvas) {
                 if (window.inicioTopChartInstance && typeof window.inicioTopChartInstance.destroy === 'function') {
