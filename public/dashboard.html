@@ -2138,10 +2138,12 @@ async function loadAvailableMachines() {
 
     if (isOperator) {
         let assignments = [];
+        let assignmentsLoaded = false;
         try {
             const res = await fetch('/api/maquinaria/mis-asignaciones', { headers: getAuthHeaders() });
             if (res.ok) {
                 assignments = await res.json();
+                assignmentsLoaded = true;
             } else {
                 console.warn('No se pudieron cargar mis asignaciones; se usará fallback de arriendos');
             }
@@ -2167,7 +2169,7 @@ async function loadAvailableMachines() {
             fecha_inicio: assignment.fecha_inicio
         }));
 
-        if (!machines.length) {
+        if (!machines.length && !assignmentsLoaded) {
             try {
                 const incidenciasRes = await fetch('/api/incidencias', { headers: getAuthHeaders() });
                 if (incidenciasRes.ok) {

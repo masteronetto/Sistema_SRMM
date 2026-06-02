@@ -2,6 +2,7 @@ const maquinariaRepo = require('../maquinaria/maquinaria.repository');
 const logisticaRepo = require('./logistica.repository');
 const arriendosRepo = require('../arriendos/arriendos.repository');
 const usuariosRepo = require('../usuarios/usuarios.repository');
+const pool = require('../../db/pool');
 
 function validateEventoPayload(payload) {
   const maquinaria_id_maquina = payload.maquinaria_id_maquina === undefined || payload.maquinaria_id_maquina === null || payload.maquinaria_id_maquina === ''
@@ -210,13 +211,34 @@ async function update(req, res, next) {
     }
 
     if (estado_evento === 'Completado' && isRetornoEvent(evento)) {
-      const contratoId = Number(evento.arriendos_id_contrato);
-      if (Number.isFinite(contratoId) && contratoId > 0) {
-        try {
-          await arriendosRepo.markArriendoAsCompleted(contratoId);
-        } catch (_) {
-          // No bloquear respuesta de logística si falla el cierre de contrato.
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        let machineId = Number(evento.maquinaria_id_maquina);
+        const contratoId = Number(evento.arriendos_id_contrato);
+
+        if (Number.isFinite(contratoId) && contratoId > 0) {
+          const contratoCerrado = await arriendosRepo.markArriendoAsCompleted(contratoId, client);
+          if (contratoCerrado && Number.isFinite(Number(contratoCerrado.maquinaria_id_maquina))) {
+            machineId = Number(contratoCerrado.maquinaria_id_maquina);
+          }
         }
+
+        if (Number.isFinite(machineId) && machineId > 0) {
+          await maquinariaRepo.finalizarAsignacionActivaByMaquina(machineId, null, client);
+          const arriendoActivo = await arriendosRepo.getArriendoActivoByMaquina(machineId, client);
+          if (!arriendoActivo) {
+            await maquinariaRepo.markMaquinariaDisponibleSiArrendada(machineId, client);
+          }
+        }
+
+        await client.query('COMMIT');
+      } catch (_) {
+        await client.query('ROLLBACK');
+        // No bloquear respuesta de logística si falla la liberación de contrato/asignación.
+      } finally {
+        client.release();
       }
     }
 
