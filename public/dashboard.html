@@ -1086,12 +1086,15 @@ function renderAdminMaquinaria(rows) {
     const showActions = isAdmin || userRole === 'Mecanico';
     container.innerHTML = rows.map((item) => {
         const maquina = mapMaquinariaItem(item);
+        const tarifaRaw = maquina.tarifa_diaria;
+        const tarifaNumber = tarifaRaw === null || tarifaRaw === undefined || tarifaRaw === '' ? null : Number(tarifaRaw);
+        const tarifaLabel = Number.isFinite(tarifaNumber) ? formatCurrency(tarifaNumber) : '—';
         return `<tr>
             <td>${maquina.id ?? '—'}</td>
             <td>${maquina.modelo || '—'}</td>
             <td>${escapeHtml(maquina.estado || '—')}</td>
             <td>${maquina.horometro ?? '—'}</td>
-            <td>${formatCurrency(maquina.tarifa_diaria || 0)}</td>
+            <td>${tarifaLabel}</td>
             <td>${escapeHtml(maquina.plan_display || maquina.planes_mantencion_id_plan || '—')}</td>
             ${showActions ? `<td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
                 <button class="btn btn-edit" data-id="${maquina.id ?? ''}">Editar</button>
@@ -1100,6 +1103,33 @@ function renderAdminMaquinaria(rows) {
             </td>` : '<td></td>'}
         </tr>`;
     }).join('');
+}
+
+function updateInventarioCardsFromRows(rows) {
+    const items = Array.isArray(rows) ? rows.map(mapMaquinariaItem) : [];
+    const total = items.length;
+
+    const normalizeEstado = (value) => String(value || '').trim().toLowerCase();
+    const disponibles = items.filter((item) => normalizeEstado(item.estado) === 'disponible').length;
+    const bloqueadas = items.filter((item) => normalizeEstado(item.estado) === 'bloqueada').length;
+    const revision = items.filter((item) => {
+        const estado = normalizeEstado(item.estado);
+        return estado === 'mantencion'
+            || estado === 'mantenimiento'
+            || estado === 'en revision'
+            || estado === 'en revisión'
+            || estado === 'no operativa';
+    }).length;
+
+    const inventarioTotalEl = document.getElementById('inventarioTotal');
+    const inventarioDisponiblesEl = document.getElementById('inventarioDisponibles');
+    const inventarioBloqueadasEl = document.getElementById('inventarioBloqueadas');
+    const inventarioRevisionEl = document.getElementById('inventarioRevision');
+
+    if (inventarioTotalEl) inventarioTotalEl.textContent = String(total);
+    if (inventarioDisponiblesEl) inventarioDisponiblesEl.textContent = String(disponibles);
+    if (inventarioBloqueadasEl) inventarioBloqueadasEl.textContent = String(bloqueadas);
+    if (inventarioRevisionEl) inventarioRevisionEl.textContent = String(revision);
 }
 
 async function loadAdminMaquinaria() {
@@ -1125,6 +1155,7 @@ async function loadAdminMaquinaria() {
 
         availableMachines = Array.isArray(items) ? items : [];
         renderAdminMaquinaria(availableMachines);
+        updateInventarioCardsFromRows(availableMachines);
         setMaquinariaStatus(isAdmin ? 'Maquinaria actualizada' : 'Máquinas asignadas actualizadas', 'success');
     } catch (err) {
         container.innerHTML = isAdmin
@@ -3727,13 +3758,13 @@ async function loadInicioKpis() {
         const mantEl = document.getElementById('inicioMantenimientoUrgente');
         const mantNoteEl = document.getElementById('inicioMantenimientoUrgenteNote');
 
-        if (totalMaquinariaEl) totalMaquinariaEl.textContent = totalMaquinaria || '—';
+        if (totalMaquinariaEl) totalMaquinariaEl.textContent = String(totalMaquinaria);
         if (totalMaquinariaNoteEl) totalMaquinariaNoteEl.textContent = isOperator ? 'Máquinas asignadas a tu usuario' : `${distinctStates} categorías de estado`;
-        if (disponiblesEl) disponiblesEl.textContent = disponibles || '—';
+        if (disponiblesEl) disponiblesEl.textContent = String(disponibles);
         if (disponiblesNoteEl) disponiblesNoteEl.textContent = isOperator ? 'Disponibles para tu operación' : 'Listas para uso';
-        if (arrendEl) arrendEl.textContent = arrendadas || '—';
+        if (arrendEl) arrendEl.textContent = String(arrendadas);
         if (arrendNoteEl) arrendNoteEl.textContent = isOperator ? 'Tus máquinas en arriendo' : 'Activos hoy';
-        if (mantEl) mantEl.textContent = urgentCount || '—';
+        if (mantEl) mantEl.textContent = String(urgentCount);
         if (mantNoteEl) mantNoteEl.textContent = urgentCount > 0 ? (isOperator ? 'Acción requerida en tus máquinas' : 'Acción requerida') : 'Sin urgencias';
 
         // Animar KPIs para dar feedback visual en la actualización
@@ -3745,10 +3776,10 @@ async function loadInicioKpis() {
         const inventarioDisponiblesEl = document.getElementById('inventarioDisponibles');
         const inventarioBloqueadasEl = document.getElementById('inventarioBloqueadas');
         const inventarioRevisionEl = document.getElementById('inventarioRevision');
-        if (inventarioTotalEl) inventarioTotalEl.textContent = totalMaquinaria || '—';
-        if (inventarioDisponiblesEl) inventarioDisponiblesEl.textContent = disponibles || '—';
-        if (inventarioBloqueadasEl) inventarioBloqueadasEl.textContent = bloqueadas || '—';
-        if (inventarioRevisionEl) inventarioRevisionEl.textContent = noOperativas || mantencion || '—';
+        if (inventarioTotalEl) inventarioTotalEl.textContent = String(totalMaquinaria);
+        if (inventarioDisponiblesEl) inventarioDisponiblesEl.textContent = String(disponibles);
+        if (inventarioBloqueadasEl) inventarioBloqueadasEl.textContent = String(bloqueadas);
+        if (inventarioRevisionEl) inventarioRevisionEl.textContent = String(noOperativas + mantencion);
 
         // barras de estado (porcentajes)
         const total = Math.max(1, totalMaquinaria);
