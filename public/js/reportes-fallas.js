@@ -1,4 +1,25 @@
 (function () {
+  function normalizeRole(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function canResolveIncidencias() {
+    if (typeof window.hasCurrentRole === 'function') {
+      return window.hasCurrentRole('Mecanico') || window.hasCurrentRole('Administrador');
+    }
+
+    const roleFromGetter = typeof window.getCurrentRole === 'function' ? window.getCurrentRole() : '';
+    const roleFromUserVar = typeof userRole !== 'undefined' ? userRole : '';
+    const roleFromCurrentUser = typeof currentUser !== 'undefined' ? currentUser?.rol_acceso : '';
+    const role = normalizeRole(roleFromGetter || roleFromUserVar || roleFromCurrentUser);
+
+    return role === 'mecanico' || role === 'administrador';
+  }
+
   function shouldShowReportWarningColumn() {
     return Boolean(document.getElementById('reportFallasShowWarning')?.checked);
   }
@@ -160,9 +181,7 @@
   function renderGlobalIncidenciasTable(rows) {
     const container = document.getElementById('reportIncidenciasGlobal');
     if (!container) return;
-    const canResolve = typeof window.hasCurrentRole === 'function'
-      ? (window.hasCurrentRole('Mecanico') || window.hasCurrentRole('Administrador'))
-      : false;
+    const canResolve = canResolveIncidencias();
     if (!rows || !rows.length) {
       container.innerHTML = '<p class="muted">No hay incidencias para los filtros seleccionados.</p>';
       return;

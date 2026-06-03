@@ -1477,6 +1477,21 @@ function hasCurrentRole(roleName) {
     return normalize(getCurrentRole()) === normalize(roleName);
 }
 
+function canResolveIncidenciasActions() {
+    if (typeof hasCurrentRole === 'function') {
+        return hasCurrentRole('Mecanico') || hasCurrentRole('Administrador');
+    }
+
+    const normalize = (value) => String(value || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+    const role = normalize((typeof userRole !== 'undefined' && userRole) || currentUser?.rol_acceso || '');
+    return role === 'mecanico' || role === 'administrador';
+}
+
 window.getCurrentRole = getCurrentRole;
 window.hasCurrentRole = hasCurrentRole;
 
@@ -5222,7 +5237,7 @@ async function loadMachineIncidencias(rows, filter) {
 }
 
 function renderIncidencias(items, rows) {
-    const canResolve = hasCurrentRole('Mecanico') || hasCurrentRole('Administrador');
+    const canResolve = canResolveIncidenciasActions();
     if (!items || !items.length) {
         rows.innerHTML = '<tr><td colspan="7" class="detail-empty">No hay incidencias registradas.</td></tr>';
         return;
