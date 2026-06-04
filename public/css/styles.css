@@ -1170,21 +1170,34 @@ tbody tr:hover { background: #fdfaf8; }
         overflow-y: auto;
     }
     .sidebar-nav {
-        display: flex;
+        display: none;
         flex-direction: column;
         gap: 0.1rem;
         padding: 0.4rem 0;
     }
     .nav-group-title {
-        display: block;
+        display: none;
         padding-top: 0.7rem;
     }
-    .sidebar-footer {
-        display: grid;
-    }
     .mobile-menu-actions {
-        display: block;
+        display: none;
         padding: 0.35rem 1rem 0.25rem;
+    }
+    .sidebar-footer {
+        display: none;
+    }
+
+    .sidebar.mobile-open .nav-group-title {
+        display: block;
+    }
+    .sidebar.mobile-open .sidebar-nav {
+        display: flex;
+    }
+    .sidebar.mobile-open .mobile-menu-actions {
+        display: block;
+    }
+    .sidebar.mobile-open .sidebar-footer {
+        display: grid;
     }
     .content { padding: 1rem; }
     .hero-grid, .mini-grid { grid-template-columns: 1fr; }
