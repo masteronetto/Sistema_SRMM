@@ -45,6 +45,22 @@ body {
     border-bottom: 1px solid rgba(255,255,255,0.16);
 }
 
+.mobile-menu-toggle {
+    display: none;
+    border: 1px solid rgba(255,255,255,0.28);
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    border-radius: 10px;
+    padding: 0.45rem 0.7rem;
+    font-weight: 700;
+    font-size: 0.86rem;
+    cursor: pointer;
+}
+
+.mobile-menu-toggle:hover {
+    background: rgba(255,255,255,0.16);
+}
+
 .brand-mark {
     display: inline-flex;
     align-items: center;
@@ -1117,12 +1133,39 @@ tbody tr:hover { background: #fdfaf8; }
 
 @media (max-width: 900px) {
     .sidebar { position: sticky; top: 0; z-index: 30; }
-    .sidebar-nav {
-        display: grid; grid-template-columns: repeat(2, minmax(0,1fr));
-        gap: 0.2rem; padding: 0.4rem;
+    .brand {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.8rem;
     }
-    .nav-group-title, .sidebar-footer { display: none; }
-    .brand { display: flex; align-items: center; gap: 0.8rem; }
+    .mobile-menu-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+    }
+    .sidebar-mobile-panel {
+        display: none;
+        border-top: 1px solid rgba(255,255,255,0.12);
+        background: rgba(0,0,0,0.08);
+    }
+    .sidebar.mobile-open .sidebar-mobile-panel {
+        display: block;
+    }
+    .sidebar-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+        padding: 0.4rem 0;
+    }
+    .nav-group-title {
+        display: block;
+        padding-top: 0.7rem;
+    }
+    .sidebar-footer {
+        display: grid;
+    }
     .content { padding: 1rem; }
     .hero-grid, .mini-grid { grid-template-columns: 1fr; }
     .maquinaria-form-grid { grid-template-columns: 1fr; }
