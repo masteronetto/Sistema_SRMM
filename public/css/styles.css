@@ -38,6 +38,7 @@ body {
     border-right: 1px solid rgba(255,255,255,0.08);
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 .brand {
@@ -63,14 +64,6 @@ body {
 
 .sidebar-mobile-panel {
     display: block;
-}
-
-.mobile-menu-actions {
-    display: none;
-}
-
-.mobile-logout-btn {
-    width: 100%;
 }
 
 .brand-mark {
@@ -1144,7 +1137,12 @@ tbody tr:hover { background: #fdfaf8; }
 }
 
 @media (max-width: 900px) {
-    .sidebar { position: sticky; top: 0; z-index: 30; }
+    .sidebar {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        overflow: visible;
+    }
     .brand {
         display: flex;
         align-items: center;
@@ -1159,15 +1157,20 @@ tbody tr:hover { background: #fdfaf8; }
     }
     .sidebar-mobile-panel {
         display: block;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
         max-height: 0;
         overflow: hidden;
         transition: max-height 0.24s ease;
         border-top: 1px solid rgba(255,255,255,0.12);
-        background: rgba(0,0,0,0.08);
+        background: #5c524c;
     }
     .sidebar.mobile-open .sidebar-mobile-panel {
         max-height: 80vh;
         overflow-y: auto;
+        box-shadow: 0 14px 30px rgba(0,0,0,0.24);
     }
     .sidebar-nav {
         display: none;
@@ -1179,12 +1182,9 @@ tbody tr:hover { background: #fdfaf8; }
         display: none;
         padding-top: 0.7rem;
     }
-    .mobile-menu-actions {
-        display: none;
-        padding: 0.35rem 1rem 0.25rem;
-    }
     .sidebar-footer {
         display: none;
+        padding-bottom: 1rem;
     }
 
     .sidebar.mobile-open .nav-group-title {
@@ -1192,9 +1192,6 @@ tbody tr:hover { background: #fdfaf8; }
     }
     .sidebar.mobile-open .sidebar-nav {
         display: flex;
-    }
-    .sidebar.mobile-open .mobile-menu-actions {
-        display: block;
     }
     .sidebar.mobile-open .sidebar-footer {
         display: grid;

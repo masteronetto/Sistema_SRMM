@@ -99,10 +99,6 @@
                 </button>
             </nav>
 
-            <div class="mobile-menu-actions">
-                <button type="button" class="logout-btn mobile-logout-btn" id="mobileLogoutBtn">Cerrar sesión</button>
-            </div>
-
             <div class="sidebar-footer">
                 <div class="avatar" id="sidebarAvatar">??</div>
                 <div class="sidebar-user-meta">
@@ -1539,16 +1535,11 @@ async function initDashboard() {
 }
 
 function initStaticActionButtons() {
-    const logoutButtons = [
-        document.getElementById('sidebarLogoutBtn'),
-        document.getElementById('mobileLogoutBtn')
-    ];
-    logoutButtons.forEach((logoutBtn) => {
-        if (logoutBtn && !logoutBtn.dataset.bound) {
-            logoutBtn.dataset.bound = '1';
-            logoutBtn.addEventListener('click', logout);
-        }
-    });
+    const logoutBtn = document.getElementById('sidebarLogoutBtn');
+    if (logoutBtn && !logoutBtn.dataset.bound) {
+        logoutBtn.dataset.bound = '1';
+        logoutBtn.addEventListener('click', logout);
+    }
 
     const addUserBtn = document.getElementById('addUserBtn');
     if (addUserBtn && !addUserBtn.dataset.bound) {
