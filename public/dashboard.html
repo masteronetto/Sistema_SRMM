@@ -54,7 +54,7 @@
                     <div class="text-xs font-semibold opacity-90">Hermosilla y García Ltda.</div>
                 </div>
             </div>
-            <button type="button" class="mobile-menu-toggle" id="mobileMenuToggle" aria-expanded="false" aria-controls="sidebarMenuPanel" aria-label="Abrir o cerrar menú de navegación">
+            <button type="button" class="mobile-menu-toggle" id="mobileMenuToggle" aria-expanded="false" aria-controls="sidebarMenuPanel" aria-label="Abrir menú de navegación">
                 ☰ Menú
             </button>
         </div>
@@ -98,6 +98,10 @@
                     <span class="nav-icon">▤</span>Reportes
                 </button>
             </nav>
+
+            <div class="mobile-menu-actions">
+                <button type="button" class="logout-btn mobile-logout-btn" id="mobileLogoutBtn">Cerrar sesión</button>
+            </div>
 
             <div class="sidebar-footer">
                 <div class="avatar" id="sidebarAvatar">??</div>
@@ -1535,11 +1539,16 @@ async function initDashboard() {
 }
 
 function initStaticActionButtons() {
-    const logoutBtn = document.getElementById('sidebarLogoutBtn');
-    if (logoutBtn && !logoutBtn.dataset.bound) {
-        logoutBtn.dataset.bound = '1';
-        logoutBtn.addEventListener('click', logout);
-    }
+    const logoutButtons = [
+        document.getElementById('sidebarLogoutBtn'),
+        document.getElementById('mobileLogoutBtn')
+    ];
+    logoutButtons.forEach((logoutBtn) => {
+        if (logoutBtn && !logoutBtn.dataset.bound) {
+            logoutBtn.dataset.bound = '1';
+            logoutBtn.addEventListener('click', logout);
+        }
+    });
 
     const addUserBtn = document.getElementById('addUserBtn');
     if (addUserBtn && !addUserBtn.dataset.bound) {
@@ -1727,12 +1736,16 @@ function updateGlobalDateControlsVisibility(activeView = document.querySelector(
 }
 
 function initNavigation() {
-    const navButtons = Array.from(document.querySelectorAll('.nav-link'));
+    const sidebarNav = document.querySelector('.sidebar-nav');
+    if (sidebarNav && !sidebarNav.dataset.bound) {
+        sidebarNav.dataset.bound = '1';
+        sidebarNav.addEventListener('click', (event) => {
+            const btn = event.target.closest('.nav-link');
+            if (!btn) return;
 
-    navButtons.forEach((btn) => {
-        btn.addEventListener('click', (event) => {
+            event.preventDefault();
+
             if (btn.dataset.url) {
-                event.preventDefault();
                 window.location.href = btn.dataset.url;
                 return;
             }
@@ -1744,7 +1757,8 @@ function initNavigation() {
                 }
             }
         });
-    });
+    }
+
     window.addEventListener('hashchange', () => {
         showView(location.hash.replace('#', '') || 'inicio', false);
     });
@@ -1758,14 +1772,20 @@ function initMobileSidebarMenu() {
 
     const isMobile = () => window.innerWidth <= 900;
 
+    const setToggleState = (isOpen) => {
+        toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        toggleBtn.setAttribute('aria-label', isOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación');
+        toggleBtn.textContent = isOpen ? '✕ Cerrar' : '☰ Menú';
+    };
+
     const closeMenu = () => {
         sidebar.classList.remove('mobile-open');
-        toggleBtn.setAttribute('aria-expanded', 'false');
+        setToggleState(false);
     };
 
     const openMenu = () => {
         sidebar.classList.add('mobile-open');
-        toggleBtn.setAttribute('aria-expanded', 'true');
+        setToggleState(true);
     };
 
     toggleBtn.addEventListener('click', () => {
@@ -1791,6 +1811,7 @@ function initMobileSidebarMenu() {
         if (!isMobile()) closeMenu();
     });
 
+    setToggleState(false);
     window.closeMobileSidebarMenu = closeMenu;
 }
 

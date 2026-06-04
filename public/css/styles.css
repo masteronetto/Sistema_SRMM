@@ -61,6 +61,18 @@ body {
     background: rgba(255,255,255,0.16);
 }
 
+.sidebar-mobile-panel {
+    display: block;
+}
+
+.mobile-menu-actions {
+    display: none;
+}
+
+.mobile-logout-btn {
+    width: 100%;
+}
+
 .brand-mark {
     display: inline-flex;
     align-items: center;
@@ -1146,12 +1158,16 @@ tbody tr:hover { background: #fdfaf8; }
         white-space: nowrap;
     }
     .sidebar-mobile-panel {
-        display: none;
+        display: block;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.24s ease;
         border-top: 1px solid rgba(255,255,255,0.12);
         background: rgba(0,0,0,0.08);
     }
     .sidebar.mobile-open .sidebar-mobile-panel {
-        display: block;
+        max-height: 80vh;
+        overflow-y: auto;
     }
     .sidebar-nav {
         display: flex;
@@ -1165,6 +1181,10 @@ tbody tr:hover { background: #fdfaf8; }
     }
     .sidebar-footer {
         display: grid;
+    }
+    .mobile-menu-actions {
+        display: block;
+        padding: 0.35rem 1rem 0.25rem;
     }
     .content { padding: 1rem; }
     .hero-grid, .mini-grid { grid-template-columns: 1fr; }
