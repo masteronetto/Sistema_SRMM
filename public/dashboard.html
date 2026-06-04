@@ -45,7 +45,7 @@
 <div class="shell">
 
     <!-- ═══════════════ SIDEBAR ═══════════════ -->
-    <aside class="sidebar" id="appSidebar">
+    <aside class="sidebar">
         <div class="brand">
             <div class="flex items-center">
                 <div class="brand-mark">SR</div>
@@ -54,59 +54,54 @@
                     <div class="text-xs font-semibold opacity-90">Hermosilla y García Ltda.</div>
                 </div>
             </div>
-            <button type="button" class="mobile-menu-toggle" id="mobileMenuToggle" aria-expanded="false" aria-controls="sidebarMenuPanel" aria-label="Abrir menú de navegación">
-                ☰ Menú
-            </button>
         </div>
 
-        <div class="sidebar-mobile-panel" id="sidebarMenuPanel">
-            <div class="nav-group-title">Dashboard</div>
-            <nav class="sidebar-nav" aria-label="Menú principal">
-                <button class="nav-link active" data-view="inicio"><span class="nav-icon">⌂</span>Inicio</button>
+        <div class="nav-group-title">Dashboard</div>
+        <nav class="sidebar-nav" aria-label="Menú principal">
+            <button class="nav-link active" data-view="inicio"><span class="nav-icon">⌂</span>Inicio</button>
 
-                <!-- Maquinaria: Mecánico, Operador, Administrador -->
-                <button class="nav-link" data-view="inventario" data-role-required="Mecanico,Operador,Administrador">
-                    <span class="nav-icon">🛠</span>Maquinaria
-                </button>
+            <!-- Maquinaria: Mecánico, Operador, Administrador -->
+            <button class="nav-link" data-view="inventario" data-role-required="Mecanico,Operador,Administrador">
+                <span class="nav-icon">🛠</span>Maquinaria
+            </button>
 
-                <div class="nav-group-title is-hidden">Operaciones</div>
+            <div class="nav-group-title is-hidden">Operaciones</div>
 
-                <!-- Mantenimiento: Mecánico, Administrador -->
-                <button class="nav-link" data-view="mantenimiento" data-role-required="Mecanico,Administrador">
-                    <span class="nav-icon">⚙</span>Mantenimiento
-                </button>
+            <!-- Mantenimiento: Mecánico, Administrador -->
+            <button class="nav-link" data-view="mantenimiento" data-role-required="Mecanico,Administrador">
+                <span class="nav-icon">⚙</span>Mantenimiento
+            </button>
 
-                <!-- Arriendo: solo Administrador -->
-                <button class="nav-link" data-view="arriendo" data-role-required="Administrador">
-                    <span class="nav-icon">⟲</span>Arriendo
-                </button>
+            <!-- Arriendo: solo Administrador -->
+            <button class="nav-link" data-view="arriendo" data-role-required="Administrador">
+                <span class="nav-icon">⟲</span>Arriendo
+            </button>
 
-                <!-- Logística: Operador, Administrador -->
-                <button class="nav-link" data-view="logistica" data-role-required="Operador,Administrador">
-                    <span class="nav-icon">➜</span>Logística
-                </button>
+            <!-- Logística: Operador, Administrador -->
+            <button class="nav-link" data-view="logistica" data-role-required="Operador,Administrador">
+                <span class="nav-icon">➜</span>Logística
+            </button>
 
-                <div class="nav-group-title is-hidden">Sistema</div>
+            <div class="nav-group-title is-hidden">Sistema</div>
 
-                <!-- Usuarios: solo Administrador -->
-                <button class="nav-link" data-view="usuarios" data-role-required="Administrador">
-                    <span class="nav-icon">◉</span>Usuarios
-                </button>
+            <!-- Usuarios: solo Administrador -->
+            <button class="nav-link" data-view="usuarios" data-role-required="Administrador">
+                <span class="nav-icon">◉</span>Usuarios
+            </button>
 
-                <!-- Reportes: Mecánico, Operador, Administrador -->
-                <button class="nav-link" data-view="reportes" data-role-required="Mecanico,Operador,Administrador">
-                    <span class="nav-icon">▤</span>Reportes
-                </button>
-            </nav>
+            <!-- Reportes: Mecánico, Operador, Administrador -->
+            <button class="nav-link" data-view="reportes" data-role-required="Mecanico,Operador,Administrador">
+                <span class="nav-icon">▤</span>Reportes
+            </button>
+        </nav>
 
-            <div class="sidebar-footer">
-                <div class="avatar" id="sidebarAvatar">??</div>
-                <div class="sidebar-user-meta">
-                    <div class="sidebar-user-name" id="sidebarName">Cargando…</div>
-                    <div class="sidebar-user-actions">
-                        <div id="sidebarRoleBadge" class="role-badge"></div>
-                        <button class="logout-btn" id="sidebarLogoutBtn">Cerrar sesión</button>
-                    </div>
+        <div class="sidebar-footer">
+            <div class="avatar" id="sidebarAvatar">??</div>
+            <div class="sidebar-user-meta">
+                <div class="sidebar-user-name" id="sidebarName">Cargando…</div>
+                <div class="sidebar-user-actions">
+                    <div id="sidebarRoleBadge" class="role-badge"></div>
+                    <button class="logout-btn" id="sidebarLogoutBtn">Cerrar sesión</button>
                 </div>
             </div>
         </div>
@@ -1522,7 +1517,6 @@ async function initDashboard() {
     applyRolePermissions();
     renderWelcome();
     initStaticActionButtons();
-    initMobileSidebarMenu();
     initNavigation();
     initMachineCards();
     initIncidentForm();
@@ -1727,83 +1721,25 @@ function updateGlobalDateControlsVisibility(activeView = document.querySelector(
 }
 
 function initNavigation() {
-    const sidebarNav = document.querySelector('.sidebar-nav');
-    if (sidebarNav && !sidebarNav.dataset.bound) {
-        sidebarNav.dataset.bound = '1';
-        sidebarNav.addEventListener('click', (event) => {
-            const btn = event.target.closest('.nav-link');
-            if (!btn) return;
+    const navButtons = Array.from(document.querySelectorAll('.nav-link'));
 
-            event.preventDefault();
-
+    navButtons.forEach((btn) => {
+        btn.addEventListener('click', (event) => {
             if (btn.dataset.url) {
+                event.preventDefault();
                 window.location.href = btn.dataset.url;
                 return;
             }
 
             if (btn.dataset.view) {
                 showView(btn.dataset.view);
-                if (window.innerWidth <= 900 && typeof window.closeMobileSidebarMenu === 'function') {
-                    window.closeMobileSidebarMenu();
-                }
             }
         });
-    }
-
+    });
     window.addEventListener('hashchange', () => {
         showView(location.hash.replace('#', '') || 'inicio', false);
     });
     showView(location.hash.replace('#', '') || 'inicio', false);
-}
-
-function initMobileSidebarMenu() {
-    const sidebar = document.getElementById('appSidebar');
-    const toggleBtn = document.getElementById('mobileMenuToggle');
-    if (!sidebar || !toggleBtn) return;
-
-    const isMobile = () => window.innerWidth <= 900;
-
-    const setToggleState = (isOpen) => {
-        toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-        toggleBtn.setAttribute('aria-label', isOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación');
-        toggleBtn.textContent = isOpen ? '✕ Cerrar' : '☰ Menú';
-    };
-
-    const closeMenu = () => {
-        sidebar.classList.remove('mobile-open');
-        setToggleState(false);
-    };
-
-    const openMenu = () => {
-        sidebar.classList.add('mobile-open');
-        setToggleState(true);
-    };
-
-    toggleBtn.addEventListener('click', () => {
-        if (!isMobile()) return;
-        if (sidebar.classList.contains('mobile-open')) {
-            closeMenu();
-            return;
-        }
-        openMenu();
-    });
-
-    document.addEventListener('click', (event) => {
-        if (!isMobile() || !sidebar.classList.contains('mobile-open')) return;
-        if (sidebar.contains(event.target)) return;
-        closeMenu();
-    });
-
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') closeMenu();
-    });
-
-    window.addEventListener('resize', () => {
-        if (!isMobile()) closeMenu();
-    });
-
-    setToggleState(false);
-    window.closeMobileSidebarMenu = closeMenu;
 }
 
 /* ═══════════════════════════════════════════════════
