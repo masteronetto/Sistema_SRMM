@@ -133,6 +133,9 @@ Variables mas utilizadas:
 | `INTERVALO_VERIFICACION_RETRASOS` | Intervalo de scheduler de retrasos en ms |
 | `SMTP_USER` | Cuenta para envio de correos |
 | `SMTP_PASS` | Clave/App Password del proveedor SMTP |
+| `SMTP_HOST` | Host SMTP (ejemplo: `smtp.gmail.com`) |
+| `SMTP_PORT` | Puerto SMTP (Gmail SSL: `465`) |
+| `SMTP_SECURE` | Conexion segura SMTP (`true` para 465) |
 | `SMTP_FROM` | Remitente de correos |
 | `SMTP_GMAIL` | Habilita modo Gmail |
 | `FRONTEND_URL` | URL publica del frontend para links de recuperacion |
@@ -238,6 +241,13 @@ Esto ocurre cuando la base de datos no esta configurada o no es accesible. Revis
 ### Error SMTP al recuperar contrasena
 
 Para Gmail, usa App Password con verificacion en dos pasos habilitada.
+
+Checklist recomendado:
+
+- `SMTP_USER` debe ser el correo completo de Gmail.
+- `SMTP_PASS` debe ser una App Password de 16 caracteres (sin espacios).
+- `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_SECURE=true`.
+- Si usas variable `SMTP_FROM`, debe pertenecer a la cuenta autorizada por el proveedor.
 
 ## Licencia
 
