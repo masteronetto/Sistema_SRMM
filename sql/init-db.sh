@@ -43,4 +43,12 @@ else
 	echo "  5️⃣  005_logistica_arriendo_link.sql no encontrado, se omite"
 fi
 
+# 6. Validación horómetro no decreciente
+if [ -f /docker-entrypoint-initdb.d/006_horometro_no_decreciente.sql ]; then
+	echo "  6️⃣  Aplicando validación de horómetro no decreciente (006_horometro_no_decreciente.sql)..."
+	psql -U postgres -d srmm_db -f /docker-entrypoint-initdb.d/006_horometro_no_decreciente.sql
+else
+	echo "  6️⃣  006_horometro_no_decreciente.sql no encontrado, se omite"
+fi
+
 echo "✅ Base de datos inicializada correctamente"

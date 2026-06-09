@@ -397,6 +397,12 @@ async function update(req, res, next) {
       return res.status(404).json({ message: 'Maquinaria no encontrada' });
     }
 
+    if (Number(parsed.horometro_actual) < Number(current.horometro_actual)) {
+      return res.status(400).json({
+        message: 'El horometro_actual no puede ser menor al valor previamente registrado'
+      });
+    }
+
     const payload = {
       ...parsed,
       tarifa_diaria: parsed.tarifa_diaria === undefined ? current.tarifa_diaria : parsed.tarifa_diaria
@@ -409,6 +415,11 @@ async function update(req, res, next) {
 
     return res.json(data);
   } catch (error) {
+    if (error.code === '23514' || error.code === 'P0001') {
+      return res.status(400).json({
+        message: 'El horometro_actual no puede ser menor al valor previamente registrado'
+      });
+    }
     return next(error);
   }
 }
