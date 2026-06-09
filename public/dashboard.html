@@ -2004,6 +2004,13 @@ function formatCLDate(value) {
     return date.toLocaleDateString('es-CL', { timeZone: 'UTC' });
 }
 
+function formatCLDateTime(value) {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString('es-CL');
+}
+
 function formatNumber(value, suffix = '') {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return `0${suffix}`;
@@ -4196,8 +4203,10 @@ async function loadInicioKpis() {
                 <div class="alert-item ${String(item.estado_alerta).toLowerCase() === 'pendiente' ? 'alert-warning' : 'alert-info'}">
                     <div>⚡</div>
                     <div>
-                        <strong>${escapeHtml(`Alerta #${item.id_alerta}`)}${item.maquinaria_id_maquina ? ` — Máquina #${item.maquinaria_id_maquina}` : ''}</strong>
-                        <span>${escapeHtml(`${item.tipo_alerta || 'Alerta'} · ${item.estado_alerta || 'Pendiente'}`)}</span>
+                        <strong>${escapeHtml(item.modelo_equipo || `Máquina #${item.maquinaria_id_maquina || 'N/D'}`)} · ${escapeHtml(item.tipo_alerta || 'Alerta')}</strong>
+                        <span>${escapeHtml(
+                            `${item.estado_alerta || 'Pendiente'} · Último registro: ${item.ultimo_registro_ts ? formatCLDateTime(item.ultimo_registro_ts) : 'N/D'} · Operador: ${item.operador_asignado_nombre || 'Sin asignar'}`
+                        )}</span>
                     </div>
                 </div>
             `);

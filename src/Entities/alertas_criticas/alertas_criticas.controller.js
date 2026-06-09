@@ -31,6 +31,7 @@ async function getAllertas(req, res, next) {
   try {
     const limitRaw = req.query.limit || '50';
     const offsetRaw = req.query.offset || '0';
+    const estadoRaw = typeof req.query.estado === 'string' ? req.query.estado.trim() : 'Pendiente';
 
     const limit = toNumberOrNull(limitRaw);
     const offset = toNumberOrNull(offsetRaw);
@@ -39,7 +40,7 @@ async function getAllertas(req, res, next) {
       return res.status(400).json({ message: 'limit y offset deben ser numéricos' });
     }
 
-    const alertas = await alertasRepo.getAllertasAll(limit, offset);
+    const alertas = await alertasRepo.getAllertasAll(limit, offset, estadoRaw || 'Pendiente');
     return res.json(alertas);
   } catch (error) {
     return next(error);

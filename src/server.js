@@ -27,24 +27,43 @@ async function verificarFaltasDeRegistro(io) {
   try {
     const pool = require('./db/pool');
     const query = `
-      SELECT m.id_maquina, m.modelo_equipo, 
-             COALESCE(MAX(h.fecha_registro), m.created_at::date) as ultima_fecha
+      SELECT
+        m.id_maquina,
+        m.modelo_equipo,
+        COALESCE(MAX(h.created_at), m.created_at) AS ultimo_registro_ts
       FROM maquinaria m
       LEFT JOIN historial_horometro h ON m.id_maquina = h.maquinaria_id_maquina
       WHERE m.estado NOT IN ('Mantencion', 'Bloqueada', 'No Operativa')
       GROUP BY m.id_maquina, m.modelo_equipo, m.created_at
-      HAVING COALESCE(MAX(h.fecha_registro), m.created_at::date) < CURRENT_DATE - INTERVAL '1 day'
+      HAVING COALESCE(MAX(h.created_at), m.created_at) < NOW() - INTERVAL '24 hours'
     `;
     
     const { rows } = await pool.query(query);
 
     for (const maq of rows) {
+      const alertaExistente = await pool.query(
+        `
+        SELECT id_alerta
+        FROM alertas_criticas
+        WHERE maquinaria_id_maquina = $1
+          AND tipo_alerta = 'Advertencia'
+          AND estado_alerta = 'Pendiente'
+        ORDER BY created_at DESC
+        LIMIT 1
+        `,
+        [maq.id_maquina]
+      );
+
+      if (alertaExistente.rowCount > 0) {
+        continue;
+      }
+
       await pool.query(`
         INSERT INTO alertas_criticas (maquinaria_id_maquina, tipo_alerta, estado_alerta, porcentaje_umbral, horometro_critico, requiere_mantenimiento)
         VALUES ($1, 'Advertencia', 'Pendiente', 0, 0, FALSE)
       `, [maq.id_maquina]);
       
-      console.log(`[ALERTA INTERNA] Máquina ID: ${maq.id_maquina} (${maq.modelo_equipo}) sin registro de horómetro desde ${maq.ultima_fecha}. Operador será notificado.`);
+      console.log(`[ALERTA INTERNA] Máquina ID: ${maq.id_maquina} (${maq.modelo_equipo}) sin registro de horómetro desde ${maq.ultimo_registro_ts}. Operador será notificado.`);
       
       if (io) {
         io.emit('alerta:nueva', {
@@ -78,6 +97,7 @@ if (isStandaloneProcess) {
 
   if (hasDatabaseConfig) {
     // Iniciar schedulers solo en modo standalone
+    verificarFaltasDeRegistro(io);
     setInterval(() => verificarFaltasDeRegistro(io), 86400000);
     ejecutarChequeoRetrasos(io);
     setInterval(() => ejecutarChequeoRetrasos(io), intervaloVerificacionRetrasos);

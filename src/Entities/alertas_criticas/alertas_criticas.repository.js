@@ -60,24 +60,46 @@ async function getAlertaByCriticaByMaquina(maquinaria_id_maquina) {
   return rows[0] || null;
 }
 
-async function getAllertasAll(limite = 50, offset = 0) {
+async function getAllertasAll(limite = 50, offset = 0, estado = 'Pendiente') {
   const query = `
     SELECT 
-      id_alerta, 
-      maquinaria_id_maquina, 
-      tipo_alerta, 
-      estado_alerta, 
-      porcentaje_umbral, 
-      horometro_critico, 
-      requiere_mantenimiento, 
-      created_at, 
-      updated_at
-    FROM alertas_criticas
-    ORDER BY created_at DESC
+      a.id_alerta,
+      a.maquinaria_id_maquina,
+      a.tipo_alerta,
+      a.estado_alerta,
+      a.porcentaje_umbral,
+      a.horometro_critico,
+      a.requiere_mantenimiento,
+      a.created_at,
+      a.updated_at,
+      m.modelo_equipo,
+      mo.operador_id AS operador_asignado_id,
+      u.nombre_completo AS operador_asignado_nombre,
+      ultimo.ultimo_registro_ts,
+      (NOW() - ultimo.ultimo_registro_ts) AS tiempo_sin_registro
+    FROM alertas_criticas a
+    LEFT JOIN maquinaria m ON m.id_maquina = a.maquinaria_id_maquina
+    LEFT JOIN LATERAL (
+      SELECT mo.operador_id
+      FROM maquinaria_operadores mo
+      WHERE mo.maquinaria_id_maquina = a.maquinaria_id_maquina
+        AND mo.estado_asignacion = 'Activa'
+      ORDER BY mo.fecha_inicio DESC, mo.id_asignacion DESC
+      LIMIT 1
+    ) mo ON TRUE
+    LEFT JOIN usuarios u ON u.id_usuario = mo.operador_id
+    LEFT JOIN LATERAL (
+      SELECT COALESCE(MAX(h.created_at), m.created_at) AS ultimo_registro_ts
+      FROM historial_horometro h
+      WHERE h.maquinaria_id_maquina = a.maquinaria_id_maquina
+    ) ultimo ON TRUE
+    WHERE ($3::text IS NULL OR a.estado_alerta = $3)
+    ORDER BY a.created_at DESC
     LIMIT $1 OFFSET $2
   `;
 
-  const { rows } = await pool.query(query, [limite, offset]);
+  const estadoFiltro = estado && estado !== 'all' ? estado : null;
+  const { rows } = await pool.query(query, [limite, offset, estadoFiltro]);
   return rows;
 }
 
