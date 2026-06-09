@@ -1231,8 +1231,10 @@ function renderOperatorAssignedMachines(rows) {
 
     container.innerHTML = rows.map((item) => {
         const machine = mapMaquinariaItem(item);
+        const fechaInicio = machine.contrato_inicio ? formatCLDate(machine.contrato_inicio) : '—';
+        const fechaFin = machine.contrato_fin ? formatCLDate(machine.contrato_fin) : '—';
         const asignacion = machine.contrato_inicio
-            ? `${machine.contrato_inicio || '—'} a ${machine.contrato_fin || '—'}`
+            ? `${fechaInicio} a ${fechaFin}`
             : 'Activa';
 
         return `<tr>
