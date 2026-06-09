@@ -225,7 +225,7 @@
                     <article class="stat-card"><div class="stat-label">En revisión</div><div id="inventarioRevision" class="stat-value">—</div><div class="stat-note">Seguimiento operativo</div></article>
                 </div>
 
-                    <section id="operatorDailyUsagePanel" class="section-card operator-only" style="margin-top:1rem;">
+                    <section id="operatorDailyUsagePanel" class="section-card operator-only" style="margin-top:1rem;display:none;">
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
                             <div>
                                 <div class="section-title" style="margin-bottom:0.25rem;">Registro diario de uso</div>
@@ -1765,6 +1765,7 @@ function applyRolePermissions() {
     const role = getCurrentRole();
     const allowed = ROLE_PERMISSIONS[role] || ['inicio'];
     const alertsBtn = document.getElementById('topAlertsBtn');
+    const operatorUsagePanel = document.getElementById('operatorDailyUsagePanel');
 
     document.body.classList.toggle('user-view', hasCurrentRole('Usuario'));
     document.body.classList.toggle('mecanico-view', hasCurrentRole('Mecanico'));
@@ -1786,6 +1787,10 @@ function applyRolePermissions() {
         if (alertsBtn) alertsBtn.style.display = 'none';
     } else if (alertsBtn) {
         alertsBtn.style.display = '';
+    }
+
+    if (operatorUsagePanel) {
+        operatorUsagePanel.style.display = hasCurrentRole('Operador') ? 'block' : 'none';
     }
 }
 
