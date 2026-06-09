@@ -543,6 +543,7 @@ tbody tr:hover { background: #fdfaf8; }
 .operator-view .mecanico-only,
 .operator-view .admin-only,
 .mecanico-view .operator-only,
+.admin-view .operator-only,
 .mecanico-view .admin-only,
 .user-view .operator-only,
 .user-view .admin-only {
