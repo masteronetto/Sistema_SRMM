@@ -418,6 +418,37 @@ th {
 }
 tbody tr:hover { background: #fdfaf8; }
 
+.inventario-uso-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 6.5rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.inventario-uso-chip.normal {
+    background: #def2d8;
+    color: #17632d;
+}
+
+.inventario-uso-chip.warning {
+    background: #fdf2d7;
+    color: #8d6c12;
+}
+
+.inventario-uso-chip.critical {
+    background: #fce8e8;
+    color: #9f2934;
+}
+
+.inventario-row-critico {
+    background: rgba(252, 232, 232, 0.45);
+}
+
 /* ── MANAGE USERS TABLE ── */
 .manage-users-table { width: 100%; border-collapse: collapse; }
 .manage-users-table thead { background: var(--accent); color: white; }

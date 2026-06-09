@@ -212,6 +212,10 @@
                             <div id="inventarioSubtitle" class="muted">Gestiona el inventario, tarifas y registros desde la misma vista del dashboard.</div>
                         </div>
                         <div id="inventarioActions" style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+                            <label style="display:flex;align-items:center;gap:0.4rem;">
+                                Umbral uso %
+                                <input id="inventarioUsoUmbral" type="number" min="0" max="300" step="1" value="80" style="width:88px;">
+                            </label>
                             <button type="button" id="adminMaquinariaRefreshBtn" class="btn">Refrescar listado</button>
                             <button type="button" id="adminMaquinariaNewBtn" class="btn btn-secondary">Nueva maquinaria</button>
                         </div>
@@ -274,10 +278,10 @@
                     <div class="table-wrap">
                         <table>
                             <thead>
-                                <tr><th>ID</th><th>Modelo</th><th>Estado</th><th>Horómetro</th><th>Tarifa diaria</th><th>Plan</th><th>Acciones</th></tr>
+                                <tr><th>ID</th><th>Modelo</th><th>Estado</th><th>Horómetro</th><th>Uso</th><th>Tarifa diaria</th><th>Plan</th><th>Acciones</th></tr>
                             </thead>
                             <tbody id="adminMaquinariaRows">
-                                <tr><td colspan="7" class="detail-empty">Cargando maquinaria…</td></tr>
+                                <tr><td colspan="8" class="detail-empty">Cargando maquinaria…</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -975,6 +979,7 @@ function initAdminMaquinariaPanel() {
     const cancelBtn = document.getElementById('adminMaquinariaCancelBtn');
     const refreshBtn = document.getElementById('adminMaquinariaRefreshBtn');
     const newBtn = document.getElementById('adminMaquinariaNewBtn');
+    const usoUmbralInput = document.getElementById('inventarioUsoUmbral');
     const formPanel = document.getElementById('adminMaquinariaFormPanel');
     const subtitle = document.getElementById('inventarioSubtitle');
     const actions = document.getElementById('inventarioActions');
@@ -998,6 +1003,16 @@ function initAdminMaquinariaPanel() {
         });
     }
     refreshBtn.addEventListener('click', loadAdminMaquinaria);
+
+    if (usoUmbralInput) {
+        const rerenderByThreshold = () => {
+            if (Array.isArray(availableMachines) && availableMachines.length > 0) {
+                renderAdminMaquinaria(availableMachines);
+            }
+        };
+        usoUmbralInput.addEventListener('input', rerenderByThreshold);
+        usoUmbralInput.addEventListener('change', rerenderByThreshold);
+    }
 
     if (newBtn) {
         newBtn.addEventListener('click', () => {
@@ -1085,6 +1100,8 @@ function mapMaquinariaItem(item) {
         modelo: getMaquinariaValue(item, ['modelo_equipo', 'modelo']),
         estado: getMaquinariaValue(item, ['estado', 'estado_contrato', 'estado_asignacion']),
         horometro: getMaquinariaValue(item, ['horometro_actual', 'horometro']),
+        porcentaje_uso: getMaquinariaValue(item, ['porcentaje_uso'], null),
+        prioridad: getMaquinariaValue(item, ['prioridad'], null),
         tarifa_diaria: tarifaRaw,
         planes_mantencion_id_plan: getMaquinariaValue(item, ['planes_mantencion_id_plan']),
         plan_display: planDisplay,
@@ -1115,25 +1132,45 @@ function renderAdminMaquinaria(rows) {
     if (!container) return;
 
     const isAdmin = userRole === 'Administrador';
+    const umbralInput = document.getElementById('inventarioUsoUmbral');
+    const umbralUso = Number(umbralInput?.value || 80);
+    const umbralValido = Number.isFinite(umbralUso) && umbralUso >= 0 ? umbralUso : 80;
 
     if (!rows.length) {
         container.innerHTML = isAdmin
-            ? '<tr><td colspan="7" class="detail-empty">No hay maquinaria registrada.</td></tr>'
-            : '<tr><td colspan="7" class="detail-empty">No tienes máquinas asignadas.</td></tr>';
+            ? '<tr><td colspan="8" class="detail-empty">No hay maquinaria registrada.</td></tr>'
+            : '<tr><td colspan="8" class="detail-empty">No tienes máquinas asignadas.</td></tr>';
         return;
     }
 
     const showActions = isAdmin || userRole === 'Mecanico';
-    container.innerHTML = rows.map((item) => {
-        const maquina = mapMaquinariaItem(item);
+    const normalized = rows.map(mapMaquinariaItem);
+    normalized.sort((a, b) => {
+        const usoA = Number(a.porcentaje_uso);
+        const usoB = Number(b.porcentaje_uso);
+        const safeA = Number.isFinite(usoA) ? usoA : -1;
+        const safeB = Number.isFinite(usoB) ? usoB : -1;
+        return safeB - safeA;
+    });
+
+    container.innerHTML = normalized.map((maquina) => {
         const tarifaRaw = maquina.tarifa_diaria;
         const tarifaNumber = tarifaRaw === null || tarifaRaw === undefined || tarifaRaw === '' ? null : Number(tarifaRaw);
         const tarifaLabel = Number.isFinite(tarifaNumber) ? formatCurrency(tarifaNumber) : '—';
-        return `<tr>
+        const porcentajeUso = Number(maquina.porcentaje_uso);
+        const hasUso = Number.isFinite(porcentajeUso);
+        const isCritical = hasUso && porcentajeUso >= umbralValido;
+        const isWarning = hasUso && !isCritical && porcentajeUso >= Math.max(0, umbralValido * 0.85);
+        const usoClass = isCritical ? 'critical' : (isWarning ? 'warning' : 'normal');
+        const usoLabel = hasUso ? `${porcentajeUso.toFixed(1)}%` : '—';
+        const prioridadLabel = maquina.prioridad ? ` · ${maquina.prioridad}` : '';
+
+        return `<tr class="${isCritical ? 'inventario-row-critico' : ''}">
             <td>${maquina.id ?? '—'}</td>
             <td>${maquina.modelo || '—'}</td>
             <td>${escapeHtml(maquina.estado || '—')}</td>
             <td>${maquina.horometro ?? '—'}</td>
+            <td><span class="inventario-uso-chip ${usoClass}">${usoLabel}${prioridadLabel}</span></td>
             <td>${tarifaLabel}</td>
             <td>${escapeHtml(maquina.plan_display || maquina.planes_mantencion_id_plan || '—')}</td>
             ${showActions ? `<td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
@@ -1143,6 +1180,16 @@ function renderAdminMaquinaria(rows) {
             </td>` : '<td></td>'}
         </tr>`;
     }).join('');
+
+    const totalCriticas = normalized.filter((item) => {
+        const pct = Number(item.porcentaje_uso);
+        return Number.isFinite(pct) && pct >= umbralValido;
+    }).length;
+
+    setMaquinariaStatus(
+        `Ordenado por uso descendente. ${totalCriticas} máquina(s) sobre umbral ${umbralValido}%`,
+        totalCriticas > 0 ? 'warning' : 'success'
+    );
 }
 
 function updateInventarioCardsFromRows(rows) {
@@ -1178,8 +1225,8 @@ async function loadAdminMaquinaria() {
 
     const isAdmin = userRole === 'Administrador';
     container.innerHTML = isAdmin
-        ? '<tr><td colspan="7" class="detail-empty">Cargando maquinaria…</td></tr>'
-        : '<tr><td colspan="7" class="detail-empty">Cargando máquinas asignadas…</td></tr>';
+        ? '<tr><td colspan="8" class="detail-empty">Cargando maquinaria…</td></tr>'
+        : '<tr><td colspan="8" class="detail-empty">Cargando máquinas asignadas…</td></tr>';
     setMaquinariaStatus(isAdmin ? 'Cargando maquinaria...' : 'Cargando máquinas asignadas...', 'info');
 
     try {
@@ -1199,8 +1246,8 @@ async function loadAdminMaquinaria() {
         setMaquinariaStatus(isAdmin ? 'Maquinaria actualizada' : 'Máquinas asignadas actualizadas', 'success');
     } catch (err) {
         container.innerHTML = isAdmin
-            ? `<tr><td colspan="7" class="detail-empty">Error: ${err.message}</td></tr>`
-            : `<tr><td colspan="6" class="detail-empty">Error: ${err.message}</td></tr>`;
+            ? `<tr><td colspan="8" class="detail-empty">Error: ${err.message}</td></tr>`
+            : `<tr><td colspan="8" class="detail-empty">Error: ${err.message}</td></tr>`;
         setMaquinariaStatus(`Error: ${err.message}`, 'error');
     }
 }
