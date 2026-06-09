@@ -13,6 +13,14 @@ function toPositiveNumber(value) {
   return parsed;
 }
 
+function normalizeRole(role) {
+  return String(role || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 function normalizeDateInput(value) {
   if (value === undefined || value === null || value === '') {
     return null;
@@ -292,6 +300,54 @@ async function create(req, res, next) {
   }
 }
 
+async function createDiario(req, res, next) {
+  try {
+    const maquinaria_id_maquina = toPositiveNumber(req.body.maquinaria_id_maquina);
+    const horas_dia = toPositiveNumber(req.body.horas_dia);
+    const id_usuario = toPositiveNumber(req.user?.id_usuario);
+
+    if (maquinaria_id_maquina === null || horas_dia === null || horas_dia <= 0) {
+      return res.status(400).json({
+        message: 'Campos obligatorios y numericos: maquinaria_id_maquina, horas_dia (debe ser mayor a 0)'
+      });
+    }
+
+    if (id_usuario === null) {
+      return res.status(400).json({ message: 'No se pudo identificar al usuario autenticado' });
+    }
+
+    const maquinaria = await maquinariaRepo.getMaquinariaById(maquinaria_id_maquina);
+    if (!maquinaria) {
+      return res.status(404).json({ message: 'Maquinaria no encontrada' });
+    }
+
+    const role = normalizeRole(req.user?.rol_acceso);
+    if (role === 'operador') {
+      const asignacionActiva = await maquinariaRepo.getAsignacionActivaByMaquina(maquinaria_id_maquina);
+      if (!asignacionActiva || Number(asignacionActiva.operador_id) !== Number(id_usuario)) {
+        return res.status(403).json({
+          message: 'No tienes una asignacion activa para registrar horas en esta maquinaria'
+        });
+      }
+    }
+
+    const nuevoHorometro = Number(maquinaria.horometro_actual) + Number(horas_dia);
+    const fecha_registro = new Date().toISOString().slice(0, 10);
+
+    req.body = {
+      maquinaria_id_maquina,
+      valor_horas: nuevoHorometro,
+      id_usuario,
+      fecha_registro,
+      arriendos_id_contrato: req.body.arriendos_id_contrato ?? null
+    };
+
+    return create(req, res, next);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function listByMaquina(req, res, next) {
   try {
     const maquinaria_id_maquina = toPositiveNumber(req.params.maquinaria_id_maquina);
@@ -342,6 +398,7 @@ async function search(req, res, next) {
 
 module.exports = {
   create,
+  createDiario,
   listByMaquina,
   search
 };

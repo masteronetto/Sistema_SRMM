@@ -225,6 +225,44 @@
                     <article class="stat-card"><div class="stat-label">En revisión</div><div id="inventarioRevision" class="stat-value">—</div><div class="stat-note">Seguimiento operativo</div></article>
                 </div>
 
+                    <section id="operatorDailyUsagePanel" class="section-card operator-only" style="margin-top:1rem;">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+                            <div>
+                                <div class="section-title" style="margin-bottom:0.25rem;">Registro diario de uso</div>
+                                <div class="muted text-sm">Registra las horas de uso del día para actualizar el horómetro de tu máquina asignada.</div>
+                            </div>
+                            <button type="button" id="operatorDailyRefreshBtn" class="btn btn-secondary">Refrescar asignaciones</button>
+                        </div>
+
+                        <form id="operatorDailyUsageForm" class="section-stack" style="margin-top:1rem;">
+                            <div class="incident-grid">
+                                <label>Máquina asignada
+                                    <select id="operatorDailyMachine" required>
+                                        <option value="">Cargando máquinas…</option>
+                                    </select>
+                                </label>
+                                <label>Horas de uso del día
+                                    <input id="operatorDailyHours" type="number" min="0.1" step="0.1" required placeholder="Ej. 8">
+                                </label>
+                            </div>
+                            <div style="display:flex;gap:0.65rem;align-items:center;flex-wrap:wrap;">
+                                <button type="submit" class="top-button primary">Registrar horas</button>
+                                <span id="operatorDailyUsageStatus" class="form-status"></span>
+                            </div>
+                        </form>
+
+                        <div class="table-wrap" style="margin-top:1rem;">
+                            <table>
+                                <thead>
+                                    <tr><th>ID</th><th>Modelo</th><th>Estado</th><th>Horómetro actual</th><th>Asignación</th></tr>
+                                </thead>
+                                <tbody id="operatorAssignedMachinesRows">
+                                    <tr><td colspan="5" class="detail-empty">Cargando máquinas asignadas…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
                 <section id="adminMaquinariaPanel" class="section-card" style="margin-top:1rem;">
                     <div style="display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
                         <div>
@@ -1167,6 +1205,144 @@ async function loadAdminMaquinaria() {
     }
 }
 
+function setOperatorUsageStatus(message, type = 'info') {
+    const statusEl = document.getElementById('operatorDailyUsageStatus');
+    if (!statusEl) return;
+
+    const colors = {
+        info: '#2980b9',
+        success: '#27ae60',
+        warning: '#d97706',
+        error: '#c0392b'
+    };
+
+    statusEl.textContent = message;
+    statusEl.style.color = colors[type] || colors.info;
+}
+
+function renderOperatorAssignedMachines(rows) {
+    const container = document.getElementById('operatorAssignedMachinesRows');
+    if (!container) return;
+
+    if (!rows.length) {
+        container.innerHTML = '<tr><td colspan="5" class="detail-empty">No tienes máquinas asignadas activas.</td></tr>';
+        return;
+    }
+
+    container.innerHTML = rows.map((item) => {
+        const machine = mapMaquinariaItem(item);
+        const asignacion = machine.contrato_inicio
+            ? `${machine.contrato_inicio || '—'} a ${machine.contrato_fin || '—'}`
+            : 'Activa';
+
+        return `<tr>
+            <td>${machine.id ?? '—'}</td>
+            <td>${escapeHtml(machine.modelo || '—')}</td>
+            <td>${escapeHtml(machine.estado || '—')}</td>
+            <td>${formatNumber(machine.horometro ?? 0, ' hrs')}</td>
+            <td>${escapeHtml(asignacion)}</td>
+        </tr>`;
+    }).join('');
+}
+
+async function loadOperatorUsageMachines() {
+    const machineSelect = document.getElementById('operatorDailyMachine');
+    if (!machineSelect) return;
+
+    try {
+        setOperatorUsageStatus('Cargando máquinas asignadas...', 'info');
+        const machines = await loadAvailableMachines();
+        const rows = Array.isArray(machines) ? machines : [];
+
+        if (!rows.length) {
+            machineSelect.innerHTML = '<option value="">Sin máquinas asignadas</option>';
+            renderOperatorAssignedMachines([]);
+            setOperatorUsageStatus('No tienes máquinas asignadas activas', 'warning');
+            return;
+        }
+
+        const options = ['<option value="">Selecciona una máquina</option>'];
+        rows.map(mapMaquinariaItem).forEach((machine) => {
+            const machineLabel = machine.modelo || `Máquina #${machine.id}`;
+            options.push(`<option value="${machine.id}">${escapeHtml(machineLabel)} · ${formatNumber(machine.horometro ?? 0, ' hrs')}</option>`);
+        });
+        machineSelect.innerHTML = options.join('');
+
+        renderOperatorAssignedMachines(rows);
+        setOperatorUsageStatus('Asignaciones actualizadas', 'success');
+    } catch (error) {
+        machineSelect.innerHTML = '<option value="">Error al cargar máquinas</option>';
+        renderOperatorAssignedMachines([]);
+        setOperatorUsageStatus(`Error: ${error.message}`, 'error');
+    }
+}
+
+async function submitOperatorDailyUsage(event) {
+    event.preventDefault();
+
+    const machineId = Number(document.getElementById('operatorDailyMachine')?.value);
+    const horasDia = Number(document.getElementById('operatorDailyHours')?.value);
+
+    if (!Number.isFinite(machineId) || machineId <= 0) {
+        setOperatorUsageStatus('Selecciona una máquina asignada', 'warning');
+        return;
+    }
+
+    if (!Number.isFinite(horasDia) || horasDia <= 0) {
+        setOperatorUsageStatus('Ingresa horas de uso válidas (mayor a 0)', 'warning');
+        return;
+    }
+
+    try {
+        setOperatorUsageStatus('Registrando horas...', 'info');
+        const response = await fetch('/api/historial-uso/diario', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify({
+                maquinaria_id_maquina: machineId,
+                horas_dia: horasDia
+            })
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(payload.message || 'No se pudo registrar el uso diario');
+        }
+
+        const hoursInput = document.getElementById('operatorDailyHours');
+        if (hoursInput) hoursInput.value = '';
+
+        availableMachines = [];
+        await loadOperatorUsageMachines();
+        await loadAdminMaquinaria();
+        try { await loadInicioKpis(); } catch (_) {}
+
+        setOperatorUsageStatus('Horas registradas y horómetro actualizado', 'success');
+    } catch (error) {
+        setOperatorUsageStatus(`Error: ${error.message}`, 'error');
+    }
+}
+
+function initOperatorUsagePanel() {
+    if (operatorUsageInitialized || !hasCurrentRole('Operador')) return;
+
+    const form = document.getElementById('operatorDailyUsageForm');
+    const refreshBtn = document.getElementById('operatorDailyRefreshBtn');
+
+    if (!form) return;
+
+    operatorUsageInitialized = true;
+    form.addEventListener('submit', submitOperatorDailyUsage);
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', async () => {
+            availableMachines = [];
+            await loadOperatorUsageMachines();
+        });
+    }
+
+    loadOperatorUsageMachines();
+}
+
 function resetAdminMaquinariaForm() {
     const idInput = document.getElementById('adminMaquinaId');
     const modeloInput = document.getElementById('adminMaquinaModelo');
@@ -1427,6 +1603,7 @@ let currentReportMachines = [];
 let availableMaintenancePlans = [];
 let reportsInitialized = false;
 let adminMaquinariaInitialized = false;
+let operatorUsageInitialized = false;
 let maintenancePlanAssignInitialized = false;
 let maintenanceOrderFormInitialized = false;
 let reportTopChart = null;
@@ -1521,6 +1698,7 @@ async function initDashboard() {
     initMachineCards();
     initIncidentForm();
     initAdminMaquinariaPanel();
+    initOperatorUsagePanel();
     initGlobalDateControls();
     initTopAlertsBtn();
     loadInicioKpis();
