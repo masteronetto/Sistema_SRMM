@@ -2606,8 +2606,29 @@ function renderReportUsoChart(rows, machineLabels = []) {
     const canvas = document.getElementById('reportUsoChart');
     if (!canvas || !window.Chart) return;
 
-    const labels = rows.map((item) => formatCLDate(item.fecha_evento));
-    const values = rows.map((item) => Number(item.horometro) || 0);
+    const sortedRows = [...rows]
+        .map((item, index) => {
+            const parsed = Date.parse(item.fecha_sistema || item.created_at || item.fecha_evento || '');
+            return {
+                ...item,
+                __ts: Number.isFinite(parsed) ? parsed : index
+            };
+        })
+        .sort((a, b) => a.__ts - b.__ts);
+
+    const duplicateCounter = new Map();
+    const points = sortedRows.map((item) => {
+        const repetitions = duplicateCounter.get(item.__ts) || 0;
+        duplicateCounter.set(item.__ts, repetitions + 1);
+
+        // Si hay eventos con el mismo timestamp exacto, se separan 1 min para evitar superposición visual.
+        return {
+            x: item.__ts + (repetitions * 60000),
+            y: Number(item.horometro) || 0,
+            _fecha_evento: item.fecha_evento,
+            _tipo_evento: item.tipo_evento
+        };
+    });
 
     if (reportUsoChart) {
         reportUsoChart.destroy();
@@ -2622,10 +2643,9 @@ function renderReportUsoChart(rows, machineLabels = []) {
     reportUsoChart = new Chart(canvas, {
         type: 'line',
         data: {
-            labels,
             datasets: [{
                 label: machineLabels[0] || 'Horómetro histórico',
-                data: values,
+                data: points,
                 borderColor: '#4f46e5',
                 backgroundColor: 'rgba(79, 70, 229, 0.12)',
                 borderWidth: 3,
@@ -2642,13 +2662,28 @@ function renderReportUsoChart(rows, machineLabels = []) {
                 legend: { display: true, position: 'bottom' },
                 tooltip: {
                     callbacks: {
+                        title: (items) => {
+                            const point = items?.[0]?.raw;
+                            return point?._fecha_evento ? formatCLDate(point._fecha_evento) : '';
+                        },
                         label: tooltipFormatter
                     }
                 }
             },
             scales: {
                 y: { beginAtZero: true, ticks: { color: '#6b7280' } },
-                x: { ticks: { color: '#6b7280' } }
+                x: {
+                    type: 'linear',
+                    ticks: {
+                        color: '#6b7280',
+                        callback: (value) => formatCLDate(Number(value))
+                    },
+                    title: {
+                        display: true,
+                        text: 'Fecha',
+                        color: '#6b7280'
+                    }
+                }
             }
         }
     });
@@ -2662,13 +2697,6 @@ function renderComparativeUsageChart(seriesList) {
         reportUsoChart.destroy();
     }
 
-    const allDates = new Set();
-    seriesList.forEach((series) => {
-        series.rows.forEach((item) => allDates.add(item.fecha_evento));
-    });
-
-    const labels = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b)).map((value) => formatCLDate(value));
-
     const palette = [
         { border: '#4f46e5', background: 'rgba(79, 70, 229, 0.12)' },
         { border: '#059669', background: 'rgba(5, 150, 105, 0.12)' },
@@ -2678,11 +2706,33 @@ function renderComparativeUsageChart(seriesList) {
     ];
 
     const datasets = seriesList.map((series, index) => {
-        const byDate = new Map(series.rows.map((item) => [formatCLDate(item.fecha_evento), Number(item.horometro) || 0]));
+        const sortedRows = [...series.rows]
+            .map((item, rowIndex) => {
+                const parsed = Date.parse(item.fecha_sistema || item.created_at || item.fecha_evento || '');
+                return {
+                    ...item,
+                    __ts: Number.isFinite(parsed) ? parsed : rowIndex
+                };
+            })
+            .sort((a, b) => a.__ts - b.__ts);
+
+        const duplicateCounter = new Map();
+        const points = sortedRows.map((item) => {
+            const repetitions = duplicateCounter.get(item.__ts) || 0;
+            duplicateCounter.set(item.__ts, repetitions + 1);
+
+            return {
+                x: item.__ts + (repetitions * 60000),
+                y: Number(item.horometro) || 0,
+                _fecha_evento: item.fecha_evento,
+                _tipo_evento: item.tipo_evento
+            };
+        });
+
         const paletteItem = palette[index % palette.length];
         return {
             label: series.label,
-            data: labels.map((label) => byDate.get(label) ?? null),
+            data: points,
             borderColor: paletteItem.border,
             backgroundColor: paletteItem.background,
             borderWidth: 3,
@@ -2696,7 +2746,7 @@ function renderComparativeUsageChart(seriesList) {
 
     reportUsoChart = new Chart(canvas, {
         type: 'line',
-        data: { labels, datasets },
+        data: { datasets },
         options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -2705,6 +2755,10 @@ function renderComparativeUsageChart(seriesList) {
                 legend: { display: true, position: 'bottom' },
                 tooltip: {
                     callbacks: {
+                        title: (items) => {
+                            const point = items?.[0]?.raw;
+                            return point?._fecha_evento ? formatCLDate(point._fecha_evento) : '';
+                        },
                         label: (context) => {
                             const value = Number(context.parsed.y);
                             return `${context.dataset.label}: ${Number.isFinite(value) ? value.toLocaleString('es-CL') : '0'} hrs`;
@@ -2714,7 +2768,18 @@ function renderComparativeUsageChart(seriesList) {
             },
             scales: {
                 y: { beginAtZero: true, ticks: { color: '#6b7280' } },
-                x: { ticks: { color: '#6b7280' } }
+                x: {
+                    type: 'linear',
+                    ticks: {
+                        color: '#6b7280',
+                        callback: (value) => formatCLDate(Number(value))
+                    },
+                    title: {
+                        display: true,
+                        text: 'Fecha',
+                        color: '#6b7280'
+                    }
+                }
             }
         }
     });
@@ -2724,7 +2789,15 @@ function renderReportTable(rows) {
     const container = document.getElementById('reporteHistorialTable');
     if (!container) return;
 
-    if (!rows.length) {
+    const sortedRows = [...rows].sort((a, b) => {
+        const tsA = Date.parse(a.fecha_sistema || a.created_at || a.fecha_evento || '');
+        const tsB = Date.parse(b.fecha_sistema || b.created_at || b.fecha_evento || '');
+        const safeA = Number.isFinite(tsA) ? tsA : 0;
+        const safeB = Number.isFinite(tsB) ? tsB : 0;
+        return safeA - safeB;
+    });
+
+    if (!sortedRows.length) {
         container.innerHTML = '<p class="muted">No hay registros para el rango seleccionado.</p>';
         return;
     }
@@ -2741,7 +2814,7 @@ function renderReportTable(rows) {
                 </tr>
             </thead>
             <tbody>
-                ${rows.map((item) => `
+                ${sortedRows.map((item) => `
                     <tr class="border-b border-slate-100 hover:bg-slate-50 transition align-top">
                         <td class="py-3 px-2 whitespace-nowrap">${formatCLDate(item.fecha_evento)}</td>
                         <td class="py-3 px-2 font-semibold text-slate-700">${item.tipo_evento || '—'}</td>
