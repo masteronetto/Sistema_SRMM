@@ -21,12 +21,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/styles.css">
+    <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/js/reportes-fallas.js"></script>
 </head>
 <body>
+    <div id="socketNotificationContainer" class="socket-notification-container" aria-live="polite" aria-atomic="true"></div>
     <!-- Confirm Modal -->
     <div id="confirmModal"> 
         <div id="confirmModalOverlay"></div>
@@ -1678,6 +1680,8 @@ let adminMaquinariaInitialized = false;
 let operatorUsageInitialized = false;
 let maintenancePlanAssignInitialized = false;
 let maintenanceOrderFormInitialized = false;
+let maintenanceSocket = null;
+let socketNotificationTimer = null;
 let reportTopChart = null;
 let reportUsoChart = null;
 let reportSelectedMachineId = '';
@@ -1773,6 +1777,7 @@ async function initDashboard() {
     initOperatorUsagePanel();
     initGlobalDateControls();
     initTopAlertsBtn();
+    initMaintenanceSocket();
     loadInicioKpis();
     loadArriendosDashboard();
     loadLogisticaDashboard();
@@ -2455,6 +2460,81 @@ function showIncidentWarningBanner(message) {
 
     if (bannerText) bannerText.textContent = message;
     banner.classList.add('visible');
+}
+
+function showSocketNotification(title, message, type = 'info') {
+    const container = document.getElementById('socketNotificationContainer');
+    if (!container) return;
+
+    const colors = {
+        info: '#2b56d8',
+        success: '#1f9d49',
+        warning: '#d97706',
+        error: '#9f2934'
+    };
+
+    container.innerHTML = `
+        <div class="socket-notification visible" style="border-color:${colors[type] || colors.info};">
+            <div class="socket-notification-icon" style="background:${colors[type] || colors.info};">!</div>
+            <div class="socket-notification-copy">
+                <strong>${escapeHtml(title)}</strong>
+                <span>${escapeHtml(message)}</span>
+            </div>
+            <button type="button" class="socket-notification-close" aria-label="Cerrar notificación">×</button>
+        </div>
+    `;
+
+    const closeBtn = container.querySelector('.socket-notification-close');
+    const removeToast = () => {
+        container.innerHTML = '';
+        if (socketNotificationTimer) {
+            clearTimeout(socketNotificationTimer);
+            socketNotificationTimer = null;
+        }
+    };
+
+    closeBtn?.addEventListener('click', removeToast);
+
+    if (socketNotificationTimer) {
+        clearTimeout(socketNotificationTimer);
+    }
+    socketNotificationTimer = setTimeout(removeToast, 6000);
+}
+
+function initMaintenanceSocket() {
+    if (maintenanceSocket || typeof window.io !== 'function' || !token || !currentUser) {
+        return;
+    }
+
+    maintenanceSocket = window.io({ transports: ['websocket', 'polling'] });
+
+    maintenanceSocket.on('connect', () => {
+        maintenanceSocket.emit('usuario:conectar', {
+            usuarioId: currentUser.id_usuario,
+            rol: currentUser.rol_acceso
+        });
+    });
+
+    maintenanceSocket.on('ordenTrabajo:asignada', async (payload = {}) => {
+        if (!hasCurrentRole('Mecanico')) return;
+        if (String(payload.mecanicoId ?? '') !== String(currentUser.id_usuario ?? '')) return;
+
+        const machineName = payload.maquinaria || 'la máquina asignada';
+        const serviceType = payload.tipoServicio || 'mantenimiento';
+        showSocketNotification(
+            'Nueva orden asignada',
+            `${serviceType} para ${machineName}. ${payload.mensaje || ''}`.trim(),
+            'info'
+        );
+
+        if (document.querySelector('.view.active')?.id === 'mantenimiento') {
+            try { await loadMaintenanceDashboard(); } catch (error) { console.warn('No se pudo refrescar mantenimiento tras notificación en vivo', error); }
+        }
+    });
+
+    maintenanceSocket.on('disconnect', () => {
+        // Se reconecta automáticamente en el cliente de Socket.IO.
+    });
 }
 
 function validateIncidentFormFields({ maquinaId, operadorId, fecha, descripcion }) {
