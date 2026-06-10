@@ -100,7 +100,7 @@ function enviarNotificacionAAdministradores(io, notificacion) {
 // Función para enviar notificación a un mecánico específico
 function enviarNotificacionAMecanico(io, mecanicoId, notificacion) {
   const mecanico = Array.from(usuariosConectados.values()).find(
-    (usuario) => usuario.usuarioId === mecanicoId && usuario.rol === 'mecanico'
+    (usuario) => String(usuario.usuarioId) === String(mecanicoId) && normalizeRole(usuario.rol) === 'mecanico'
   );
 
   if (mecanico) {

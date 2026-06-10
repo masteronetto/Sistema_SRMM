@@ -387,7 +387,12 @@
                                     </select>
                                 </label>
                                 <label>Tipo de servicio
-                                    <input id="maintenanceOrderType" type="text" required placeholder="Ej. Preventivo" />
+                                    <select id="maintenanceOrderType" required>
+                                        <option value="">Selecciona un tipo</option>
+                                        <option value="Preventivo">Preventivo</option>
+                                        <option value="Correctivo">Correctivo</option>
+                                        <option value="Predictivo">Predictivo</option>
+                                    </select>
                                 </label>
                                 <label>Fecha programada
                                     <input id="maintenanceOrderDate" type="date" required />

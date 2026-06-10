@@ -2,7 +2,9 @@ const mantenimientosRepo = require('./mantenimientos.repository');
 const maquinariaRepo = require('../maquinaria/maquinaria.repository');
 const usuariosRepo = require('../usuarios/usuarios.repository');
 const notificacionesTiempoRealRepo = require('../notificaciones_tiempo_real/notificaciones_tiempo_real.repository');
-const { enviarNotificacionAAdministradores } = require('../../config/socketio');
+const { enviarNotificacionAAdministradores, enviarNotificacionAMecanico } = require('../../config/socketio');
+
+const TIPOS_SERVICIO_PROGRAMACION = new Set(['Preventivo', 'Correctivo', 'Predictivo']);
 
 function toNumberOrNull(value) {
   if (value === undefined || value === null || value === '') {
@@ -270,10 +272,17 @@ async function programar(req, res, next) {
     const pool = require('../../db/pool');
     const maq_id = toNumberOrNull(maquinaria_id_maquina);
     const mec_id = toNumberOrNull(mecanico_asignado);
+    const tipoServicioNormalizado = String(tipo_servicio || '').trim();
 
-    if (!tipo_servicio || !detalle_tecnico || !fecha_programada || maq_id === null || mec_id === null) {
+    if (!tipoServicioNormalizado || !detalle_tecnico || !fecha_programada || maq_id === null || mec_id === null) {
       return res.status(400).json({ 
         message: 'Campos obligatorios: tipo_servicio, detalle_tecnico, fecha_programada, maquinaria_id_maquina, mecanico_asignado' 
+      });
+    }
+
+    if (!TIPOS_SERVICIO_PROGRAMACION.has(tipoServicioNormalizado)) {
+      return res.status(400).json({
+        message: 'tipo_servicio debe ser uno de: Preventivo, Correctivo o Predictivo'
       });
     }
 
@@ -302,7 +311,7 @@ async function programar(req, res, next) {
     }
 
     const orden = await mantenimientosRepo.programarMantenimiento({
-      tipo_servicio,
+      tipo_servicio: tipoServicioNormalizado,
       detalle_tecnico,
       fecha_programada,
       maquinaria_id_maquina: maq_id,
@@ -319,15 +328,31 @@ async function programar(req, res, next) {
     });
 
     // Crear notificación para el mecánico
+    const notificacionMensaje = `Nueva orden de trabajo asignada: ${tipoServicioNormalizado} para máquina ${maquina.modelo_equipo} programada para ${fecha_programada}`;
+
     await pool.query(
       `INSERT INTO notificaciones (usuario_id, tipo_notificacion, referencia_id, mensaje) 
        VALUES ($1, 'Orden Trabajo', $2, $3)`,
       [
         mec_id,
         orden.id_orden,
-        `Nueva orden de trabajo asignada: ${tipo_servicio} para máquina ${maquina.modelo_equipo} programada para ${fecha_programada}`
+        notificacionMensaje
       ]
     );
+
+    const io = req.app.get('io');
+    if (io) {
+      enviarNotificacionAMecanico(io, mec_id, {
+        tipo: 'Orden Trabajo',
+        ordenId: orden.id_orden,
+        maquinariaId: maq_id,
+        mecanicoId: mec_id,
+        mensaje: notificacionMensaje,
+        tipoServicio: tipoServicioNormalizado,
+        fechaProgramada: fecha_programada,
+        maquinaria: maquina.modelo_equipo
+      });
+    }
 
     return res.status(201).json(successPayload(orden, {
       message: 'Mantenimiento programado exitosamente. Máquina cambiada a estado "En Mantencion"'
