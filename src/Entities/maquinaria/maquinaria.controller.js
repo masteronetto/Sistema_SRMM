@@ -439,6 +439,29 @@ async function update(req, res, next) {
       return res.status(404).json({ message: 'Maquinaria no encontrada' });
     }
 
+    // Bloqueo automático también en edición: evita que una máquina vencida quede "Disponible".
+    if (data?.planes_mantencion_id_plan) {
+      const plan = await planesRepo.obtenerPlanPorId(data.planes_mantencion_id_plan);
+      const intervaloHoras = Number(plan?.intervalo_horas || 0);
+      const horometroActual = Number(data.horometro_actual || 0);
+      const horasRestantes = intervaloHoras - horometroActual;
+
+      if (intervaloHoras > 0 && horasRestantes <= 0) {
+        const motivoBloqueo = `Bloqueo automático por umbral de mantenimiento excedido en edición (${horometroActual}h >= ${intervaloHoras}h del plan).`;
+
+        await maquinariaRepo.blockMaquinariaWithReason(id_maquina, motivoBloqueo, 0);
+        await alertasCriticasRepo.verificarYGenerarAlertaCritica(
+          id_maquina,
+          horometroActual,
+          intervaloHoras,
+          0
+        );
+
+        const bloqueada = await maquinariaRepo.getMaquinariaById(id_maquina);
+        return res.json(bloqueada || data);
+      }
+    }
+
     return res.json(data);
   } catch (error) {
     if (error.code === '23514' || error.code === 'P0001') {
