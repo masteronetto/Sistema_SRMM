@@ -76,6 +76,20 @@ async function updateUsuarioRole(id, rol_acceso) {
   return rows[0] || null;
 }
 
+async function updateUsuarioProfile(id, { nombre_completo, email }) {
+  const query = `
+    UPDATE usuarios
+    SET nombre_completo = $2,
+        email = $3,
+        updated_at = NOW()
+    WHERE id_usuario = $1
+    RETURNING id_usuario, nombre_completo, email, rol_acceso, created_at, updated_at
+  `;
+  const values = [id, nombre_completo, email];
+  const { rows } = await pool.query(query, values);
+  return rows[0] || null;
+}
+
 async function deleteUsuario(id) {
   const query = 'DELETE FROM usuarios WHERE id_usuario = $1 RETURNING id_usuario';
   const { rowCount } = await pool.query(query, [id]);
@@ -90,5 +104,6 @@ module.exports = {
   deleteUsuario,
   getUsuarioByEmail,
   updateUsuarioPassword,
-  updateUsuarioRole
+  updateUsuarioRole,
+  updateUsuarioProfile
 };

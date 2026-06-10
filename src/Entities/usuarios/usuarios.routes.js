@@ -10,6 +10,9 @@ router.post('/', controller.create);
 router.put('/:id', controller.update);
 router.delete('/:id', controller.remove);
 
+// Ruta protegida: solo admins pueden editar nombre/correo de usuarios
+router.put('/:id/profile', verifyToken, requireAdmin, controller.updateProfile);
+
 // Ruta protegida: solo admins pueden cambiar roles
 router.put('/:id/role', verifyToken, requireAdmin, controller.changeRole);
 

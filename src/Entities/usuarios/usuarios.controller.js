@@ -4,6 +4,37 @@ const bcrypt = require('bcrypt');
 
 const rolesPermitidos = new Set(['Administrador', 'Mecanico', 'Operador', 'Usuario']);
 
+function validateUsuarioProfilePayload(payload) {
+  const nombre = String(payload?.nombre_completo || '').trim();
+  const email = String(payload?.email || '').trim().toLowerCase();
+
+  if (!nombre || !email) {
+    return { error: 'nombre_completo y email son obligatorios', parsed: null };
+  }
+
+  if (nombre.length < 3) {
+    return { error: 'El nombre completo debe tener al menos 3 caracteres', parsed: null };
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const dominiosPermitidos = ['srmm.cl', 'gmail.com', 'hotmail.com', 'outlook.com', 'live.com'];
+  if (!emailRegex.test(email)) {
+    return { error: 'El formato del correo electronico es invalido', parsed: null };
+  }
+
+  if (!dominiosPermitidos.some((dominio) => email.endsWith(`@${dominio}`))) {
+    return { error: 'Dominio de correo no permitido', parsed: null };
+  }
+
+  return {
+    error: null,
+    parsed: {
+      nombre_completo: nombre,
+      email
+    }
+  };
+}
+
 function validateUsuarioPayload(payload) {
   const { nombre_completo, email, contrasena, rol_acceso } = payload;
 
@@ -158,11 +189,41 @@ async function changeRole(req, res, next) {
   }
 }
 
+async function updateProfile(req, res, next) {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ message: 'id de usuario invalido' });
+    }
+
+    const { error, parsed } = validateUsuarioProfilePayload(req.body);
+    if (error) {
+      return res.status(400).json({ message: error });
+    }
+
+    const data = await usuariosRepo.updateUsuarioProfile(id, parsed);
+    if (!data) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    return res.json({
+      message: 'Datos de usuario actualizados correctamente',
+      user: data
+    });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(409).json({ message: 'Ya existe un usuario con ese email' });
+    }
+    return next(error);
+  }
+}
+
 module.exports = {
   list,
   getById,
   create,
   update,
   remove,
-  changeRole
+  changeRole,
+  updateProfile
 };

@@ -5059,13 +5059,13 @@ function renderUsersList(users) {
     const container = document.getElementById('usuarios-content');
     const roles = ['Usuario', 'Mecanico', 'Operador', 'Administrador'];
     let html = `<div class="table-wrap"><table class="manage-users-table">
-        <thead><tr><th>ID</th><th>Nombre</th><th>Email</th><th>Rol actual</th><th>Registro</th><th>Nuevo rol</th><th>Acción</th></tr></thead>
+        <thead><tr><th>ID</th><th>Nombre</th><th>Email</th><th>Rol actual</th><th>Registro</th><th>Nuevo rol</th><th>Acciones</th></tr></thead>
         <tbody>`;
     users.forEach(u => {
         html += `<tr>
             <td>${u.id_usuario}</td>
-            <td>${u.nombre_completo}</td>
-            <td>${u.email}</td>
+            <td><input id="user-name-${u.id_usuario}" type="text" value="${escapeHtml(u.nombre_completo || '')}" style="min-width:170px;"></td>
+            <td><input id="user-email-${u.id_usuario}" type="email" value="${escapeHtml(u.email || '')}" style="min-width:220px;"></td>
             <td><span class="role-badge ${u.rol_acceso.toLowerCase()}">${u.rol_acceso}</span></td>
             <td>${formatCLDate(u.created_at)}</td>
             <td>
@@ -5074,6 +5074,7 @@ function renderUsersList(users) {
                 </select>
             </td>
             <td style="display:flex;gap:0.5rem;">
+                <button class="btn btn-secondary" onclick="updateUserProfile(${u.id_usuario})">Guardar datos</button>
                 <button class="btn" onclick="changeUserRole(${u.id_usuario})">Cambiar rol</button>
                 <button class="btn btn-danger" onclick="deleteUser(${u.id_usuario})">Eliminar</button>
             </td>
@@ -5998,6 +5999,40 @@ async function changeUserRole(userId) {
         if (typeof loadRoleRequests === 'function') {
             loadRoleRequests();
         }
+    } catch (err) {
+        alert(`❌ Error: ${err.message}`);
+    }
+}
+
+async function updateUserProfile(userId) {
+    const nameInput = document.getElementById(`user-name-${userId}`);
+    const emailInput = document.getElementById(`user-email-${userId}`);
+    const nombreCompleto = String(nameInput?.value || '').trim();
+    const email = String(emailInput?.value || '').trim().toLowerCase();
+
+    if (nombreCompleto.length < 3) {
+        alert('⚠ El nombre completo debe tener al menos 3 caracteres.');
+        return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        alert('⚠ El correo electrónico no tiene un formato válido.');
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/usuarios/${userId}/profile`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ nombre_completo: nombreCompleto, email })
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(body.message || 'No se pudo actualizar el usuario');
+        }
+        alert('✅ Datos de usuario actualizados');
+        loadUsersList();
     } catch (err) {
         alert(`❌ Error: ${err.message}`);
     }
