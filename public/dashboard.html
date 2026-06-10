@@ -4636,13 +4636,15 @@ function renderMaintenanceOrders(rows, page, perPage, total = null) {
         return;
     }
 
-    const html = [`<div class="table-wrap"><table><thead><tr><th>ID</th><th>Máquina</th><th>Tipo</th><th>Programada</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>`];
+    const html = [`<div class="table-wrap"><table><thead><tr><th>ID</th><th>Máquina</th><th>Tipo</th><th>Mecánico</th><th>Programada</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>`];
     rows.forEach(o => {
         const orderId = o.id_orden || o.id;
+        const mechanicLabel = o.mecanico_nombre || (o.mecanico_asignado ? `#${o.mecanico_asignado}` : '—');
         html.push(`<tr>
             <td>${orderId}</td>
             <td>${escapeHtml(o.modelo_equipo || o.nombre_maquina || '—')}</td>
             <td>${escapeHtml(o.tipo_servicio || o.tipo)}</td>
+            <td>${escapeHtml(mechanicLabel)}</td>
             <td>${formatCLDate(o.fecha_programada || o.fecha_servicio)}</td>
             <td>${escapeHtml(o.estado_ot || o.estado || '—')}</td>
             <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
@@ -5813,12 +5815,13 @@ async function openMaintenanceById(idOrden) {
         const orden = payload.data;
 
         if (detailEl) {
+            const mechanicLabel = orden.mecanico_nombre || (orden.mecanico_asignado ? ('#' + orden.mecanico_asignado) : '—');
             detailEl.innerHTML = `<div style="padding:0.6rem;background:#fff;border:1px solid #e2e8f0;border-radius:6px;">
                 <strong>Orden #${orden.id_orden}</strong> — ${orden.tipo_servicio || 'Sin tipo'}<br>
                 <small>Fecha programada: ${orden.fecha_programada || orden.fecha_servicio || '—'}</small><br>
                 <div style="margin-top:0.35rem;">${orden.detalle_tecnico || ''}</div>
                 <div style="margin-top:0.35rem;"><strong>Estado:</strong> ${orden.estado_ot || '—'}</div>
-                <div style="margin-top:0.25rem;"><strong>Mecánico asignado:</strong> ${orden.mecanico_asignado ? ('#' + orden.mecanico_asignado) : '—'}</div>
+                <div style="margin-top:0.25rem;"><strong>Mecánico asignado:</strong> ${escapeHtml(mechanicLabel)}</div>
                 <div class="muted small" style="margin-top:0.35rem;">Creada: ${formatCLDate(orden.created_at)} — Actualizada: ${formatCLDate(orden.updated_at)}</div>
                 <div class="muted small" style="margin-top:0.5rem;">Detalle completo visible en este panel.</div>
             </div>`;

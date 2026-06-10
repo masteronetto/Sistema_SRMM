@@ -184,9 +184,24 @@ async function programarMantenimiento({ tipo_servicio, detalle_tecnico, fecha_pr
 
 async function getOrdenTrabajoById(id_orden) {
   const query = `
-    SELECT id_orden, tipo_servicio, detalle_tecnico, fecha_programada, maquinaria_id_maquina, mecanico_asignado, estado_ot, alerta_retraso_enviada, estado_maquina_al_bloquear, created_at, updated_at
-    FROM ordenes_trabajo
-    WHERE id_orden = $1
+    SELECT
+      ot.id_orden,
+      ot.tipo_servicio,
+      ot.detalle_tecnico,
+      ot.fecha_programada,
+      ot.maquinaria_id_maquina,
+      ot.mecanico_asignado,
+      ot.estado_ot,
+      ot.alerta_retraso_enviada,
+      ot.estado_maquina_al_bloquear,
+      ot.created_at,
+      ot.updated_at,
+      maq.modelo_equipo,
+      u.nombre_completo AS mecanico_nombre
+    FROM ordenes_trabajo ot
+    LEFT JOIN maquinaria maq ON maq.id_maquina = ot.maquinaria_id_maquina
+    LEFT JOIN usuarios u ON u.id_usuario = ot.mecanico_asignado
+    WHERE ot.id_orden = $1
   `;
 
   const { rows } = await pool.query(query, [id_orden]);
@@ -195,10 +210,25 @@ async function getOrdenTrabajoById(id_orden) {
 
 async function listOrdenesByMaquina(maquinaria_id_maquina) {
   const query = `
-    SELECT id_orden, tipo_servicio, detalle_tecnico, fecha_programada, maquinaria_id_maquina, mecanico_asignado, estado_ot, alerta_retraso_enviada, estado_maquina_al_bloquear, created_at, updated_at
-    FROM ordenes_trabajo
-    WHERE maquinaria_id_maquina = $1
-    ORDER BY fecha_programada DESC, id_orden DESC
+    SELECT
+      ot.id_orden,
+      ot.tipo_servicio,
+      ot.detalle_tecnico,
+      ot.fecha_programada,
+      ot.maquinaria_id_maquina,
+      ot.mecanico_asignado,
+      ot.estado_ot,
+      ot.alerta_retraso_enviada,
+      ot.estado_maquina_al_bloquear,
+      ot.created_at,
+      ot.updated_at,
+      maq.modelo_equipo,
+      u.nombre_completo AS mecanico_nombre
+    FROM ordenes_trabajo ot
+    LEFT JOIN maquinaria maq ON maq.id_maquina = ot.maquinaria_id_maquina
+    LEFT JOIN usuarios u ON u.id_usuario = ot.mecanico_asignado
+    WHERE ot.maquinaria_id_maquina = $1
+    ORDER BY ot.fecha_programada DESC, ot.id_orden DESC
   `;
 
   const { rows } = await pool.query(query, [maquinaria_id_maquina]);
