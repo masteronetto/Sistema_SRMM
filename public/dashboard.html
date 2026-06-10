@@ -574,7 +574,11 @@
                                 <label>Estado<select id="arriendoEstado"><option value="Activo">Activo</option><option value="Finalizado">Finalizado</option><option value="Cancelado">Cancelado</option></select></label>
                             </div>
                             <div class="incident-actions">
-                                <button type="submit" class="top-button primary">Guardar arriendo</button>
+                                <div id="arriendoAvailabilityAlert" class="incident-warning-banner" role="alert" aria-live="polite">
+                                    <div class="banner-icon">!</div>
+                                    <div id="arriendoAvailabilityAlertText" class="banner-text"></div>
+                                </div>
+                                <button type="submit" id="arriendoSubmitBtn" class="top-button primary">Confirmar arriendo</button>
                                 <span id="arriendoStatus" class="form-status"></span>
                             </div>
                         </form>
@@ -4989,6 +4993,130 @@ function setArriendoStatus(message, type = 'info') {
     status.style.color = colors[type] || colors.info;
 }
 
+const ARRIENDO_ESTADOS_NO_ARRENDABLES = new Set(['Arrendada', 'Mantencion', 'Bloqueada', 'No Operativa']);
+let arriendoValidationRunId = 0;
+let arriendoValidationTimer = null;
+
+function getArriendoSubmitButton() {
+    return document.getElementById('arriendoSubmitBtn') || document.querySelector('#arriendoForm button[type="submit"]');
+}
+
+function getArriendoMachineTitleById(idMaquina) {
+    const checkbox = document.querySelector(`#arriendoMaquinaList input[type="checkbox"][value="${String(idMaquina)}"]`);
+    const card = checkbox ? checkbox.closest('.arriendo-machine-card') : null;
+    const title = card?.querySelector('.arriendo-machine-card-title')?.textContent?.trim();
+    return title || `Máquina #${idMaquina}`;
+}
+
+function setArriendoSubmitDisabled(disabled, reason = '') {
+    const submitBtn = getArriendoSubmitButton();
+    if (!submitBtn) return;
+    submitBtn.disabled = Boolean(disabled);
+    submitBtn.title = disabled ? reason : '';
+}
+
+function setArriendoAvailabilityAlert(messages = []) {
+    const banner = document.getElementById('arriendoAvailabilityAlert');
+    const text = document.getElementById('arriendoAvailabilityAlertText');
+    if (!banner || !text) return;
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+        banner.classList.remove('visible');
+        text.innerHTML = '';
+        return;
+    }
+
+    text.innerHTML = messages.map((msg) => escapeHtml(String(msg || '').trim())).join('<br>');
+    banner.classList.add('visible');
+}
+
+function scheduleArriendoRealtimeValidation() {
+    if (arriendoValidationTimer) {
+        clearTimeout(arriendoValidationTimer);
+    }
+    arriendoValidationTimer = setTimeout(() => {
+        arriendoValidationTimer = null;
+        validateArriendoSelectedMachinesRealtime();
+    }, 140);
+}
+
+async function validateArriendoSelectedMachinesRealtime({ silent = false } = {}) {
+    const selectedIds = getSelectedArriendoMachineIds();
+    const currentRun = ++arriendoValidationRunId;
+
+    if (!selectedIds.length) {
+        setArriendoAvailabilityAlert([]);
+        setArriendoSubmitDisabled(false);
+        return { ok: true, invalid: [] };
+    }
+
+    setArriendoSubmitDisabled(true, 'Validando disponibilidad de máquinas...');
+
+    const checks = await Promise.all(selectedIds.map(async (idMaquina) => {
+        try {
+            const response = await fetch(`/api/maquinaria/${idMaquina}/disponibilidad?margen_minimo_horas=0`, {
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) {
+                return {
+                    id: idMaquina,
+                    ok: false,
+                    reason: 'No se pudo validar su disponibilidad en este momento.'
+                };
+            }
+
+            const disponibilidad = await response.json();
+            const estado = String(disponibilidad?.estado_disponibilidad || disponibilidad?.estado || '').trim();
+            const puedeArrendar = disponibilidad?.puede_arrendar !== false;
+            const horasRestantes = Number(disponibilidad?.horas_restantes);
+            const hasHoras = Number.isFinite(horasRestantes);
+            const sinMargen = hasHoras && horasRestantes <= 0;
+
+            const noCumple = ARRIENDO_ESTADOS_NO_ARRENDABLES.has(estado) || !puedeArrendar || sinMargen;
+            if (!noCumple) {
+                return { id: idMaquina, ok: true };
+            }
+
+            const motivo = String(disponibilidad?.motivo_no_disponibilidad || '').trim()
+                || (ARRIENDO_ESTADOS_NO_ARRENDABLES.has(estado)
+                    ? `Estado actual: ${estado}`
+                    : 'No cumple con condiciones para arriendo.');
+
+            return {
+                id: idMaquina,
+                ok: false,
+                reason: motivo
+            };
+        } catch (_) {
+            return {
+                id: idMaquina,
+                ok: false,
+                reason: 'Error de red al consultar disponibilidad.'
+            };
+        }
+    }));
+
+    if (currentRun !== arriendoValidationRunId) {
+        return { ok: false, invalid: [], stale: true };
+    }
+
+    const invalid = checks.filter((item) => !item.ok);
+    if (invalid.length) {
+        const messages = invalid.map((item) => `${getArriendoMachineTitleById(item.id)}: ${item.reason}`);
+        setArriendoAvailabilityAlert(messages);
+        setArriendoSubmitDisabled(true, 'Hay máquinas no disponibles para arriendo.');
+        if (!silent) {
+            setArriendoStatus('Hay máquinas no disponibles. Corrige la selección para continuar.', 'warning');
+        }
+        return { ok: false, invalid };
+    }
+
+    setArriendoAvailabilityAlert([]);
+    setArriendoSubmitDisabled(false);
+    return { ok: true, invalid: [] };
+}
+
 function setLogisticaStatus(message, type = 'info') {
     const status = document.getElementById('logisticaStatus');
     if (!status) return;
@@ -5284,6 +5412,7 @@ function fillArriendoForm(maquinariaId, clienteId = '') {
     });
     updateArriendoMachineSummary();
     if (clienteSelect) clienteSelect.value = String(clienteId || '');
+    scheduleArriendoRealtimeValidation();
     setArriendoStatus('Edición preparada. Completa fechas y guarda.', 'info');
 }
 
@@ -5331,6 +5460,7 @@ function selectAllArriendoMachines(selected) {
         card.classList.toggle('is-selected', selected);
     });
     updateArriendoMachineSummary();
+    scheduleArriendoRealtimeValidation();
 }
 
 function getSelectedArriendoMachineIds() {
@@ -5381,6 +5511,7 @@ function renderArriendoMachineCards(machines) {
             const card = checkbox.closest('.arriendo-machine-card');
             if (card) card.classList.toggle('is-selected', checkbox.checked);
             updateArriendoMachineSummary();
+            scheduleArriendoRealtimeValidation();
         });
     });
 
@@ -5413,6 +5544,7 @@ async function populateArriendoSelectors() {
         if (searchInput) searchInput.value = '';
         applyArriendoMachineFilter();
         updateArriendoMachineSummary();
+        scheduleArriendoRealtimeValidation();
 
         if (usersRes.ok) {
             const users = await usersRes.json();
@@ -5458,6 +5590,12 @@ async function loadArriendosDashboard() {
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
             const selectedMachines = getSelectedArriendoMachineIds();
+
+            const disponibilidad = await validateArriendoSelectedMachinesRealtime({ silent: true });
+            if (!disponibilidad.ok) {
+                setArriendoStatus('No puedes confirmar el arriendo: hay máquinas no disponibles.', 'warning');
+                return;
+            }
 
             const payload = {
                 maquinaria_ids: selectedMachines,
