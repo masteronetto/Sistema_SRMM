@@ -2,9 +2,29 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
 const usuariosRepo = require('../usuarios/usuarios.repository');
+const authRepo = require('./auth.repository');
 const { port } = require('../../config/env');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
+
+async function registrarAuditoriaAltaDesdeRegistro(user) {
+try {
+  if (!user || !user.id_usuario) return;
+  await usuariosRepo.insertUsuarioAuditLog({
+    tipo_operacion: 'ALTA_USUARIO',
+    usuario_objetivo_id: user.id_usuario,
+    ejecutado_por_id: user.id_usuario,
+    detalle: {
+      origen: 'registro_publico',
+      nombre_completo: user.nombre_completo,
+      email: user.email,
+      rol_acceso: user.rol_acceso
+    }
+  });
+} catch (error) {
+  console.warn('No se pudo registrar auditoria de alta en registro:', error.message || error);
+}
+}
 
 async function register(req, res, next) {
 try {
@@ -40,6 +60,7 @@ if (!passwordRegex.test(contrasena)) {
 
 const hashed = await bcrypt.hash(contrasena, 10);
 const user = await usuariosRepo.createUsuario({ nombre_completo, email, contrasena: hashed, rol_acceso: 'Usuario' });
+await registrarAuditoriaAltaDesdeRegistro(user);
 
 return res.status(201).json(user);
 } catch (error) {
@@ -111,13 +132,56 @@ auth: { user: smtpUser, pass: gmailAppPassword }
 return null;
 }
 
+function getRequestIp(req) {
+const forwarded = req.headers['x-forwarded-for'];
+if (typeof forwarded === 'string' && forwarded.trim()) {
+  return forwarded.split(',')[0].trim();
+}
+
+if (Array.isArray(forwarded) && forwarded.length > 0) {
+  return String(forwarded[0] || '').trim();
+}
+
+return req.ip || req.socket?.remoteAddress || 'unknown';
+}
+
+async function registerRecoveryAttempt(req, { email, estado, detalle = null }) {
+try {
+  await authRepo.createRecoveryAttempt({
+    email_solicitante: email,
+    ip_solicitante: getRequestIp(req),
+    user_agent: req.headers['user-agent'] || null,
+    estado_intento: estado,
+    detalle
+  });
+} catch (error) {
+  console.warn('No se pudo registrar intento de recuperacion:', error.message || error);
+}
+}
+
 async function recover(req, res, next) {
 try {
 const { email } = req.body;
-if (!email) return res.status(400).json({ message: 'Email requerido' });
+if (!email) {
+  await registerRecoveryAttempt(req, {
+    email: 'sin-email',
+    estado: 'RECHAZADO',
+    detalle: 'Solicitud sin email'
+  });
+  return res.status(400).json({ message: 'Email requerido' });
+}
 
-const user = await usuariosRepo.getUsuarioByEmail(email);
-if (!user) return res.status(200).json({ message: 'Si el correo existe, se enviará un email con instrucciones.' });
+const normalizedEmail = String(email).trim().toLowerCase();
+const user = await usuariosRepo.getUsuarioByEmail(normalizedEmail);
+
+if (!user) {
+  await registerRecoveryAttempt(req, {
+    email: normalizedEmail,
+    estado: 'NO_ENCONTRADO',
+    detalle: 'Correo no registrado en el sistema'
+  });
+  return res.status(200).json({ message: 'Si el correo existe, se enviará un email con instrucciones.' });
+}
 
 const token = jwt.sign({ id_usuario: user.id_usuario, type: 'pw-reset' }, JWT_SECRET, { expiresIn: '1h' });
 const frontendUrl = (
@@ -141,6 +205,11 @@ if (transporter) {
       html: `<p>Para restablecer tu contraseña, haz clic <a href="${resetLink}">aquí</a>.</p>`
     });
   } catch (mailError) {
+    await registerRecoveryAttempt(req, {
+      email: normalizedEmail,
+      estado: 'ERROR_ENVIO',
+      detalle: mailError.message || 'Fallo al enviar correo de recuperacion'
+    });
     console.warn('No se pudo enviar el email de recuperación:', mailError.message || mailError);
     console.warn('Reset link generado:', resetLink);
     const smtpHint = mailError?.responseCode === 535 || /BadCredentials|Invalid login/i.test(mailError?.message || '')
@@ -153,6 +222,11 @@ if (transporter) {
     });
   }
 } else {
+  await registerRecoveryAttempt(req, {
+    email: normalizedEmail,
+    estado: 'ERROR_SMTP_NO_CONFIG',
+    detalle: 'No hay configuracion SMTP valida para envio'
+  });
   console.log('PASSWORD RESET LINK:', resetLink);
   return res.status(503).json({
     message: 'No hay configuración SMTP válida en este entorno',
@@ -161,9 +235,31 @@ if (transporter) {
   });
 }
 
+await registerRecoveryAttempt(req, {
+  email: normalizedEmail,
+  estado: 'ENVIADO',
+  detalle: 'Solicitud procesada correctamente'
+});
+
 return res.status(200).json({ message: 'Si el correo existe, se enviará un email con instrucciones.' });
 } catch (error) {
+await registerRecoveryAttempt(req, {
+  email: String(req.body?.email || 'sin-email').trim().toLowerCase(),
+  estado: 'ERROR_INTERNO',
+  detalle: error.message || 'Error no controlado'
+});
 return next(error);
+}
+}
+
+async function listRecoveryAttempts(req, res, next) {
+try {
+  const limit = Math.min(Number(req.query.limit || 100), 300);
+  const offset = Math.max(Number(req.query.offset || 0), 0);
+  const rows = await authRepo.listRecoveryAttempts({ limit, offset });
+  return res.json(rows);
+} catch (error) {
+  return next(error);
 }
 }
 
@@ -197,5 +293,6 @@ module.exports = {
 register,
 login,
 recover,
-resetPassword
+resetPassword,
+listRecoveryAttempts
 };

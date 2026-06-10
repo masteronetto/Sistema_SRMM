@@ -120,6 +120,46 @@ async function activateUsuario(id) {
   return rows[0] || null;
 }
 
+async function insertUsuarioAuditLog({ tipo_operacion, usuario_objetivo_id = null, ejecutado_por_id = null, detalle = {} }) {
+  const query = `
+    INSERT INTO auditoria_usuarios (tipo_operacion, usuario_objetivo_id, ejecutado_por_id, detalle)
+    VALUES ($1, $2, $3, $4::jsonb)
+    RETURNING id_auditoria, tipo_operacion, usuario_objetivo_id, ejecutado_por_id, detalle, created_at
+  `;
+  const values = [
+    String(tipo_operacion || '').trim(),
+    usuario_objetivo_id,
+    ejecutado_por_id,
+    JSON.stringify(detalle || {})
+  ];
+  const { rows } = await pool.query(query, values);
+  return rows[0] || null;
+}
+
+async function listUsuarioAuditLogs({ limit = 100, offset = 0 } = {}) {
+  const query = `
+    SELECT
+      a.id_auditoria,
+      a.tipo_operacion,
+      a.usuario_objetivo_id,
+      objetivo.nombre_completo AS usuario_objetivo_nombre,
+      objetivo.email AS usuario_objetivo_email,
+      a.ejecutado_por_id,
+      ejecutor.nombre_completo AS ejecutado_por_nombre,
+      ejecutor.email AS ejecutado_por_email,
+      a.detalle,
+      a.created_at
+    FROM auditoria_usuarios a
+    LEFT JOIN usuarios objetivo ON objetivo.id_usuario = a.usuario_objetivo_id
+    LEFT JOIN usuarios ejecutor ON ejecutor.id_usuario = a.ejecutado_por_id
+    ORDER BY a.created_at DESC, a.id_auditoria DESC
+    LIMIT $1 OFFSET $2
+  `;
+  const values = [limit, offset];
+  const { rows } = await pool.query(query, values);
+  return rows;
+}
+
 module.exports = {
   listUsuarios,
   getUsuarioById,
@@ -131,5 +171,7 @@ module.exports = {
   updateUsuarioRole,
   updateUsuarioProfile,
   deactivateUsuario,
-  activateUsuario
+  activateUsuario,
+  insertUsuarioAuditLog,
+  listUsuarioAuditLogs
 };

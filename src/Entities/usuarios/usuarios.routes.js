@@ -4,6 +4,9 @@ const { verifyToken, requireAdmin, requireActiveUser } = require('../../middlewa
 
 const router = Router();
 
+// Ruta protegida: historial de auditoria de cambios de usuarios (solo admin)
+router.get('/audit-logs', verifyToken, requireActiveUser, requireAdmin, controller.listAuditLogs);
+
 router.get('/', controller.list);
 router.get('/:id', controller.getById);
 router.post('/', controller.create);

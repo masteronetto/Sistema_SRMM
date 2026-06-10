@@ -4,6 +4,20 @@ const bcrypt = require('bcrypt');
 
 const rolesPermitidos = new Set(['Administrador', 'Mecanico', 'Operador', 'Usuario']);
 
+async function registrarAuditoriaUsuario({ tipoOperacion, usuarioObjetivoId = null, ejecutadoPorId = null, detalle = {} }) {
+  try {
+    await usuariosRepo.insertUsuarioAuditLog({
+      tipo_operacion: tipoOperacion,
+      usuario_objetivo_id: usuarioObjetivoId,
+      ejecutado_por_id: ejecutadoPorId,
+      detalle
+    });
+  } catch (auditError) {
+    // La auditoria no debe romper la operación principal.
+    console.warn('No se pudo registrar auditoria de usuarios:', auditError.message || auditError);
+  }
+}
+
 function validateUsuarioProfilePayload(payload) {
   const nombre = String(payload?.nombre_completo || '').trim();
   const email = String(payload?.email || '').trim().toLowerCase();
@@ -104,6 +118,18 @@ async function create(req, res, next) {
     req.body.contrasena = hashedPassword;
 
     const data = await usuariosRepo.createUsuario(req.body);
+
+    await registrarAuditoriaUsuario({
+      tipoOperacion: 'ALTA_USUARIO',
+      usuarioObjetivoId: data.id_usuario,
+      ejecutadoPorId: req.user?.id_usuario || null,
+      detalle: {
+        nombre_completo: data.nombre_completo,
+        email: data.email,
+        rol_acceso: data.rol_acceso
+      }
+    });
+
     return res.status(201).json(data);
   } catch (error) {
     if (error.code === '23505') {
@@ -125,10 +151,31 @@ async function update(req, res, next) {
     const hashedPassword = await bcrypt.hash(req.body.contrasena, saltRounds);
     req.body.contrasena = hashedPassword;
 
+    const previo = await usuariosRepo.getUsuarioById(id);
     const data = await usuariosRepo.updateUsuario(id, req.body);
     if (!data) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
+
+    await registrarAuditoriaUsuario({
+      tipoOperacion: 'MODIFICACION_USUARIO',
+      usuarioObjetivoId: data.id_usuario,
+      ejecutadoPorId: req.user?.id_usuario || null,
+      detalle: {
+        antes: previo ? {
+          nombre_completo: previo.nombre_completo,
+          email: previo.email,
+          rol_acceso: previo.rol_acceso,
+          activo: previo.activo
+        } : null,
+        despues: {
+          nombre_completo: data.nombre_completo,
+          email: data.email,
+          rol_acceso: data.rol_acceso,
+          activo: data.activo
+        }
+      }
+    });
 
     return res.json(data);
   } catch (error) {
@@ -142,11 +189,22 @@ async function update(req, res, next) {
 async function remove(req, res, next) {
   try {
     const id = Number(req.params.id);
+    const previo = await usuariosRepo.getUsuarioById(id);
     const deleted = await usuariosRepo.deleteUsuario(id);
 
     if (!deleted) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
+
+    await registrarAuditoriaUsuario({
+      tipoOperacion: 'ELIMINACION_USUARIO',
+      usuarioObjetivoId: id,
+      ejecutadoPorId: req.user?.id_usuario || null,
+      detalle: {
+        eliminado: true,
+        usuario: previo || null
+      }
+    });
 
     return res.status(204).send();
   } catch (error) {
@@ -172,12 +230,24 @@ async function changeRole(req, res, next) {
       // Permite cambios, pero es mejor lo advierta
     }
 
+    const usuarioPrevio = await usuariosRepo.getUsuarioById(id);
     const data = await usuariosRepo.updateUsuarioRole(id, rol_acceso);
     if (!data) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
     const deletedRequests = await roleRequestsRepo.deleteRoleRequestsByUsuarioId(id);
+
+    await registrarAuditoriaUsuario({
+      tipoOperacion: 'CAMBIO_ROL_USUARIO',
+      usuarioObjetivoId: data.id_usuario,
+      ejecutadoPorId: req.user?.id_usuario || null,
+      detalle: {
+        rol_anterior: usuarioPrevio?.rol_acceso || null,
+        rol_nuevo: data.rol_acceso,
+        deleted_role_requests: deletedRequests
+      }
+    });
 
     return res.json({
       message: 'Rol actualizado correctamente',
@@ -201,10 +271,23 @@ async function updateProfile(req, res, next) {
       return res.status(400).json({ message: error });
     }
 
+    const usuarioPrevio = await usuariosRepo.getUsuarioById(id);
     const data = await usuariosRepo.updateUsuarioProfile(id, parsed);
     if (!data) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
+
+    await registrarAuditoriaUsuario({
+      tipoOperacion: 'MODIFICACION_PERFIL_USUARIO',
+      usuarioObjetivoId: data.id_usuario,
+      ejecutadoPorId: req.user?.id_usuario || null,
+      detalle: {
+        nombre_anterior: usuarioPrevio?.nombre_completo || null,
+        email_anterior: usuarioPrevio?.email || null,
+        nombre_nuevo: data.nombre_completo,
+        email_nuevo: data.email
+      }
+    });
 
     return res.json({
       message: 'Datos de usuario actualizados correctamente',
@@ -238,6 +321,17 @@ async function deactivate(req, res, next) {
 
     const result = await usuariosRepo.deactivateUsuario(id);
 
+    await registrarAuditoriaUsuario({
+      tipoOperacion: 'DESACTIVACION_USUARIO',
+      usuarioObjetivoId: result.id_usuario,
+      ejecutadoPorId: req.user?.id_usuario || null,
+      detalle: {
+        activo: false,
+        email: result.email,
+        rol_acceso: result.rol_acceso
+      }
+    });
+
     return res.json({
       message: 'Usuario desactivado correctamente',
       user: result
@@ -262,10 +356,32 @@ async function activate(req, res, next) {
 
     const result = await usuariosRepo.activateUsuario(id);
 
+    await registrarAuditoriaUsuario({
+      tipoOperacion: 'REACTIVACION_USUARIO',
+      usuarioObjetivoId: result.id_usuario,
+      ejecutadoPorId: req.user?.id_usuario || null,
+      detalle: {
+        activo: true,
+        email: result.email,
+        rol_acceso: result.rol_acceso
+      }
+    });
+
     return res.json({
       message: 'Usuario reactivado correctamente',
       user: result
     });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function listAuditLogs(req, res, next) {
+  try {
+    const limit = Math.min(Number(req.query.limit || 100), 300);
+    const offset = Math.max(Number(req.query.offset || 0), 0);
+    const data = await usuariosRepo.listUsuarioAuditLogs({ limit, offset });
+    return res.json(data);
   } catch (error) {
     return next(error);
   }
@@ -280,5 +396,6 @@ module.exports = {
   changeRole,
   updateProfile,
   deactivate,
-  activate
+  activate,
+  listAuditLogs
 };

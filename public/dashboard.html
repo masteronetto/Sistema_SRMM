@@ -662,6 +662,26 @@
                         </div>
                         <div id="role-requests-content"><p class="muted">Cargando solicitudes…</p></div>
                     </section>
+
+                    <section class="section-card">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;">
+                            <div class="section-title">Historial de cambios en usuarios</div>
+                            <div>
+                                <button class="btn" id="refreshUserAuditLogsBtn">Refrescar</button>
+                            </div>
+                        </div>
+                        <div id="user-audit-content"><p class="muted">Cargando historial…</p></div>
+                    </section>
+
+                    <section class="section-card">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;">
+                            <div class="section-title">Intentos de recuperación de contraseña</div>
+                            <div>
+                                <button class="btn" id="refreshRecoveryAttemptsBtn">Refrescar</button>
+                            </div>
+                        </div>
+                        <div id="recovery-attempts-content"><p class="muted">Cargando intentos…</p></div>
+                    </section>
                 </div>
             </section>
 
@@ -1972,6 +1992,18 @@ function initStaticActionButtons() {
         refreshRoleReqBtn.dataset.bound = '1';
         refreshRoleReqBtn.addEventListener('click', loadRoleRequests);
     }
+
+    const refreshAuditBtn = document.getElementById('refreshUserAuditLogsBtn');
+    if (refreshAuditBtn && !refreshAuditBtn.dataset.bound) {
+        refreshAuditBtn.dataset.bound = '1';
+        refreshAuditBtn.addEventListener('click', loadUserAuditLogs);
+    }
+
+    const refreshRecoveryAttemptsBtn = document.getElementById('refreshRecoveryAttemptsBtn');
+    if (refreshRecoveryAttemptsBtn && !refreshRecoveryAttemptsBtn.dataset.bound) {
+        refreshRecoveryAttemptsBtn.dataset.bound = '1';
+        refreshRecoveryAttemptsBtn.addEventListener('click', loadRecoveryAttemptsLogs);
+    }
 }
 
 /**
@@ -2157,6 +2189,8 @@ function showView(viewName, push = true) {
     if (target === 'usuarios' && hasCurrentRole('Administrador')) {
         loadUsersList();
         loadRoleRequests();
+        loadUserAuditLogs();
+        loadRecoveryAttemptsLogs();
     }
 
     if (target === 'mantenimiento') {
@@ -5078,6 +5112,170 @@ async function loadRoleRequests() {
     }
 }
 
+function formatAuditOperation(tipoOperacion) {
+    const map = {
+        ALTA_USUARIO: 'Alta de usuario',
+        MODIFICACION_USUARIO: 'Modificacion de usuario',
+        MODIFICACION_PERFIL_USUARIO: 'Edicion de perfil',
+        CAMBIO_ROL_USUARIO: 'Cambio de rol',
+        DESACTIVACION_USUARIO: 'Desactivacion de usuario',
+        REACTIVACION_USUARIO: 'Reactivacion de usuario',
+        ELIMINACION_USUARIO: 'Eliminacion de usuario'
+    };
+    return map[String(tipoOperacion || '').trim()] || String(tipoOperacion || 'Operacion');
+}
+
+function getAuditActorLabel(row) {
+    const nombre = String(row?.ejecutado_por_nombre || '').trim();
+    const email = String(row?.ejecutado_por_email || '').trim();
+    if (nombre) return email ? `${nombre} (${email})` : nombre;
+    if (email) return email;
+    return 'Sistema';
+}
+
+function getAuditTargetLabel(row) {
+    const nombre = String(row?.usuario_objetivo_nombre || '').trim();
+    const email = String(row?.usuario_objetivo_email || '').trim();
+    if (nombre) return email ? `${nombre} (${email})` : nombre;
+    if (email) return email;
+    return row?.usuario_objetivo_id ? `Usuario #${row.usuario_objetivo_id}` : '—';
+}
+
+function getAuditDetailSummary(row) {
+    const detalle = row?.detalle && typeof row.detalle === 'object' ? row.detalle : {};
+
+    if (row?.tipo_operacion === 'CAMBIO_ROL_USUARIO') {
+        const anterior = detalle.rol_anterior || '—';
+        const nuevo = detalle.rol_nuevo || '—';
+        return `Rol: ${anterior} -> ${nuevo}`;
+    }
+
+    if (row?.tipo_operacion === 'MODIFICACION_PERFIL_USUARIO') {
+        const cambios = [];
+        if (detalle.nombre_anterior && detalle.nombre_nuevo && detalle.nombre_anterior !== detalle.nombre_nuevo) {
+            cambios.push(`Nombre: ${detalle.nombre_anterior} -> ${detalle.nombre_nuevo}`);
+        }
+        if (detalle.email_anterior && detalle.email_nuevo && detalle.email_anterior !== detalle.email_nuevo) {
+            cambios.push(`Email: ${detalle.email_anterior} -> ${detalle.email_nuevo}`);
+        }
+        return cambios.join(' | ') || 'Se actualizaron datos de perfil';
+    }
+
+    if (row?.tipo_operacion === 'DESACTIVACION_USUARIO') return 'Cuenta marcada como inactiva';
+    if (row?.tipo_operacion === 'REACTIVACION_USUARIO') return 'Cuenta reactivada';
+    if (row?.tipo_operacion === 'ALTA_USUARIO') return 'Cuenta creada en el sistema';
+    if (row?.tipo_operacion === 'ELIMINACION_USUARIO') return 'Cuenta eliminada';
+    if (row?.tipo_operacion === 'MODIFICACION_USUARIO') return 'Datos generales modificados';
+
+    return 'Sin detalle adicional';
+}
+
+async function loadUserAuditLogs() {
+    const container = document.getElementById('user-audit-content');
+    if (!container) return;
+
+    container.innerHTML = '<p class="muted">Cargando historial…</p>';
+
+    try {
+        const res = await fetch('/api/usuarios/audit-logs?limit=100', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ message: res.statusText }));
+            throw new Error(err.message || 'Error cargando historial de auditoria');
+        }
+
+        const rows = await res.json();
+        if (!Array.isArray(rows) || rows.length === 0) {
+            container.innerHTML = '<p class="muted">No hay registros de auditoria para mostrar.</p>';
+            return;
+        }
+
+        let html = `<div class="table-wrap"><table class="manage-users-table">
+            <thead><tr><th>ID</th><th>Operacion</th><th>Usuario objetivo</th><th>Ejecutado por</th><th>Detalle</th><th>Fecha</th></tr></thead>
+            <tbody>`;
+
+        rows.forEach((row) => {
+            html += `<tr>
+                <td>${row.id_auditoria}</td>
+                <td>${escapeHtml(formatAuditOperation(row.tipo_operacion))}</td>
+                <td>${escapeHtml(getAuditTargetLabel(row))}</td>
+                <td>${escapeHtml(getAuditActorLabel(row))}</td>
+                <td>${escapeHtml(getAuditDetailSummary(row))}</td>
+                <td>${formatCLDate(row.created_at)}</td>
+            </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    } catch (err) {
+        container.innerHTML = `<div class="message error">Error al cargar historial: ${escapeHtml(err.message)}</div>`;
+    }
+}
+
+function formatRecoveryAttemptStatus(status) {
+    const map = {
+        ENVIADO: 'Correo enviado',
+        NO_ENCONTRADO: 'Correo no registrado',
+        RECHAZADO: 'Solicitud rechazada',
+        ERROR_ENVIO: 'Error de envio',
+        ERROR_SMTP_NO_CONFIG: 'SMTP sin configuracion',
+        ERROR_INTERNO: 'Error interno'
+    };
+    return map[String(status || '').trim()] || String(status || 'Desconocido');
+}
+
+function formatRecoveryAttemptDetail(row) {
+    const detail = String(row?.detalle || '').trim();
+    if (detail) return detail;
+    return 'Sin detalle';
+}
+
+async function loadRecoveryAttemptsLogs() {
+    const container = document.getElementById('recovery-attempts-content');
+    if (!container) return;
+
+    container.innerHTML = '<p class="muted">Cargando intentos…</p>';
+
+    try {
+        const res = await fetch('/api/auth/recovery-attempts?limit=100', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ message: res.statusText }));
+            throw new Error(err.message || 'Error cargando intentos de recuperacion');
+        }
+
+        const rows = await res.json();
+        if (!Array.isArray(rows) || rows.length === 0) {
+            container.innerHTML = '<p class="muted">No hay intentos de recuperación registrados.</p>';
+            return;
+        }
+
+        let html = `<div class="table-wrap"><table class="manage-users-table">
+            <thead><tr><th>ID</th><th>Correo solicitante</th><th>IP</th><th>Estado</th><th>Detalle</th><th>Fecha</th></tr></thead>
+            <tbody>`;
+
+        rows.forEach((row) => {
+            html += `<tr>
+                <td>${row.id_intento}</td>
+                <td>${escapeHtml(row.email_solicitante || '—')}</td>
+                <td>${escapeHtml(row.ip_solicitante || '—')}</td>
+                <td>${escapeHtml(formatRecoveryAttemptStatus(row.estado_intento))}</td>
+                <td>${escapeHtml(formatRecoveryAttemptDetail(row))}</td>
+                <td>${formatCLDate(row.created_at)}</td>
+            </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    } catch (err) {
+        container.innerHTML = `<div class="message error">Error al cargar intentos: ${escapeHtml(err.message)}</div>`;
+    }
+}
+
 async function deleteRoleRequest(requestId) {
     showConfirmModal('Eliminar solicitud', '¿Eliminar esta solicitud de rol? Esta acción no se puede deshacer.', async () => {
         try {
@@ -6049,6 +6247,9 @@ async function changeUserRole(userId) {
         if (typeof loadRoleRequests === 'function') {
             loadRoleRequests();
         }
+        if (typeof loadUserAuditLogs === 'function') {
+            loadUserAuditLogs();
+        }
     } catch (err) {
         alert(`❌ Error: ${err.message}`);
     }
@@ -6083,6 +6284,9 @@ async function updateUserProfile(userId) {
         }
         alert('✅ Datos de usuario actualizados');
         loadUsersList();
+        if (typeof loadUserAuditLogs === 'function') {
+            loadUserAuditLogs();
+        }
     } catch (err) {
         alert(`❌ Error: ${err.message}`);
     }
@@ -6101,6 +6305,9 @@ async function deleteUser(userId) {
             }
             alert('✅ Usuario eliminado');
             loadUsersList();
+            if (typeof loadUserAuditLogs === 'function') {
+                loadUserAuditLogs();
+            }
         } catch (err) {
             alert(`❌ Error: ${err.message}`);
         }
@@ -6130,6 +6337,9 @@ async function toggleUserActive(userId) {
                     }
                     alert(`✅ Usuario ${accion.toLowerCase()}do correctamente`);
                     loadUsersList();
+                    if (typeof loadUserAuditLogs === 'function') {
+                        loadUserAuditLogs();
+                    }
                 } catch (err) {
                     alert(`❌ Error: ${err.message}`);
                 }
@@ -6187,6 +6397,9 @@ function showAddUserForm() {
                 throw new Error(e.message || 'Error creando usuario');
             }
             statusEl.textContent = '✅ Usuario creado';
+            if (typeof loadUserAuditLogs === 'function') {
+                loadUserAuditLogs();
+            }
             setTimeout(()=>loadUsersList(), 700);
         } catch (err) {
             statusEl.textContent = `❌ ${err.message}`;

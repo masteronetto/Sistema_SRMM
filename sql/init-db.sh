@@ -51,4 +51,28 @@ else
 	echo "  6️⃣  006_horometro_no_decreciente.sql no encontrado, se omite"
 fi
 
+# 7. Estado activo/inactivo de usuarios
+if [ -f /docker-entrypoint-initdb.d/007_usuario_activo.sql ]; then
+	echo "  7️⃣  Aplicando estado activo de usuarios (007_usuario_activo.sql)..."
+	psql -U postgres -d srmm_db -f /docker-entrypoint-initdb.d/007_usuario_activo.sql
+else
+	echo "  7️⃣  007_usuario_activo.sql no encontrado, se omite"
+fi
+
+# 8. Auditoría de cambios de usuarios
+if [ -f /docker-entrypoint-initdb.d/008_auditoria_usuarios.sql ]; then
+	echo "  8️⃣  Aplicando auditoría de usuarios (008_auditoria_usuarios.sql)..."
+	psql -U postgres -d srmm_db -f /docker-entrypoint-initdb.d/008_auditoria_usuarios.sql
+else
+	echo "  8️⃣  008_auditoria_usuarios.sql no encontrado, se omite"
+fi
+
+# 9. Registro de intentos de recuperación
+if [ -f /docker-entrypoint-initdb.d/009_intentos_recuperacion.sql ]; then
+	echo "  9️⃣  Aplicando intentos de recuperación (009_intentos_recuperacion.sql)..."
+	psql -U postgres -d srmm_db -f /docker-entrypoint-initdb.d/009_intentos_recuperacion.sql
+else
+	echo "  9️⃣  009_intentos_recuperacion.sql no encontrado, se omite"
+fi
+
 echo "✅ Base de datos inicializada correctamente"
