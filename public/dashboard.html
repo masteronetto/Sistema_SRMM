@@ -1682,6 +1682,7 @@ let maintenancePlanAssignInitialized = false;
 let maintenanceOrderFormInitialized = false;
 let maintenanceSocket = null;
 let socketNotificationTimer = null;
+let realtimeAlertRefreshTimer = null;
 let reportTopChart = null;
 let reportUsoChart = null;
 let reportSelectedMachineId = '';
@@ -2509,6 +2510,26 @@ function canUseMaintenanceSocket() {
     return true;
 }
 
+function formatRealtimeHours(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return 'N/D';
+    return `${Math.abs(numeric).toFixed(1)} h`;
+}
+
+function scheduleRealtimeDashboardRefresh() {
+    if (realtimeAlertRefreshTimer) {
+        clearTimeout(realtimeAlertRefreshTimer);
+    }
+
+    realtimeAlertRefreshTimer = setTimeout(async () => {
+        try { await loadInicioKpis(); } catch (error) { console.warn('No se pudo refrescar inicio tras alerta en vivo', error); }
+        if (document.querySelector('.view.active')?.id === 'mantenimiento') {
+            try { await loadMaintenanceDashboard(); } catch (error) { console.warn('No se pudo refrescar mantenimiento tras alerta en vivo', error); }
+        }
+        realtimeAlertRefreshTimer = null;
+    }, 250);
+}
+
 function initMaintenanceSocket() {
     if (maintenanceSocket || typeof window.io !== 'function' || !token || !currentUser || !canUseMaintenanceSocket()) {
         return;
@@ -2538,6 +2559,27 @@ function initMaintenanceSocket() {
         if (document.querySelector('.view.active')?.id === 'mantenimiento') {
             try { await loadMaintenanceDashboard(); } catch (error) { console.warn('No se pudo refrescar mantenimiento tras notificación en vivo', error); }
         }
+    });
+
+    maintenanceSocket.on('alerta:nueva', (payload = {}) => {
+        if (!hasCurrentRole('Administrador')) return;
+
+        const machineName = payload.nombre_maquina || payload.maquina || payload.modelo_equipo || 'Máquina sin identificar';
+        const priority = payload.prioridad || payload.tipo || 'Alerta';
+        const hoursRaw = payload.horas_restantes;
+        const timeText = Number.isFinite(Number(hoursRaw))
+            ? (Number(hoursRaw) < 0
+                ? `Atraso: ${formatRealtimeHours(hoursRaw)}`
+                : `Horas restantes: ${formatRealtimeHours(hoursRaw)}`)
+            : 'Horas restantes: N/D';
+
+        showSocketNotification(
+            'Alerta de mantención en tiempo real',
+            `${machineName} · Prioridad ${priority} · ${timeText}`,
+            String(priority).toLowerCase() === 'alta' ? 'warning' : 'info'
+        );
+
+        scheduleRealtimeDashboardRefresh();
     });
 
     maintenanceSocket.on('disconnect', () => {
