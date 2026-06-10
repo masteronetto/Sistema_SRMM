@@ -1198,13 +1198,20 @@ function renderAdminMaquinaria(rows) {
         const tarifaLabel = Number.isFinite(tarifaNumber) ? formatCurrency(tarifaNumber) : '—';
         const porcentajeUso = Number(maquina.porcentaje_uso);
         const hasUso = Number.isFinite(porcentajeUso);
-        const isCritical = hasUso && porcentajeUso >= umbralValido;
-        const isWarning = hasUso && !isCritical && porcentajeUso >= Math.max(0, umbralValido * 0.85);
+        const estadoNormalizado = String(maquina.estado || '').trim().toLowerCase();
+        const prioridadNormalizada = String(maquina.prioridad || '').trim().toLowerCase();
+        const isBlockedState = estadoNormalizado === 'bloqueada' || estadoNormalizado === 'no operativa';
+        const isMaintenanceState = estadoNormalizado === 'mantencion' || estadoNormalizado === 'mantenimiento';
+        const isCritical = isBlockedState || prioridadNormalizada === 'alta' || (hasUso && porcentajeUso >= umbralValido);
+        const isWarning = !isCritical && (isMaintenanceState || prioridadNormalizada === 'media' || (hasUso && porcentajeUso >= Math.max(0, umbralValido * 0.85)));
         const usoClass = isCritical ? 'critical' : (isWarning ? 'warning' : 'normal');
         const usoLabel = hasUso ? `${porcentajeUso.toFixed(1)}%` : '—';
         const prioridadLabel = maquina.prioridad ? ` · ${maquina.prioridad}` : '';
+        const rowClass = isCritical
+            ? 'inventario-row-critico'
+            : (isWarning ? 'inventario-row-warning' : '');
 
-        return `<tr class="${isCritical ? 'inventario-row-critico' : ''}">
+        return `<tr class="${rowClass}">
             <td>${maquina.id ?? '—'}</td>
             <td>${maquina.modelo || '—'}</td>
             <td>${escapeHtml(maquina.estado || '—')}</td>

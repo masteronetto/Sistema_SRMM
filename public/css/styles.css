@@ -433,20 +433,51 @@ tbody tr:hover { background: #fdfaf8; }
 .inventario-uso-chip.normal {
     background: #def2d8;
     color: #17632d;
+    border: 1px solid rgba(23, 99, 45, 0.22);
 }
 
 .inventario-uso-chip.warning {
     background: #fdf2d7;
     color: #8d6c12;
+    border: 1px solid rgba(141, 108, 18, 0.28);
 }
 
 .inventario-uso-chip.critical {
     background: #fce8e8;
     color: #9f2934;
+    border: 1px solid rgba(159, 41, 52, 0.34);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
 }
 
 .inventario-row-critico {
-    background: rgba(252, 232, 232, 0.45);
+    background: linear-gradient(90deg, rgba(252, 208, 208, 0.42) 0%, rgba(255, 248, 248, 0.9) 22%, rgba(255,255,255,1) 100%);
+}
+
+.inventario-row-warning {
+    background: linear-gradient(90deg, rgba(255, 233, 184, 0.34) 0%, rgba(255, 250, 239, 0.9) 22%, rgba(255,255,255,1) 100%);
+}
+
+.inventario-row-critico td:first-child,
+.inventario-row-warning td:first-child {
+    position: relative;
+}
+
+.inventario-row-critico td:first-child::before,
+.inventario-row-warning td:first-child::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+}
+
+.inventario-row-critico td:first-child::before {
+    background: #b4232f;
+}
+
+.inventario-row-warning td:first-child::before {
+    background: #b7791f;
 }
 
 /* ── MANAGE USERS TABLE ── */
