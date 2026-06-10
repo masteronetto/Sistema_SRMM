@@ -1,7 +1,14 @@
 const pool = require('../../db/pool');
 
 const baseSelect = `
-  SELECT id_usuario, nombre_completo, email, rol_acceso, activo, created_at, updated_at
+  SELECT
+    id_usuario,
+    nombre_completo,
+    email,
+    rol_acceso,
+    COALESCE((to_jsonb(usuarios) ->> 'activo')::boolean, TRUE) AS activo,
+    created_at,
+    updated_at
   FROM usuarios
 `;
 

@@ -4,24 +4,16 @@ const { verifyToken, requireMecanicoOrAdmin, requireMecanicoOperadorOrAdmin, req
 
 const router = Router();
 
-router.use((req, res, next) => {
-  // Solo validar usuario activo si está autenticado
-  if (req.headers.authorization) {
-    return requireActiveUser(req, res, next);
-  }
-  next();
-});
-
-router.get('/historial-unificado/:id_maquina', verifyToken, controller.obtenerHistorialMaquina);
-router.get('/top-maquinas', verifyToken, controller.obtenerTopMaquinas);
-router.get('/estadisticas', verifyToken, controller.obtenerEstadisticas);
-router.get('/uso-historico/:id_maquina', verifyToken, controller.obtenerUsoHistorico);
-router.get('/operador/resumen', verifyToken, requireMecanicoOperadorOrAdmin, controller.obtenerResumenOperador);
-router.get('/autores', verifyToken, requireMecanicoOrAdmin, controller.obtenerActividadPorAutor);
-router.get('/fallas/propias', verifyToken, requireMecanicoOperadorOrAdmin, controller.obtenerReporteFallasPropias);
-router.get('/fallas', verifyToken, requireMecanicoOrAdmin, controller.obtenerReporteFallas);
-router.get('/mantenimientos', verifyToken, requireMecanicoOrAdmin, controller.obtenerReporteMantenimientos);
-router.get('/ingresos', verifyToken, requireAdmin, controller.obtenerIngresos);
-router.get('/ingresos/csv', verifyToken, requireAdmin, controller.obtenerIngresosCsv);
+router.get('/historial-unificado/:id_maquina', verifyToken, requireActiveUser, controller.obtenerHistorialMaquina);
+router.get('/top-maquinas', verifyToken, requireActiveUser, controller.obtenerTopMaquinas);
+router.get('/estadisticas', verifyToken, requireActiveUser, controller.obtenerEstadisticas);
+router.get('/uso-historico/:id_maquina', verifyToken, requireActiveUser, controller.obtenerUsoHistorico);
+router.get('/operador/resumen', verifyToken, requireActiveUser, requireMecanicoOperadorOrAdmin, controller.obtenerResumenOperador);
+router.get('/autores', verifyToken, requireActiveUser, requireMecanicoOrAdmin, controller.obtenerActividadPorAutor);
+router.get('/fallas/propias', verifyToken, requireActiveUser, requireMecanicoOperadorOrAdmin, controller.obtenerReporteFallasPropias);
+router.get('/fallas', verifyToken, requireActiveUser, requireMecanicoOrAdmin, controller.obtenerReporteFallas);
+router.get('/mantenimientos', verifyToken, requireActiveUser, requireMecanicoOrAdmin, controller.obtenerReporteMantenimientos);
+router.get('/ingresos', verifyToken, requireActiveUser, requireAdmin, controller.obtenerIngresos);
+router.get('/ingresos/csv', verifyToken, requireActiveUser, requireAdmin, controller.obtenerIngresosCsv);
 
 module.exports = router;

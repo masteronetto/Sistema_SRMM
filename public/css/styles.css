@@ -533,6 +533,84 @@ tbody tr:hover { background: #fdfaf8; }
 .btn-success { background: #27ae60; }
 .btn-success:hover { background: #229954; }
 
+/* ── USERS TABLE LAYOUT TUNING ── */
+.users-manage-table {
+    min-width: 1180px;
+}
+
+.users-manage-table th:nth-child(1),
+.users-manage-table td:nth-child(1) {
+    width: 64px;
+}
+
+.users-manage-table th:nth-child(2),
+.users-manage-table td:nth-child(2) {
+    min-width: 180px;
+}
+
+.users-manage-table th:nth-child(3),
+.users-manage-table td:nth-child(3) {
+    min-width: 250px;
+}
+
+.users-manage-table th:nth-child(4),
+.users-manage-table td:nth-child(4),
+.users-manage-table th:nth-child(5),
+.users-manage-table td:nth-child(5),
+.users-manage-table th:nth-child(6),
+.users-manage-table td:nth-child(6) {
+    white-space: nowrap;
+}
+
+.users-manage-table th:nth-child(7),
+.users-manage-table td:nth-child(7) {
+    min-width: 170px;
+}
+
+.users-manage-table th:nth-child(8),
+.users-manage-table td:nth-child(8) {
+    min-width: 260px;
+}
+
+.users-inline-input {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid rgba(40,28,22,0.16);
+    border-radius: 8px;
+    background: #faf7f4;
+    padding: 0.45rem 0.6rem;
+    font: inherit;
+}
+
+.users-actions-cell {
+    vertical-align: top;
+}
+
+.users-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(110px, 1fr));
+    gap: 0.45rem;
+}
+
+.users-actions-grid .btn {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.2;
+    padding: 0.45rem 0.6rem;
+    min-height: 38px;
+}
+
+@media (max-width: 1400px) {
+    .users-manage-table {
+        min-width: 1040px;
+    }
+
+    .users-actions-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* ── MENSAJES ── */
 .message {
     padding: 0.85rem 1rem; border-radius: 12px; margin-bottom: 0.75rem;

@@ -4,21 +4,13 @@ const { verifyToken, requireMecanicoOperadorOrAdmin, requireMecanicoOrAdmin, req
 
 const router = Router();
 
-router.use((req, res, next) => {
-  // Solo validar usuario activo si está autenticado
-  if (req.headers.authorization) {
-    return requireActiveUser(req, res, next);
-  }
-  next();
-});
-
 // Listar incidencias (GET /api/incidencias) - solo Mecanico/Operador/Administrador
-router.get('/', verifyToken, requireMecanicoOperadorOrAdmin, incidenciasController.listarIncidencias);
+router.get('/', verifyToken, requireActiveUser, requireMecanicoOperadorOrAdmin, incidenciasController.listarIncidencias);
 
 // Registrar una incidencia (POST /api/incidencias) - solo Mecanico/Operador/Administrador
-router.post('/', verifyToken, requireMecanicoOperadorOrAdmin, incidenciasController.crearIncidencia);
+router.post('/', verifyToken, requireActiveUser, requireMecanicoOperadorOrAdmin, incidenciasController.crearIncidencia);
 
 // Resolver una incidencia (PATCH /api/incidencias/:id_incidencia/resolver) - solo Mecanico/Administrador
-router.patch('/:id_incidencia/resolver', verifyToken, requireMecanicoOrAdmin, incidenciasController.resolverIncidencia);
+router.patch('/:id_incidencia/resolver', verifyToken, requireActiveUser, requireMecanicoOrAdmin, incidenciasController.resolverIncidencia);
 
 module.exports = router;
