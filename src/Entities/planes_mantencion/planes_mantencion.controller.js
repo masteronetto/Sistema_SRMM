@@ -1,5 +1,6 @@
 const planesRepo = require('./planes_mantencion.repository');
 const maquinariaRepo = require('../maquinaria/maquinaria.repository');
+const alertasCriticasRepo = require('../alertas_criticas/alertas_criticas.repository');
 
 function toPositiveNumber(value) {
   const parsed = Number(value);
@@ -249,9 +250,21 @@ async function asignarPlanAMaquina(req, res) {
 
     const maquinaActualizada = await planesRepo.asignarPlanAMaquina(id_maquina, id_plan);
 
+    const horometroActual = Number(maquinaActualizada?.horometro_actual ?? maquina.horometro_actual ?? 0);
+    const intervaloHoras = Number(plan.intervalo_horas || 0);
+    const horasRestantes = intervaloHoras - horometroActual;
+
+    if (intervaloHoras > 0 && horasRestantes <= 0) {
+      const motivoBloqueo = `Bloqueo automático por umbral de mantenimiento excedido al asignar plan (${horometroActual}h >= ${intervaloHoras}h).`;
+      await maquinariaRepo.blockMaquinariaWithReason(id_maquina, motivoBloqueo, 0);
+      await alertasCriticasRepo.verificarYGenerarAlertaCritica(id_maquina, horometroActual, intervaloHoras, 0);
+    }
+
+    const maquinaConEstadoFinal = await maquinariaRepo.getMaquinariaById(id_maquina);
+
     return res.status(200).json({
       mensaje: `Plan "${plan.nombre_plan}" asignado a la máquina`,
-      maquina: maquinaActualizada,
+      maquina: maquinaConEstadoFinal || maquinaActualizada,
       plan_asignado: plan,
     });
   } catch (error) {

@@ -41,6 +41,28 @@ async function createContrato(req, res, next) {
                 throw Object.assign(new Error(`Máquina ${idMaquina} no encontrada`), { statusCode: 404 });
             }
 
+            // Verificación reactiva: si la máquina ya superó el umbral del plan, bloquear y rechazar arriendo.
+            const disponibilidad = await maquinariaRepo.getDisponibilidadMaquina(idMaquina, 0);
+            const horasRestantes = Number(disponibilidad?.horas_restantes);
+            const intervaloHoras = Number(disponibilidad?.intervalo_horas);
+            const superaUmbralCritico = Number.isFinite(intervaloHoras)
+                && intervaloHoras > 0
+                && Number.isFinite(horasRestantes)
+                && horasRestantes <= 0;
+
+            if (superaUmbralCritico) {
+                const motivoBloqueo = `Bloqueo automático por umbral crítico excedido (${Math.abs(horasRestantes).toFixed(1)}h sobre plan).`;
+                await maquinariaRepo.blockMaquinariaWithReason(idMaquina, motivoBloqueo, 0);
+
+                throw Object.assign(new Error(
+                    `La máquina ${idMaquina} superó el umbral de mantenimiento y fue bloqueada automáticamente.`
+                ), {
+                    statusCode: 400,
+                    estado_actual: 'Bloqueada',
+                    accion_requerida: 'Finaliza mantenimiento y desbloquea la máquina antes de generar contratos de arriendo.'
+                });
+            }
+
             if (['Arrendada', 'Mantencion', 'Bloqueada', 'No Operativa'].includes(maquina.estado)) {
                 console.warn(`[AUDITORIA] Intento fallido de arriendo. Máquina ID ${maquina.id_maquina} en estado: ${maquina.estado}.`);
                 throw Object.assign(new Error(
