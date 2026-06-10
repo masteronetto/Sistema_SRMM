@@ -508,7 +508,7 @@
                                     </select>
                                 </label>
                             </div>
-                            <label>Descripción de la falla<textarea id="incidentDescription" required placeholder="Describir el evento, el lugar y el impacto"></textarea></label>
+                            <label>Descripción de la falla<textarea id="incidentDescription" required minlength="10" maxlength="500" placeholder="Describir el evento, el lugar y el impacto"></textarea></label>
                             <div class="incident-actions">
                                 <button type="submit" class="top-button primary">Registrar incidencia</button>
                                 <span id="incidentFormStatus" class="form-status"></span>
@@ -2833,6 +2833,7 @@ function validateIncidentFormFields({ maquinaId, operadorId, fecha, descripcion 
     if (!operadorId) return 'Selecciona un operador responsable.';
     if (!fecha) return 'Selecciona una fecha.';
     if (!descripcion) return 'Escribe la descripción de la falla.';
+    if (String(descripcion).trim().length < 10) return 'La descripción debe tener al menos 10 caracteres.';
     return null;
 }
 

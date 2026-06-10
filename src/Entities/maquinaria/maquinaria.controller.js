@@ -207,6 +207,10 @@ function validateIncidenciaPayload(payload) {
     return { error: 'descripcion es obligatoria', parsed: null };
   }
 
+  if (descripcion.length < 10) {
+    return { error: 'descripcion debe tener al menos 10 caracteres', parsed: null };
+  }
+
   if (operador_id === null) {
     return { error: 'operador_id es obligatorio y debe ser numerico', parsed: null };
   }
@@ -234,6 +238,7 @@ function validateIncidenciaPayload(payload) {
       descripcion,
       criticidad,
       operador_id,
+      // No se exige orden/mantenimiento para registrar incidencia general de máquina.
       vinculada_mantenimiento: mantenimiento_id !== null || orden_trabajo_id !== null,
       mantenimiento_id,
       orden_trabajo_id

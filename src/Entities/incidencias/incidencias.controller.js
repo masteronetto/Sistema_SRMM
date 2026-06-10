@@ -4,6 +4,7 @@ const mantenimientosRepo = require('../mantenimientos/mantenimientos.repository'
 async function crearIncidencia(req, res) {
     try {
         const { id_maquina, id_usuario: bodyUsuarioId, descripcion, criticidad, orden_trabajo_id } = req.body;
+        const descripcionNormalizada = String(descripcion || '').trim();
         const authenticatedUserId = Number(req.user?.id_usuario);
         const role = req.user?.rol_acceso;
         const id_usuario = role === 'Operador'
@@ -11,8 +12,12 @@ async function crearIncidencia(req, res) {
             : (bodyUsuarioId && Number.isFinite(Number(bodyUsuarioId)) ? Number(bodyUsuarioId) : authenticatedUserId);
 
         // Validación básica de seguridad de datos entrantes
-        if (!id_maquina || !id_usuario || !descripcion || !criticidad) {
+        if (!id_maquina || !id_usuario || !descripcionNormalizada || !criticidad) {
             return res.status(400).json({ error: 'Faltan campos obligatorios.' });
+        }
+
+        if (descripcionNormalizada.length < 10) {
+            return res.status(400).json({ error: 'La descripción debe tener al menos 10 caracteres.' });
         }
 
         if (orden_trabajo_id !== undefined && orden_trabajo_id !== null && String(orden_trabajo_id).trim() !== '') {
@@ -31,7 +36,7 @@ async function crearIncidencia(req, res) {
         const resultado = await incidenciasRepository.registrarIncidencia(
             id_maquina,
             id_usuario,
-            descripcion,
+            descripcionNormalizada,
             criticidad,
             orden_trabajo_id && Number.isFinite(Number(orden_trabajo_id)) ? Number(orden_trabajo_id) : null
         );
