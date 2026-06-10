@@ -487,6 +487,7 @@
                             </div>
                             <div class="detail-toolbar">
                                 <label><input id="detailFilterPending" type="checkbox" /> Solo no resueltas</label>
+                                <button id="detailShowAllMachinesBtn" class="btn btn-secondary" type="button">Ver todas</button>
                             </div>
                         </div>
                         <div id="detailMachineMotive" class="detail-subtitle"></div>
@@ -5487,6 +5488,7 @@ function initMachineCards() {
     const detailSubtitle     = document.getElementById('detailSubtitle');
     const detailMachineMotive= document.getElementById('detailMachineMotive');
     const detailFilterPending= document.getElementById('detailFilterPending');
+    const detailShowAllBtn   = document.getElementById('detailShowAllMachinesBtn');
     const detailIncidentRows = document.getElementById('detailIncidentRows');
 
     function isCritical(state) { return ['Bloqueada','No Operativa'].includes(state); }
@@ -5532,6 +5534,22 @@ function initMachineCards() {
     detailFilterPending.addEventListener('change', () => {
         if (currentMachineId) loadMachineIncidencias(detailIncidentRows, detailFilterPending);
     });
+
+    if (detailShowAllBtn) {
+        detailShowAllBtn.addEventListener('click', () => {
+            currentMachineId = null;
+            const machineSelect = document.getElementById('incidentMachine');
+            if (machineSelect) machineSelect.value = '';
+            if (detailFilterPending) detailFilterPending.checked = false;
+            if (detailIncidentRows) {
+                detailIncidentRows.innerHTML = '<tr><td colspan="7" class="detail-empty">Selecciona una máquina para cargar incidencias.</td></tr>';
+            }
+            if (detailTitle) detailTitle.textContent = 'Seleccione una máquina para ver fallas e incidencias';
+            if (detailSubtitle) detailSubtitle.textContent = 'Verás fecha, criticidad y si cada incidencia fue vinculada a una mantención.';
+            if (detailMachineMotive) detailMachineMotive.textContent = '';
+            if (machineDetailPanel) machineDetailPanel.classList.add('hidden');
+        });
+    }
 }
 
 async function loadMachineIncidencias(rows, filter) {
