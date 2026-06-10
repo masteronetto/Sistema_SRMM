@@ -5,6 +5,53 @@ const notificacionesTiempoRealRepo = require('../notificaciones_tiempo_real/noti
 const { enviarNotificacionAAdministradores, enviarNotificacionAMecanico } = require('../../config/socketio');
 
 const TIPOS_SERVICIO_PROGRAMACION = new Set(['Preventivo', 'Correctivo', 'Predictivo']);
+const TIPOS_SERVICIO_MANTENIMIENTO = new Set([
+  'Preventivo',
+  'Correctivo',
+  'Predictivo',
+  'Inspeccion',
+  'Inspección',
+  'Lubricacion',
+  'Lubricación',
+  'Ajuste',
+  'Cambio de Repuestos',
+  'Cambio de Repuesto',
+  'Reparacion',
+  'Reparación',
+  'Diagnostico',
+  'Diagnóstico'
+]);
+
+function sanitizeTextInput(value) {
+  if (value === undefined || value === null) {
+    return '';
+  }
+
+  return String(value)
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/[\u0000-\u001F\u007F]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeServiceType(value) {
+  return sanitizeTextInput(value)
+    .replace(/\s+/g, ' ')
+    .replace(/^./, (char) => char.toUpperCase());
+}
+
+function isAllowedServiceType(value, allowedSet = TIPOS_SERVICIO_MANTENIMIENTO) {
+  const normalized = normalizeServiceType(value);
+  if (normalized.length < 3 || normalized.length > 80) {
+    return false;
+  }
+
+  if (!/^[\p{L}\p{N}][\p{L}\p{N}\s().,/-]*$/u.test(normalized)) {
+    return false;
+  }
+
+  return allowedSet.has(normalized) || allowedSet.has(normalized.normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+}
 
 function toNumberOrNull(value) {
   if (value === undefined || value === null || value === '') {
@@ -90,14 +137,29 @@ function successPayload(data, extras = {}) {
 }
 
 function validatePayload(payload) {
-  const tipo_servicio = payload.tipo_servicio;
+  const tipo_servicio = normalizeServiceType(payload.tipo_servicio);
   const horometro_registro = toNumberOrNull(payload.horometro_registro);
   const maquinaria_id_maquina = toNumberOrNull(payload.maquinaria_id_maquina);
   const usuarios_id_usuario = toNumberOrNull(payload.usuarios_id_usuario);
+  const detalle_tecnico = sanitizeTextInput(payload.detalle_tecnico);
 
-  if (!tipo_servicio || horometro_registro === null || maquinaria_id_maquina === null || usuarios_id_usuario === null || !payload.detalle_tecnico) {
+  if (!tipo_servicio || horometro_registro === null || maquinaria_id_maquina === null || usuarios_id_usuario === null || !detalle_tecnico) {
     return {
       error: 'Campos obligatorios: tipo_servicio, horometro_registro, detalle_tecnico, maquinaria_id_maquina, usuarios_id_usuario',
+      parsed: null
+    };
+  }
+
+  if (!isAllowedServiceType(tipo_servicio)) {
+    return {
+      error: 'tipo_servicio debe usar un formato válido y reconocido',
+      parsed: null
+    };
+  }
+
+  if (detalle_tecnico.length < 10) {
+    return {
+      error: 'detalle_tecnico debe tener al menos 10 caracteres útiles',
       parsed: null
     };
   }
@@ -109,7 +171,7 @@ function validatePayload(payload) {
     parsed: {
       tipo_servicio,
       horometro_registro,
-      detalle_tecnico: payload.detalle_tecnico,
+      detalle_tecnico,
       fecha_servicio,
       maquinaria_id_maquina,
       usuarios_id_usuario
@@ -272,17 +334,18 @@ async function programar(req, res, next) {
     const pool = require('../../db/pool');
     const maq_id = toNumberOrNull(maquinaria_id_maquina);
     const mec_id = toNumberOrNull(mecanico_asignado);
-    const tipoServicioNormalizado = String(tipo_servicio || '').trim();
+    const tipoServicioNormalizado = normalizeServiceType(tipo_servicio);
+    const detalleTecnicoNormalizado = sanitizeTextInput(detalle_tecnico);
 
-    if (!tipoServicioNormalizado || !detalle_tecnico || !fecha_programada || maq_id === null || mec_id === null) {
+    if (!tipoServicioNormalizado || !detalleTecnicoNormalizado || !fecha_programada || maq_id === null || mec_id === null) {
       return res.status(400).json({ 
         message: 'Campos obligatorios: tipo_servicio, detalle_tecnico, fecha_programada, maquinaria_id_maquina, mecanico_asignado' 
       });
     }
 
-    if (!TIPOS_SERVICIO_PROGRAMACION.has(tipoServicioNormalizado)) {
+    if (!TIPOS_SERVICIO_PROGRAMACION.has(tipoServicioNormalizado) || detalleTecnicoNormalizado.length < 10) {
       return res.status(400).json({
-        message: 'tipo_servicio debe ser uno de: Preventivo, Correctivo o Predictivo'
+        message: 'tipo_servicio debe ser uno de: Preventivo, Correctivo o Predictivo y el detalle técnico debe tener al menos 10 caracteres'
       });
     }
 
@@ -312,7 +375,7 @@ async function programar(req, res, next) {
 
     const orden = await mantenimientosRepo.programarMantenimiento({
       tipo_servicio: tipoServicioNormalizado,
-      detalle_tecnico,
+      detalle_tecnico: detalleTecnicoNormalizado,
       fecha_programada,
       maquinaria_id_maquina: maq_id,
       mecanico_asignado: mec_id
