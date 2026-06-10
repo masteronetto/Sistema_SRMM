@@ -1,8 +1,16 @@
 const { Router } = require('express');
 const controller = require('./reportes.controller');
-const { verifyToken, requireMecanicoOrAdmin, requireMecanicoOperadorOrAdmin, requireAdmin } = require('../../middleware/auth');
+const { verifyToken, requireMecanicoOrAdmin, requireMecanicoOperadorOrAdmin, requireAdmin, requireActiveUser } = require('../../middleware/auth');
 
 const router = Router();
+
+router.use((req, res, next) => {
+  // Solo validar usuario activo si está autenticado
+  if (req.headers.authorization) {
+    return requireActiveUser(req, res, next);
+  }
+  next();
+});
 
 router.get('/historial-unificado/:id_maquina', verifyToken, controller.obtenerHistorialMaquina);
 router.get('/top-maquinas', verifyToken, controller.obtenerTopMaquinas);

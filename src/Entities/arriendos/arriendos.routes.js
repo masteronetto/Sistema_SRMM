@@ -1,10 +1,11 @@
 const { Router } = require('express');
 const controller = require('./arriendos.controller');
-const { verifyToken, requireAdmin } = require('../../middleware/auth');
+const { verifyToken, requireAdmin, requireActiveUser } = require('../../middleware/auth');
 
 const router = Router();
 
 router.use(verifyToken);
+router.use(requireActiveUser);
 
 router.get('/', controller.listContratos);
 router.get('/mis-contratos', controller.listMisContratos);

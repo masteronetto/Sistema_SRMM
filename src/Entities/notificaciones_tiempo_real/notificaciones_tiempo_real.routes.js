@@ -4,20 +4,20 @@ const {
   marcarTodasComoLeidas,
   deleteNotificacion,
 } = require('./notificaciones_tiempo_real.controller');
-const { verifyToken, requireAdmin } = require('../../middleware/auth');
+const { verifyToken, requireAdmin, requireActiveUser } = require('../../middleware/auth');
 
 const router = require('express').Router();
 
 // Obtener todas las notificaciones del admin autenticado
-router.get('/', verifyToken, requireAdmin, listNotificacionesAdmin);
+router.get('/', verifyToken, requireActiveUser, requireAdmin, listNotificacionesAdmin);
 
 // Marcar una notificación como leída
-router.patch('/:id/leida', verifyToken, requireAdmin, marcarNotificacionComoLeida);
+router.patch('/:id/leida', verifyToken, requireActiveUser, requireAdmin, marcarNotificacionComoLeida);
 
 // Marcar todas las notificaciones como leídas
-router.patch('/admin/leer-todas', verifyToken, requireAdmin, marcarTodasComoLeidas);
+router.patch('/admin/leer-todas', verifyToken, requireActiveUser, requireAdmin, marcarTodasComoLeidas);
 
 // Eliminar una notificación
-router.delete('/:id', verifyToken, requireAdmin, deleteNotificacion);
+router.delete('/:id', verifyToken, requireActiveUser, requireAdmin, deleteNotificacion);
 
 module.exports = router;

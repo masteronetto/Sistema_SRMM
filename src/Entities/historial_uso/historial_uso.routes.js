@@ -1,10 +1,11 @@
 const { Router } = require('express');
 const controller = require('./historial_uso.controller');
-const { verifyToken, requireMecanicoOperadorOrAdmin, requireOperadorOrAdmin } = require('../../middleware/auth');
+const { verifyToken, requireMecanicoOperadorOrAdmin, requireOperadorOrAdmin, requireActiveUser } = require('../../middleware/auth');
 
 const router = Router();
 
 router.use(verifyToken);
+router.use(requireActiveUser);
 
 router.post('/', requireMecanicoOperadorOrAdmin, controller.create);
 router.post('/diario', requireOperadorOrAdmin, controller.createDiario);

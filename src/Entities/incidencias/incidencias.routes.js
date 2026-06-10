@@ -1,8 +1,16 @@
 const { Router } = require('express');
 const incidenciasController = require('./incidencias.controller');
-const { verifyToken, requireMecanicoOperadorOrAdmin, requireMecanicoOrAdmin } = require('../../middleware/auth');
+const { verifyToken, requireMecanicoOperadorOrAdmin, requireMecanicoOrAdmin, requireActiveUser } = require('../../middleware/auth');
 
 const router = Router();
+
+router.use((req, res, next) => {
+  // Solo validar usuario activo si está autenticado
+  if (req.headers.authorization) {
+    return requireActiveUser(req, res, next);
+  }
+  next();
+});
 
 // Listar incidencias (GET /api/incidencias) - solo Mecanico/Operador/Administrador
 router.get('/', verifyToken, requireMecanicoOperadorOrAdmin, incidenciasController.listarIncidencias);

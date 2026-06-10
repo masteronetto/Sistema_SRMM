@@ -218,6 +218,59 @@ async function updateProfile(req, res, next) {
   }
 }
 
+async function deactivate(req, res, next) {
+  try {
+    const { id } = req.params;
+
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ message: 'ID de usuario invalido' });
+    }
+
+    const usuario = await usuariosRepo.getUsuarioById(id);
+    if (!usuario) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    // No permitir desactivar propio usuario
+    if (req.user.id_usuario === parseInt(id)) {
+      return res.status(400).json({ message: 'No puedes desactivar tu propia cuenta' });
+    }
+
+    const result = await usuariosRepo.deactivateUsuario(id);
+
+    return res.json({
+      message: 'Usuario desactivado correctamente',
+      user: result
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function activate(req, res, next) {
+  try {
+    const { id } = req.params;
+
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ message: 'ID de usuario invalido' });
+    }
+
+    const usuario = await usuariosRepo.getUsuarioById(id);
+    if (!usuario) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    const result = await usuariosRepo.activateUsuario(id);
+
+    return res.json({
+      message: 'Usuario reactivado correctamente',
+      user: result
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   list,
   getById,
@@ -225,5 +278,7 @@ module.exports = {
   update,
   remove,
   changeRole,
-  updateProfile
+  updateProfile,
+  deactivate,
+  activate
 };

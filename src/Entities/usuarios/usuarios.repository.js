@@ -1,7 +1,7 @@
 const pool = require('../../db/pool');
 
 const baseSelect = `
-  SELECT id_usuario, nombre_completo, email, rol_acceso, created_at, updated_at
+  SELECT id_usuario, nombre_completo, email, rol_acceso, activo, created_at, updated_at
   FROM usuarios
 `;
 
@@ -96,6 +96,30 @@ async function deleteUsuario(id) {
   return rowCount > 0;
 }
 
+async function deactivateUsuario(id) {
+  const query = `
+    UPDATE usuarios
+    SET activo = FALSE,
+        updated_at = NOW()
+    WHERE id_usuario = $1
+    RETURNING id_usuario, nombre_completo, email, rol_acceso, activo, created_at, updated_at
+  `;
+  const { rows } = await pool.query(query, [id]);
+  return rows[0] || null;
+}
+
+async function activateUsuario(id) {
+  const query = `
+    UPDATE usuarios
+    SET activo = TRUE,
+        updated_at = NOW()
+    WHERE id_usuario = $1
+    RETURNING id_usuario, nombre_completo, email, rol_acceso, activo, created_at, updated_at
+  `;
+  const { rows } = await pool.query(query, [id]);
+  return rows[0] || null;
+}
+
 module.exports = {
   listUsuarios,
   getUsuarioById,
@@ -105,5 +129,7 @@ module.exports = {
   getUsuarioByEmail,
   updateUsuarioPassword,
   updateUsuarioRole,
-  updateUsuarioProfile
+  updateUsuarioProfile,
+  deactivateUsuario,
+  activateUsuario
 };

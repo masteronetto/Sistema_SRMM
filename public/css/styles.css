@@ -164,6 +164,18 @@ body {
 .role-badge.operador      { background: rgba(243,156,18,0.2); color: #e67e22; }
 .role-badge.usuario       { background: rgba(52,152,219,0.2); color: #2980b9; }
 
+/* Status badges para estado activo/inactivo de usuarios */
+.status-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.status-badge.status-active  { background: rgba(39,174,96,0.25); color: #27ae60; }
+.status-badge.status-inactive { background: rgba(231,76,60,0.25); color: #e74c3c; }
+
 .logout-btn {
     background: rgba(231,76,60,0.15);
     color: #e74c3c;
@@ -514,6 +526,12 @@ tbody tr:hover { background: #fdfaf8; }
 }
 .btn-danger { background: #c0392b; }
 .btn-danger:hover { background: #962d23; }
+
+.btn-warning { background: #e67e22; }
+.btn-warning:hover { background: #d35400; }
+
+.btn-success { background: #27ae60; }
+.btn-success:hover { background: #229954; }
 
 /* ── MENSAJES ── */
 .message {
