@@ -2216,6 +2216,83 @@ function formatCurrency(value) {
     return n.toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 }
 
+function parseReportDateToTimestamp(value) {
+    if (value === undefined || value === null || value === '') return null;
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+    }
+
+    if (value instanceof Date) {
+        const ts = value.getTime();
+        return Number.isFinite(ts) ? ts : null;
+    }
+
+    const raw = String(value).trim();
+    if (!raw) return null;
+
+    const direct = Date.parse(raw);
+    if (Number.isFinite(direct)) return direct;
+
+    const ddmmyyyy = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+    if (ddmmyyyy) {
+        const day = Number(ddmmyyyy[1]);
+        const month = Number(ddmmyyyy[2]) - 1;
+        const year = Number(ddmmyyyy[3]);
+        const hour = Number(ddmmyyyy[4] || 0);
+        const minute = Number(ddmmyyyy[5] || 0);
+        const second = Number(ddmmyyyy[6] || 0);
+        const parsed = Date.UTC(year, month, day, hour, minute, second);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    const yyyymmdd = raw.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+    if (yyyymmdd) {
+        const year = Number(yyyymmdd[1]);
+        const month = Number(yyyymmdd[2]) - 1;
+        const day = Number(yyyymmdd[3]);
+        const hour = Number(yyyymmdd[4] || 0);
+        const minute = Number(yyyymmdd[5] || 0);
+        const second = Number(yyyymmdd[6] || 0);
+        const parsed = Date.UTC(year, month, day, hour, minute, second);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    return null;
+}
+
+function getReportRowTimestamp(row) {
+    return parseReportDateToTimestamp(row?.fecha_sistema)
+        ?? parseReportDateToTimestamp(row?.created_at)
+        ?? parseReportDateToTimestamp(row?.fecha_evento);
+}
+
+function normalizeReportSeriesRows(rows = []) {
+    const source = Array.isArray(rows) ? rows : [];
+    const initial = source.map((item, index) => ({
+        ...item,
+        __originalIndex: index,
+        __ts: getReportRowTimestamp(item)
+    }));
+
+    const validTimestamps = initial.map((item) => item.__ts).filter((value) => Number.isFinite(value));
+    const baseTs = validTimestamps.length ? Math.min(...validTimestamps) : Date.now();
+
+    return initial
+        .map((item) => {
+            if (Number.isFinite(item.__ts)) return item;
+            // Evita timestamp "0" y distribuye cronológicamente registros sin fecha parseable.
+            return {
+                ...item,
+                __ts: baseTs + (item.__originalIndex * 86400000)
+            };
+        })
+        .sort((a, b) => {
+            if (a.__ts === b.__ts) return a.__originalIndex - b.__originalIndex;
+            return a.__ts - b.__ts;
+        });
+}
+
 // Añade una animación breve a elementos KPI para indicar actualización
 function flashKpis(elements = [], duration = 900) {
     const els = Array.isArray(elements) ? elements.filter(Boolean) : [];
@@ -3016,15 +3093,7 @@ function renderReportUsoChart(rows, machineLabels = []) {
     const canvas = document.getElementById('reportUsoChart');
     if (!canvas || !window.Chart) return;
 
-    const sortedRows = [...rows]
-        .map((item, index) => {
-            const parsed = Date.parse(item.fecha_sistema || item.created_at || item.fecha_evento || '');
-            return {
-                ...item,
-                __ts: Number.isFinite(parsed) ? parsed : index
-            };
-        })
-        .sort((a, b) => a.__ts - b.__ts);
+    const sortedRows = normalizeReportSeriesRows(rows);
 
     const duplicateCounter = new Map();
     const points = sortedRows.map((item) => {
@@ -3035,7 +3104,7 @@ function renderReportUsoChart(rows, machineLabels = []) {
         return {
             x: item.__ts + (repetitions * 60000),
             y: Number(item.horometro) || 0,
-            _fecha_evento: item.fecha_evento,
+            _fecha_evento: item.fecha_evento || item.fecha_sistema || item.created_at || item.__ts,
             _tipo_evento: item.tipo_evento
         };
     });
@@ -3116,15 +3185,7 @@ function renderComparativeUsageChart(seriesList) {
     ];
 
     const datasets = seriesList.map((series, index) => {
-        const sortedRows = [...series.rows]
-            .map((item, rowIndex) => {
-                const parsed = Date.parse(item.fecha_sistema || item.created_at || item.fecha_evento || '');
-                return {
-                    ...item,
-                    __ts: Number.isFinite(parsed) ? parsed : rowIndex
-                };
-            })
-            .sort((a, b) => a.__ts - b.__ts);
+        const sortedRows = normalizeReportSeriesRows(series.rows);
 
         const duplicateCounter = new Map();
         const points = sortedRows.map((item) => {
@@ -3134,7 +3195,7 @@ function renderComparativeUsageChart(seriesList) {
             return {
                 x: item.__ts + (repetitions * 60000),
                 y: Number(item.horometro) || 0,
-                _fecha_evento: item.fecha_evento,
+                _fecha_evento: item.fecha_evento || item.fecha_sistema || item.created_at || item.__ts,
                 _tipo_evento: item.tipo_evento
             };
         });
@@ -3200,8 +3261,8 @@ function renderReportTable(rows) {
     if (!container) return;
 
     const sortedRows = [...rows].sort((a, b) => {
-        const tsA = Date.parse(a.fecha_sistema || a.created_at || a.fecha_evento || '');
-        const tsB = Date.parse(b.fecha_sistema || b.created_at || b.fecha_evento || '');
+        const tsA = getReportRowTimestamp(a);
+        const tsB = getReportRowTimestamp(b);
         const safeA = Number.isFinite(tsA) ? tsA : 0;
         const safeB = Number.isFinite(tsB) ? tsB : 0;
         return safeA - safeB;
