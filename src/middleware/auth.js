@@ -12,28 +12,34 @@ function normalizeRole(role) {
 }
 
 /**
- * Verifica si un usuario está activo consultando la BD
- * Esto previene que usuarios desactivados mantengan acceso a través de tokens válidos
+ * Obtiene estado y rol vigente del usuario desde BD.
+ * Se usa en cada request autenticada para evitar sesiones "zombie"
+ * y aplicar cambios de privilegios en tiempo real.
  */
-async function verifyUserActive(userId) {
+async function getCurrentUserAuthState(userId) {
   try {
     const result = await pool.query(
-      'SELECT activo FROM usuarios WHERE id_usuario = $1',
+      `SELECT
+         id_usuario,
+         rol_acceso,
+         COALESCE((to_jsonb(usuarios) ->> 'activo')::boolean, TRUE) AS activo
+       FROM usuarios
+       WHERE id_usuario = $1`,
       [userId]
     );
 
     if (result.rows.length === 0) {
-      return false; // Usuario no existe
+      return null; // Usuario eliminado/no existe
     }
 
-    return result.rows[0].activo === true; // Usuario debe estar activo
+    return result.rows[0];
   } catch (error) {
-    console.error('Error al verificar estado de usuario:', error);
-    return false; // En caso de error, denegar acceso
+    console.error('Error al consultar estado de autenticacion de usuario:', error);
+    return null;
   }
 }
 
-function verifyToken(req, res, next) {
+async function verifyToken(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -42,8 +48,36 @@ function verifyToken(req, res, next) {
 
     const token = authHeader.substring(7);
     const payload = jwt.verify(token, JWT_SECRET);
-    
-    req.user = payload;
+
+    const userId = Number(payload?.id_usuario);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return res.status(401).json({ message: 'Token inválido' });
+    }
+
+    const currentUser = await getCurrentUserAuthState(userId);
+    if (!currentUser) {
+      return res.status(401).json({
+        message: 'La sesión ya no es válida para este usuario.',
+        session_invalidated: true
+      });
+    }
+
+    if (currentUser.activo !== true) {
+      return res.status(401).json({
+        message: 'Tu cuenta ha sido desactivada. Contacta al administrador.',
+        deactivated: true,
+        session_invalidated: true
+      });
+    }
+
+    // Conserva datos del token, pero fuerza rol actual vigente desde BD.
+    req.user = {
+      ...payload,
+      id_usuario: currentUser.id_usuario,
+      rol_acceso: currentUser.rol_acceso,
+      account_active: true,
+      account_state_checked: true
+    };
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -63,14 +97,22 @@ async function requireActiveUser(req, res, next) {
       return res.status(401).json({ message: 'No autenticado' });
     }
 
-    const isActive = await verifyUserActive(req.user.id_usuario);
-    
-    if (!isActive) {
+    if (req.user.account_state_checked && req.user.account_active === true) {
+      return next();
+    }
+
+    const currentUser = await getCurrentUserAuthState(req.user.id_usuario);
+    if (!currentUser || currentUser.activo !== true) {
       return res.status(401).json({ 
         message: 'Tu cuenta ha sido desactivada. Contacta al administrador.',
-        deactivated: true
+        deactivated: true,
+        session_invalidated: true
       });
     }
+
+    req.user.rol_acceso = currentUser.rol_acceso;
+    req.user.account_active = true;
+    req.user.account_state_checked = true;
 
     next();
   } catch (error) {

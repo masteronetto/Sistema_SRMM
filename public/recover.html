@@ -46,12 +46,6 @@
         const data = await res.json();
         msg.style.color = res.ok ? 'green' : '#9f2934';
         msg.textContent = data.message || 'Si el correo existe, se enviará un email.';
-        if (!res.ok && data.error) {
-          msg.textContent += ` (${data.error})`;
-        }
-        if (!res.ok && data.hint) {
-          msg.textContent += ` ${data.hint}`;
-        }
       }catch(err){ msg.textContent='Error de conexión' }
     });
   </script>

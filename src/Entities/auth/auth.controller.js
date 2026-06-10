@@ -6,6 +6,64 @@ const authRepo = require('./auth.repository');
 const { port } = require('../../config/env');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&_])[A-Za-z\d@$!%*?&_]{8,}$/;
+const DOMINIOS_PERMITIDOS = ['srmm.cl', 'gmail.com', 'hotmail.com', 'outlook.com', 'live.com'];
+
+const rateLimitStore = new Map();
+
+function normalizeEmail(value) {
+return String(value || '').trim().toLowerCase();
+}
+
+function sanitizeText(value) {
+return String(value || '')
+  .replace(/[\u0000-\u001F\u007F]/g, '')
+  .trim();
+}
+
+function normalizeNombre(value) {
+return sanitizeText(value).replace(/\s+/g, ' ');
+}
+
+function isValidPassword(value) {
+return PASSWORD_REGEX.test(String(value || ''));
+}
+
+function getClientKey(req, suffix = '') {
+const ip = getRequestIp(req);
+return suffix ? `${ip}|${suffix}` : ip;
+}
+
+function checkRateLimit(key, { maxAttempts, windowMs }) {
+const now = Date.now();
+const current = rateLimitStore.get(key);
+if (!current || current.expiresAt <= now) {
+  return { blocked: false, remaining: maxAttempts };
+}
+
+if (current.attempts >= maxAttempts) {
+  return { blocked: true, retryAfterMs: current.expiresAt - now };
+}
+
+return { blocked: false, remaining: maxAttempts - current.attempts };
+}
+
+function registerFailedAttempt(key, { windowMs }) {
+const now = Date.now();
+const current = rateLimitStore.get(key);
+
+if (!current || current.expiresAt <= now) {
+  rateLimitStore.set(key, { attempts: 1, expiresAt: now + windowMs });
+  return;
+}
+
+current.attempts += 1;
+rateLimitStore.set(key, current);
+}
+
+function clearRateLimit(key) {
+rateLimitStore.delete(key);
+}
 
 async function registrarAuditoriaAltaDesdeRegistro(user) {
 try {
@@ -28,7 +86,9 @@ try {
 
 async function register(req, res, next) {
 try {
-const { nombre_completo, email, contrasena } = req.body;
+const nombre_completo = normalizeNombre(req.body?.nombre_completo);
+const email = normalizeEmail(req.body?.email);
+const contrasena = String(req.body?.contrasena || '');
 
 if (!nombre_completo || !email || !contrasena) {
   return res.status(400).json({ message: 'Campos obligatorios: nombre_completo, email, contrasena' });
@@ -44,17 +104,15 @@ if (nombre_completo.trim().length < 3) {
 }
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const dominiosPermitidos = ['srmm.cl', 'gmail.com', 'hotmail.com', 'outlook.com', 'live.com'];
 if (!emailRegex.test(email)) { 
   return res.status(400).json({ message: 'El formato del correo electronico es invalido' });
 }
 
-if (!dominiosPermitidos.some(dominio => email.endsWith(`@${dominio}`))) {
+if (!DOMINIOS_PERMITIDOS.some(dominio => email.endsWith(`@${dominio}`))) {
   return res.status(400).json({ message: 'Dominio de correo no permitido' });
 }
 
-const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&_])[A-Za-z\d@$!%*?&_]{8,}$/;
-if (!passwordRegex.test(contrasena)) {
+if (!isValidPassword(contrasena)) {
   return res.status(400).json({ message: 'La contrasena debe tener al menos 8 caracteres, incluir una mayuscula, una minuscula, un numero y un caracter especial (@, $, !, %, *, ?, &, _)' });
 }
 
@@ -70,13 +128,23 @@ return next(error);
 
 async function login(req, res, next) {
 try {
-const { email, contrasena } = req.body;
+const email = normalizeEmail(req.body?.email);
+const contrasena = String(req.body?.contrasena || '');
+const loginRateKey = getClientKey(req, email || 'sin-email');
+
+const loginRateStatus = checkRateLimit(loginRateKey, { maxAttempts: 8, windowMs: 15 * 60 * 1000 });
+if (loginRateStatus.blocked) {
+return res.status(429).json({ message: 'Demasiados intentos de inicio de sesion. Intenta nuevamente en unos minutos.' });
+}
+
 if (!email || !contrasena) {
+registerFailedAttempt(loginRateKey, { windowMs: 15 * 60 * 1000 });
 return res.status(400).json({ message: 'Email y contrasena son requeridos' });
 }
 
 const user = await usuariosRepo.getUsuarioByEmail(email);
 if (!user) {
+  registerFailedAttempt(loginRateKey, { windowMs: 15 * 60 * 1000 });
   return res.status(401).json({ message: 'Credenciales inválidas' });
 }
 
@@ -85,8 +153,11 @@ const hash = rows[0] && rows[0].contrasena;
 
 const match = hash ? await bcrypt.compare(contrasena, hash) : false;
 if (!match) {
+  registerFailedAttempt(loginRateKey, { windowMs: 15 * 60 * 1000 });
   return res.status(401).json({ message: 'Credenciales inválidas' });
 }
+
+clearRateLimit(loginRateKey);
 
 const payload = {
   id_usuario: user.id_usuario,
@@ -161,8 +232,21 @@ try {
 
 async function recover(req, res, next) {
 try {
-const { email } = req.body;
+const email = normalizeEmail(req.body?.email);
+const recoverRateKey = getClientKey(req, `recover:${email || 'sin-email'}`);
+
+const recoverRateStatus = checkRateLimit(recoverRateKey, { maxAttempts: 10, windowMs: 15 * 60 * 1000 });
+if (recoverRateStatus.blocked) {
+  await registerRecoveryAttempt(req, {
+    email: email || 'sin-email',
+    estado: 'RATE_LIMIT',
+    detalle: 'Demasiados intentos en ventana corta'
+  });
+  return res.status(429).json({ message: 'Demasiados intentos. Intenta nuevamente en unos minutos.' });
+}
+
 if (!email) {
+  registerFailedAttempt(recoverRateKey, { windowMs: 15 * 60 * 1000 });
   await registerRecoveryAttempt(req, {
     email: 'sin-email',
     estado: 'RECHAZADO',
@@ -171,10 +255,11 @@ if (!email) {
   return res.status(400).json({ message: 'Email requerido' });
 }
 
-const normalizedEmail = String(email).trim().toLowerCase();
+const normalizedEmail = email;
 const user = await usuariosRepo.getUsuarioByEmail(normalizedEmail);
 
 if (!user) {
+  registerFailedAttempt(recoverRateKey, { windowMs: 15 * 60 * 1000 });
   await registerRecoveryAttempt(req, {
     email: normalizedEmail,
     estado: 'NO_ENCONTRADO',
@@ -199,7 +284,7 @@ if (transporter) {
   try {
     await transporter.sendMail({
       from: fromAddress,
-      to: email,
+      to: normalizedEmail,
       subject: 'Recuperación de contraseña - SRMM',
       text: `Para restablecer tu contraseña, visita: ${resetLink}`,
       html: `<p>Para restablecer tu contraseña, haz clic <a href="${resetLink}">aquí</a>.</p>`
@@ -210,16 +295,9 @@ if (transporter) {
       estado: 'ERROR_ENVIO',
       detalle: mailError.message || 'Fallo al enviar correo de recuperacion'
     });
+    registerFailedAttempt(recoverRateKey, { windowMs: 15 * 60 * 1000 });
     console.warn('No se pudo enviar el email de recuperación:', mailError.message || mailError);
-    console.warn('Reset link generado:', resetLink);
-    const smtpHint = mailError?.responseCode === 535 || /BadCredentials|Invalid login/i.test(mailError?.message || '')
-      ? 'Gmail rechazó el acceso: usa una App Password con 2FA activada, sin espacios, y verifica SMTP_USER / SMTP_PASS.'
-      : 'Revisa la configuración SMTP y que el remitente pertenezca a la cuenta autorizada.';
-    return res.status(502).json({
-      message: 'No se pudo enviar el correo de recuperación',
-      error: mailError.message || 'SMTP error',
-      hint: smtpHint
-    });
+    return res.status(200).json({ message: 'Si el correo existe, se enviará un email con instrucciones.' });
   }
 } else {
   await registerRecoveryAttempt(req, {
@@ -227,12 +305,9 @@ if (transporter) {
     estado: 'ERROR_SMTP_NO_CONFIG',
     detalle: 'No hay configuracion SMTP valida para envio'
   });
+  registerFailedAttempt(recoverRateKey, { windowMs: 15 * 60 * 1000 });
   console.log('PASSWORD RESET LINK:', resetLink);
-  return res.status(503).json({
-    message: 'No hay configuración SMTP válida en este entorno',
-    hint: 'Define SMTP_USER y SMTP_PASS (App Password de Gmail, 16 caracteres) o SMTP_HOST/SMTP_PORT/SMTP_SECURE para poder enviar correos.',
-    resetLink
-  });
+  return res.status(200).json({ message: 'Si el correo existe, se enviará un email con instrucciones.' });
 }
 
 await registerRecoveryAttempt(req, {
@@ -240,6 +315,7 @@ await registerRecoveryAttempt(req, {
   estado: 'ENVIADO',
   detalle: 'Solicitud procesada correctamente'
 });
+clearRateLimit(recoverRateKey);
 
 return res.status(200).json({ message: 'Si el correo existe, se enviará un email con instrucciones.' });
 } catch (error) {
@@ -265,8 +341,13 @@ try {
 
 async function resetPassword(req, res, next) {
 try {
-const { token, newPassword } = req.body;
+const token = String(req.body?.token || '').trim();
+const newPassword = String(req.body?.newPassword || '');
 if (!token || !newPassword) return res.status(400).json({ message: 'Token y newPassword requeridos' });
+
+if (!isValidPassword(newPassword)) {
+  return res.status(400).json({ message: 'La nueva contrasena no cumple la politica de seguridad requerida' });
+}
 
 let payload;
 try {
