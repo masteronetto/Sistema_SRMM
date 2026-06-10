@@ -1,5 +1,6 @@
 const usuariosRepo = require('./usuarios.repository');
 const roleRequestsRepo = require('../role_requests/role_requests.repository');
+const bcrypt = require('bcrypt');
 
 const rolesPermitidos = new Set(['Administrador', 'Mecanico', 'Operador', 'Usuario']);
 
@@ -12,6 +13,25 @@ function validateUsuarioPayload(payload) {
 
   if (!rolesPermitidos.has(rol_acceso)) {
     return 'rol_acceso invalido. Valores permitidos: Administrador, Mecanico, Operador, Usuario';
+  }
+
+  if (nombre_completo.trim().length < 3) {
+    return 'El nombre completo debe tener al menos 3 caracteres';
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const dominiosPermitidos = ['srmm.cl', 'gmail.com', 'hotmail.com', 'outlook.com', 'live.com'];
+  if (!emailRegex.test(email)) { 
+    return 'El formato del correo electronico es invalido';
+  }
+
+  if (!dominiosPermitidos.some(dominio => email.endsWith(`@${dominio}`))) {
+    return 'Dominio de correo no permitido';
+  }
+
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&_])[A-Za-z\d@$!%*?&_]{8,}$/;
+if (!passwordRegex.test(contrasena)) {
+    return 'La contrasena debe tener al menos 8 caracteres, incluir una mayuscula, una minuscula, un numero y un caracter especial autorizado (@, $, !, %, *, ?, &, _)';
   }
 
   return null;
@@ -48,6 +68,10 @@ async function create(req, res, next) {
       return res.status(400).json({ message: validationError });
     }
 
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(req.body.contrasena, saltRounds);
+    req.body.contrasena = hashedPassword;
+
     const data = await usuariosRepo.createUsuario(req.body);
     return res.status(201).json(data);
   } catch (error) {
@@ -65,6 +89,10 @@ async function update(req, res, next) {
     if (validationError) {
       return res.status(400).json({ message: validationError });
     }
+
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(req.body.contrasena, saltRounds);
+    req.body.contrasena = hashedPassword;
 
     const data = await usuariosRepo.updateUsuario(id, req.body);
     if (!data) {
