@@ -2937,12 +2937,51 @@ function destroyReportCharts() {
     }
 }
 
+function getReportMachineId(machine) {
+    const rawId = machine?.id_maquina ?? machine?.maquinaria_id_maquina ?? machine?.id;
+    if (rawId === undefined || rawId === null || rawId === '') return '';
+    return String(rawId);
+}
+
+function getReportMachineLabel(machine) {
+    return machine?.modelo_equipo || machine?.modelo || 'Máquina sin nombre';
+}
+
+function normalizeReportMachines(machines) {
+    const source = Array.isArray(machines) ? machines : [];
+    const map = new Map();
+
+    source.forEach((machine) => {
+        const id = getReportMachineId(machine);
+        if (!id) return;
+        map.set(id, {
+            ...machine,
+            id_maquina: id,
+            modelo_equipo: getReportMachineLabel(machine),
+            horometro_actual: Number(machine?.horometro_actual) || 0
+        });
+    });
+
+    return Array.from(map.values());
+}
+
+function buildReportTopMachines(machines, selectedMachineIds = []) {
+    const normalizedMachines = normalizeReportMachines(machines);
+    const selectedIds = new Set((Array.isArray(selectedMachineIds) ? selectedMachineIds : []).map(String));
+    const scoped = selectedIds.size
+        ? normalizedMachines.filter((machine) => selectedIds.has(String(machine.id_maquina)))
+        : normalizedMachines;
+
+    return [...scoped].sort((a, b) => Number(b.horometro_actual || 0) - Number(a.horometro_actual || 0));
+}
+
 function renderReportTopChart(topMaquinas) {
     const canvas = document.getElementById('reportTopChart');
     if (!canvas || !window.Chart) return;
 
-    const labels = topMaquinas.map((item) => item.modelo_equipo);
-    const values = topMaquinas.map((item) => Number(item.horometro_actual) || 0);
+    const safeTop = Array.isArray(topMaquinas) ? topMaquinas : [];
+    const labels = safeTop.map((item) => getReportMachineLabel(item));
+    const values = safeTop.map((item) => Number(item.horometro_actual) || 0);
 
     if (reportTopChart) {
         reportTopChart.destroy();
@@ -3338,7 +3377,8 @@ async function loadSelectedMachinesReport(machineIds, fechaInicio, fechaFin) {
     const selectedLabel = document.getElementById('reportSelectedMachineLabel');
     const headers = getAuthHeaders();
     const ids = Array.isArray(machineIds) ? machineIds.filter(Boolean).map(String) : [];
-    const effectiveIds = ids.length ? ids : availableMachines.map((item) => String(item.id_maquina)).filter(Boolean);
+    const normalizedMachines = normalizeReportMachines(availableMachines);
+    const effectiveIds = ids.length ? ids : normalizedMachines.map((item) => String(item.id_maquina)).filter(Boolean);
     const query = new URLSearchParams();
     if (fechaInicio) query.append('fecha_inicio', fechaInicio);
     if (fechaFin) query.append('fecha_fin', fechaFin);
@@ -3351,7 +3391,7 @@ async function loadSelectedMachinesReport(machineIds, fechaInicio, fechaFin) {
         return;
     }
 
-    const labelMap = new Map(availableMachines.map((item) => [String(item.id_maquina), item.modelo_equipo]));
+    const labelMap = new Map(normalizedMachines.map((item) => [String(item.id_maquina), item.modelo_equipo]));
     const seriesResults = await Promise.all(effectiveIds.map(async (idMaquina) => {
         const res = await fetch(`/api/reportes/historial-unificado/${idMaquina}?${query.toString()}`, { headers });
         if (!res.ok) throw new Error(`No se pudo cargar el historial unificado de la máquina ${idMaquina}`);
@@ -3375,7 +3415,7 @@ async function loadSelectedMachinesReport(machineIds, fechaInicio, fechaFin) {
             return series;
         }
 
-        const machineInfo = availableMachines.find((item) => String(item.id_maquina) === String(series.id));
+        const machineInfo = normalizedMachines.find((item) => String(item.id_maquina) === String(series.id));
         const fallbackDate = fechaFin || fechaInicio || new Date().toISOString().slice(0, 10);
 
         return {
@@ -3443,7 +3483,7 @@ async function loadReportesDashboard() {
     if (!isStale()) setReportStatus('Cargando reportes...', 'info');
 
     try {
-        const machines = await loadAvailableMachines();
+        const machines = normalizeReportMachines(await loadAvailableMachines());
         if (isStale()) return;
         currentReportMachines = Array.isArray(machines) ? machines : [];
 
@@ -3457,31 +3497,26 @@ async function loadReportesDashboard() {
         });
 
         const headers = getAuthHeaders();
-        let topMaquinas = machines;
         let estadisticas = [];
 
         try {
-            const [topRes, statsRes] = await Promise.all([
-                fetch('/api/reportes/top-maquinas', { headers }),
+            const [statsRes] = await Promise.all([
                 fetch('/api/reportes/estadisticas', { headers })
             ]);
 
-            if (!topRes.ok) throw new Error('No se pudieron cargar las máquinas más usadas');
             if (!statsRes.ok) throw new Error('No se pudieron cargar las estadísticas');
 
-            topMaquinas = await topRes.json();
             estadisticas = await statsRes.json();
             if (isStale()) return;
         } catch (statsError) {
             console.error('Error cargando estadísticas históricas:', statsError);
         }
 
-        renderReportTopChart(topMaquinas);
-
         const selectedMachineIds = Array.from(machineSelect.selectedOptions).map((option) => String(option.value)).filter(Boolean);
         const selectedMachineScope = selectedMachineIds.length
             ? machines.filter((item) => selectedMachineIds.includes(String(item.id_maquina)))
             : machines;
+        renderReportTopChart(buildReportTopMachines(machines, selectedMachineIds));
         const selectedMachineStats = selectedMachineIds.length
             ? estadisticas.filter((item) => selectedMachineIds.includes(String(item.id_maquina)))
             : estadisticas;
@@ -3955,6 +3990,7 @@ function initReportesDashboard() {
             const selectedIds = getSelectedReportMachineIds(machineSelect);
             try {
                 const d = getEffectiveReportDates();
+                renderReportTopChart(buildReportTopMachines(currentReportMachines, selectedIds));
                 await loadSelectedMachinesReport(selectedIds, d.start, d.end);
                 if (isStaleInteraction(interactionId)) return;
                 try {
