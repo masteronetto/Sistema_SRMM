@@ -535,22 +535,24 @@ tbody tr:hover { background: #fdfaf8; }
 
 /* ── USERS TABLE LAYOUT TUNING ── */
 .users-manage-table {
-    min-width: 1180px;
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
 }
 
 .users-manage-table th:nth-child(1),
 .users-manage-table td:nth-child(1) {
-    width: 64px;
+    width: 4%;
 }
 
 .users-manage-table th:nth-child(2),
 .users-manage-table td:nth-child(2) {
-    min-width: 180px;
+    width: 21%;
 }
 
 .users-manage-table th:nth-child(3),
 .users-manage-table td:nth-child(3) {
-    min-width: 250px;
+    width: 22%;
 }
 
 .users-manage-table th:nth-child(4),
@@ -559,17 +561,24 @@ tbody tr:hover { background: #fdfaf8; }
 .users-manage-table td:nth-child(5),
 .users-manage-table th:nth-child(6),
 .users-manage-table td:nth-child(6) {
+    width: 8%;
     white-space: nowrap;
 }
 
 .users-manage-table th:nth-child(7),
 .users-manage-table td:nth-child(7) {
-    min-width: 170px;
+    width: 10%;
 }
 
 .users-manage-table th:nth-child(8),
 .users-manage-table td:nth-child(8) {
-    min-width: 260px;
+    width: 19%;
+    min-width: 220px;
+}
+
+.users-manage-table th,
+.users-manage-table td {
+    overflow-wrap: anywhere;
 }
 
 .users-inline-input {
@@ -588,7 +597,7 @@ tbody tr:hover { background: #fdfaf8; }
 
 .users-actions-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(110px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.45rem;
 }
 
@@ -601,9 +610,14 @@ tbody tr:hover { background: #fdfaf8; }
     min-height: 38px;
 }
 
+.users-manage-table .role-select {
+    width: 100%;
+    min-width: 0;
+}
+
 @media (max-width: 1400px) {
     .users-manage-table {
-        min-width: 1040px;
+        min-width: 980px;
     }
 
     .users-actions-grid {
