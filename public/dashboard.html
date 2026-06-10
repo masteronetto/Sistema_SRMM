@@ -267,6 +267,20 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        <div id="operatorRestrictionPanel" class="section-card" style="margin-top:1rem;">
+                            <div class="section-title" style="margin-bottom:0.25rem;">Advertencias de uso</div>
+                            <div class="muted text-sm">Revisa restricciones antes de iniciar tareas con tu equipo asignado.</div>
+                            <div id="operatorRestrictionList" class="alert-list" style="margin-top:0.75rem;">
+                                <div class="alert-item alert-info">
+                                    <div>⟳</div>
+                                    <div>
+                                        <strong>Cargando advertencias operativas…</strong>
+                                        <span>Se validará el estado y disponibilidad de tus máquinas asignadas.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </section>
 
                 <section id="adminMaquinariaPanel" class="section-card" style="margin-top:1rem;">
@@ -1319,6 +1333,103 @@ function renderOperatorAssignedMachines(rows) {
     }).join('');
 }
 
+function renderOperatorRestrictionAlerts(items) {
+    const container = document.getElementById('operatorRestrictionList');
+    if (!container) return;
+
+    const list = Array.isArray(items) ? items : [];
+    if (!list.length) {
+        container.innerHTML = `
+            <div class="alert-item alert-info">
+                <div>✓</div>
+                <div>
+                    <strong>Sin restricciones activas</strong>
+                    <span>No se detectaron bloqueos ni alertas críticas en tus máquinas asignadas.</span>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = list.map((item) => {
+        const isCritical = item.nivel === 'critica';
+        const alertClass = isCritical ? 'alert-critical' : 'alert-warning';
+        const icon = isCritical ? '⛔' : '⚠';
+        return `
+            <div class="alert-item ${alertClass}">
+                <div>${icon}</div>
+                <div>
+                    <strong>${escapeHtml(item.titulo)}</strong>
+                    <span>${escapeHtml(item.detalle)}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function loadOperatorRestrictionAlerts(rows) {
+    const machines = (Array.isArray(rows) ? rows : []).map(mapMaquinariaItem);
+    if (!machines.length) {
+        renderOperatorRestrictionAlerts([]);
+        return;
+    }
+
+    const checks = await Promise.all(machines.map(async (machine) => {
+        const machineId = Number(machine.id);
+        if (!Number.isFinite(machineId) || machineId <= 0) {
+            return null;
+        }
+
+        try {
+            const res = await fetch(`/api/maquinaria/${machineId}/disponibilidad?margen_minimo_horas=0`, { headers: getAuthHeaders() });
+            if (!res.ok) {
+                return null;
+            }
+
+            const disponibilidad = await res.json();
+            const estado = String(disponibilidad.estado_disponibilidad || machine.estado || '').trim();
+            const motivo = disponibilidad.motivo_no_disponibilidad || '';
+            const horasRestantes = Number(disponibilidad.horas_restantes);
+            const hasHoras = Number.isFinite(horasRestantes);
+            const horasLabel = hasHoras
+                ? (horasRestantes < 0
+                    ? `Atraso: ${Math.abs(horasRestantes).toFixed(1)} hrs`
+                    : `Horas restantes: ${horasRestantes.toFixed(1)} hrs`)
+                : 'Horas restantes: N/D';
+
+            if (estado === 'Bloqueada' || estado === 'No Operativa') {
+                return {
+                    nivel: 'critica',
+                    titulo: `${machine.modelo || `Máquina #${machineId}`} en estado ${estado}`,
+                    detalle: `${motivo || 'El equipo no está habilitado para operar.'} · ${horasLabel}`
+                };
+            }
+
+            if (estado === 'Mantencion' || disponibilidad.puede_arrendar === false || (hasHoras && horasRestantes <= 0)) {
+                return {
+                    nivel: 'advertencia',
+                    titulo: `${machine.modelo || `Máquina #${machineId}`} con restricción operativa`,
+                    detalle: `${motivo || 'Revisión pendiente antes de operar.'} · ${horasLabel}`
+                };
+            }
+
+            if (String(machine.prioridad || '').trim() === 'Alta') {
+                return {
+                    nivel: 'advertencia',
+                    titulo: `${machine.modelo || `Máquina #${machineId}`} en prioridad alta`,
+                    detalle: `Se recomienda revisión preventiva inmediata antes de continuar operaciones.`
+                };
+            }
+
+            return null;
+        } catch (_) {
+            return null;
+        }
+    }));
+
+    renderOperatorRestrictionAlerts(checks.filter(Boolean));
+}
+
 async function loadOperatorUsageMachines() {
     const machineSelect = document.getElementById('operatorDailyMachine');
     if (!machineSelect) return;
@@ -1331,6 +1442,7 @@ async function loadOperatorUsageMachines() {
         if (!rows.length) {
             machineSelect.innerHTML = '<option value="">Sin máquinas asignadas</option>';
             renderOperatorAssignedMachines([]);
+            renderOperatorRestrictionAlerts([]);
             setOperatorUsageStatus('No tienes máquinas asignadas activas', 'warning');
             return;
         }
@@ -1343,10 +1455,12 @@ async function loadOperatorUsageMachines() {
         machineSelect.innerHTML = options.join('');
 
         renderOperatorAssignedMachines(rows);
+        await loadOperatorRestrictionAlerts(rows);
         setOperatorUsageStatus('Asignaciones actualizadas', 'success');
     } catch (error) {
         machineSelect.innerHTML = '<option value="">Error al cargar máquinas</option>';
         renderOperatorAssignedMachines([]);
+        renderOperatorRestrictionAlerts([]);
         setOperatorUsageStatus(`Error: ${error.message}`, 'error');
     }
 }
