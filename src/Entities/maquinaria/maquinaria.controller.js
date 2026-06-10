@@ -434,13 +434,33 @@ async function update(req, res, next) {
       tarifa_diaria: parsed.tarifa_diaria === undefined ? current.tarifa_diaria : parsed.tarifa_diaria
     };
 
+    const motivoNoOperativa = String(req.body?.motivo_no_operativa || req.body?.motivo || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (payload.estado === 'No Operativa' && motivoNoOperativa.length < 8) {
+      return res.status(400).json({
+        message: 'Debes ingresar un motivo (mínimo 8 caracteres) para marcar la máquina como No Operativa'
+      });
+    }
+
     const data = await maquinariaRepo.updateMaquinaria(id_maquina, payload);
     if (!data) {
       return res.status(404).json({ message: 'Maquinaria no encontrada' });
     }
 
+    if (payload.estado === 'No Operativa') {
+      await maquinariaRepo.blockMaquinariaWithReason(
+        id_maquina,
+        motivoNoOperativa,
+        0,
+        'No Operativa'
+      );
+      const noOperativa = await maquinariaRepo.getMaquinariaById(id_maquina);
+      return res.json(noOperativa || data);
+    }
+
     // Bloqueo automático también en edición: evita que una máquina vencida quede "Disponible".
-    if (data?.planes_mantencion_id_plan) {
+    if (data?.planes_mantencion_id_plan && data.estado !== 'No Operativa') {
       const plan = await planesRepo.obtenerPlanPorId(data.planes_mantencion_id_plan);
       const intervaloHoras = Number(plan?.intervalo_horas || 0);
       const horometroActual = Number(data.horometro_actual || 0);
@@ -485,14 +505,17 @@ async function markAsNotOperative(req, res, next) {
       return res.status(404).json({ message: 'Maquinaria no encontrada' });
     }
 
-    const updated = await maquinariaRepo.updateMaquinaria(id, {
-      modelo_equipo: maq.modelo_equipo,
-      horometro_actual: maq.horometro_actual,
-      estado: 'Bloqueada',
-      especificaciones: maq.especificaciones,
-      planes_mantencion_id_plan: maq.planes_mantencion_id_plan,
-      tarifa_diaria: maq.tarifa_diaria
-    });
+    const motivo = String(req.body?.motivo || req.body?.motivo_no_operativa || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (motivo.length < 8) {
+      return res.status(400).json({
+        message: 'Debes ingresar un motivo (mínimo 8 caracteres) para marcar la máquina como No Operativa'
+      });
+    }
+
+    await maquinariaRepo.blockMaquinariaWithReason(id, motivo, 0, 'No Operativa');
+    const updated = await maquinariaRepo.getMaquinariaById(id);
 
     return res.json(updated);
   } catch (error) {

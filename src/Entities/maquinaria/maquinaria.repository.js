@@ -518,18 +518,23 @@ async function deleteMaquinaria(id_maquina) {
   return rowCount > 0;
 }
 
-async function blockMaquinariaWithReason(id_maquina, motivo_bloqueo, costo_estimado_reparacion) {
+async function blockMaquinariaWithReason(id_maquina, motivo_bloqueo, costo_estimado_reparacion, estadoObjetivo = 'Bloqueada') {
   // Valida que la maquinaria exista
   const maquina = await getMaquinariaById(id_maquina);
   if (!maquina) {
     throw new Error('Maquinaria no encontrada');
   }
 
-  // Actualiza el estado a 'Bloqueada'
+  const estadoNormalizado = String(estadoObjetivo || 'Bloqueada').trim();
+  if (!['Bloqueada', 'No Operativa'].includes(estadoNormalizado)) {
+    throw new Error('estadoObjetivo invalido para bloqueo crítico');
+  }
+
+  // Actualiza el estado crítico objetivo.
   await updateMaquinaria(id_maquina, {
     modelo_equipo: maquina.modelo_equipo,
     horometro_actual: maquina.horometro_actual,
-    estado: 'Bloqueada',
+    estado: estadoNormalizado,
     especificaciones: maquina.especificaciones,
     planes_mantencion_id_plan: maquina.planes_mantencion_id_plan,
     tarifa_diaria: maquina.tarifa_diaria

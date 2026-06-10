@@ -21,7 +21,7 @@ router.post('/', requireAdmin, controller.create);
 router.post('/:id_maquina/bloqueo-critico', requireAdmin, controller.blockCritical);
 router.post('/:id_maquina/notify-operator', requireAdmin, controller.notifyOperator);
 router.put('/:id_maquina', requireMecanicoOrAdmin, controller.update);
-router.patch('/:id_maquina/mark-not-operative', requireAdmin, controller.markAsNotOperative);
+router.patch('/:id_maquina/mark-not-operative', requireMecanicoOrAdmin, controller.markAsNotOperative);
 router.patch('/:id_maquina/desbloquear', requireAdmin, controller.unblock);
 router.delete('/:id_maquina', requireAdmin, controller.remove);
 

@@ -325,6 +325,9 @@
                                     <div id="err-adminMaquinaEstado" class="field-error" style="color:#c0392b;font-size:0.85rem;margin-top:0.25rem;"></div>
                                     </label>
                                 </div>
+                                <label id="adminMaquinaNoOperativaMotivoWrap" style="display:none;">Motivo No Operativa
+                                    <textarea id="adminMaquinaNoOperativaMotivo" minlength="8" maxlength="500" placeholder="Describe el motivo por el cual la máquina queda no operativa"></textarea>
+                                </label>
                             </div>
                             <div class="maquinaria-form-block">
                                 <div class="block-title">Operación</div>
@@ -1096,11 +1099,19 @@ function initAdminMaquinariaPanel() {
     }
     // Bind validation for form UX
     const submitBtn = document.querySelector('#adminMaquinariaForm .top-button.primary');
-    const inputsToWatch = ['adminMaquinaModelo','adminMaquinaHorometro','adminMaquinaEstado','adminMaquinaTarifa'];
+    const inputsToWatch = ['adminMaquinaModelo','adminMaquinaHorometro','adminMaquinaEstado','adminMaquinaTarifa','adminMaquinaNoOperativaMotivo'];
     inputsToWatch.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('input', validateMaquinariaForm);
     });
+    const estadoInput = document.getElementById('adminMaquinaEstado');
+    if (estadoInput) {
+        estadoInput.addEventListener('change', () => {
+            toggleNoOperativaReasonField();
+            validateMaquinariaForm();
+        });
+    }
+    toggleNoOperativaReasonField();
     // initial validation
     validateMaquinariaForm();
 }
@@ -1546,6 +1557,7 @@ function resetAdminMaquinariaForm() {
     const tarifaInput = document.getElementById('adminMaquinaTarifa');
     const planInput = document.getElementById('adminMaquinaPlan');
     const specsInput = document.getElementById('adminMaquinaSpecs');
+    const motivoInput = document.getElementById('adminMaquinaNoOperativaMotivo');
 
     if (idInput) idInput.value = '';
     if (modeloInput) modeloInput.value = '';
@@ -1554,6 +1566,9 @@ function resetAdminMaquinariaForm() {
     if (tarifaInput) tarifaInput.value = '';
     if (planInput) planInput.value = '';
     if (specsInput) specsInput.value = '';
+    if (motivoInput) motivoInput.value = '';
+
+    toggleNoOperativaReasonField();
 
     renderMaintenancePlanOptions('');
 
@@ -1575,6 +1590,7 @@ function editMaquinariaById(maquinaId) {
     const tarifaInput = document.getElementById('adminMaquinaTarifa');
     const planInput = document.getElementById('adminMaquinaPlan');
     const specsInput = document.getElementById('adminMaquinaSpecs');
+    const motivoInput = document.getElementById('adminMaquinaNoOperativaMotivo');
 
     if (idInput) idInput.value = maquina.id ?? '';
     if (modeloInput) modeloInput.value = maquina.modelo || '';
@@ -1583,6 +1599,9 @@ function editMaquinariaById(maquinaId) {
     if (tarifaInput) tarifaInput.value = maquina.tarifa_diaria ?? '';
     renderMaintenancePlanOptions(maquina.planes_mantencion_id_plan ?? '');
     if (specsInput) specsInput.value = maquina.especificaciones || '';
+    if (motivoInput) motivoInput.value = '';
+
+    toggleNoOperativaReasonField();
 
     showMaquinariaForm(true);
     validateMaquinariaForm();
@@ -1628,6 +1647,7 @@ async function saveAdminMaquinaria(event) {
     const tarifaInput = document.getElementById('adminMaquinaTarifa');
     const planInput = document.getElementById('adminMaquinaPlan');
     const specsInput = document.getElementById('adminMaquinaSpecs');
+    const motivoInput = document.getElementById('adminMaquinaNoOperativaMotivo');
 
     const isEdit = Boolean(idInput?.value);
 
@@ -1636,7 +1656,8 @@ async function saveAdminMaquinaria(event) {
         horometro_actual: Number(horometroInput?.value || 0),
         estado: estadoInput?.value,
         planes_mantencion_id_plan: planInput?.value === '' ? null : Number(planInput.value),
-        especificaciones: specsInput?.value.trim() || null
+        especificaciones: specsInput?.value.trim() || null,
+        motivo_no_operativa: motivoInput?.value.trim() || null
     };
 
     const tarifaValue = tarifaInput?.value ?? '';
@@ -1697,6 +1718,7 @@ function validateMaquinariaForm() {
     const horometro = document.getElementById('adminMaquinaHorometro')?.value;
     const estado = document.getElementById('adminMaquinaEstado')?.value;
     const tarifa = document.getElementById('adminMaquinaTarifa')?.value;
+    const motivoNoOperativa = document.getElementById('adminMaquinaNoOperativaMotivo')?.value?.trim() || '';
     const submitBtn = document.querySelector('#adminMaquinariaForm .top-button.primary');
 
     const warnings = [];
@@ -1704,6 +1726,9 @@ function validateMaquinariaForm() {
     const hnum = Number(horometro);
     if (horometro === '' || !Number.isFinite(hnum) || hnum < 0) warnings.push('Horómetro debe ser número ≥ 0.');
     if (!estado) warnings.push('Selecciona un estado.');
+    if (estado === 'No Operativa' && motivoNoOperativa.length < 8) {
+        warnings.push('Para No Operativa debes ingresar un motivo de al menos 8 caracteres.');
+    }
     if (tarifa !== undefined && tarifa !== null && tarifa !== '') {
         const tnum = Number(tarifa);
         if (!Number.isFinite(tnum) || tnum < 0) warnings.push('Tarifa diaria debe ser número ≥ 0.');
@@ -1718,6 +1743,20 @@ function validateMaquinariaForm() {
     setMaquinariaStatus('Formulario listo', 'success');
     if (submitBtn) submitBtn.disabled = false;
     return true;
+}
+
+function toggleNoOperativaReasonField() {
+    const estado = document.getElementById('adminMaquinaEstado')?.value;
+    const wrap = document.getElementById('adminMaquinaNoOperativaMotivoWrap');
+    const input = document.getElementById('adminMaquinaNoOperativaMotivo');
+    if (!wrap || !input) return;
+
+    const isNoOperativa = estado === 'No Operativa';
+    wrap.style.display = isNoOperativa ? 'block' : 'none';
+    input.required = isNoOperativa;
+    if (!isNoOperativa) {
+        input.value = '';
+    }
 }
 
 // Confirm modal helpers
