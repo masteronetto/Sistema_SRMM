@@ -432,7 +432,24 @@
                         </form>
                     </section>
 
-                    <section id="maintenanceHighlights" class="mini-grid"></section>
+                    <section class="section-card" style="margin-top:1rem;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:0.8rem;flex-wrap:wrap;">
+                            <div>
+                                <div class="section-title" style="margin-bottom:0.2rem;">Máquinas con mantenimiento urgente</div>
+                                <div class="muted">Filtra por prioridad para organizar las tareas según gravedad.</div>
+                            </div>
+                            <label style="display:flex;align-items:center;gap:0.45rem;">
+                                Prioridad
+                                <select id="maintenanceUrgencyFilter">
+                                    <option value="all">Todas</option>
+                                    <option value="Alta">Alta</option>
+                                    <option value="Media">Media</option>
+                                    <option value="Baja">Baja</option>
+                                </select>
+                            </label>
+                        </div>
+                        <section id="maintenanceHighlights" class="mini-grid" style="margin-top:0.9rem;"></section>
+                    </section>
 
                     <section id="maintenanceOrdersList" class="section-card" style="margin-top:1rem;">
                         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -4248,6 +4265,7 @@ async function loadInicioKpis() {
 
 async function loadMaintenanceDashboard() {
     const highlights = document.getElementById('maintenanceHighlights');
+    const urgencyFilter = document.getElementById('maintenanceUrgencyFilter');
     const pendingEl = document.getElementById('maintenancePendientes');
     const programadosEl = document.getElementById('maintenanceProgramados');
     const historialEl = document.getElementById('maintenanceHistorial');
@@ -4256,6 +4274,13 @@ async function loadMaintenanceDashboard() {
 
     if (highlights) {
         highlights.innerHTML = '<article class="section-card machine-card"><div class="machine-body"><div><strong>Cargando…</strong><span>Consultando órdenes y mantenimiento real</span></div></div></article>';
+    }
+
+    if (urgencyFilter && !urgencyFilter.dataset.bound) {
+        urgencyFilter.dataset.bound = '1';
+        urgencyFilter.addEventListener('change', () => {
+            loadMaintenanceDashboard();
+        });
     }
 
     try {
@@ -4359,16 +4384,36 @@ async function loadMaintenanceDashboard() {
                     sideValue: `#${item.id_orden || '—'}`
                 }));
 
-            const urgentCards = urgent.map((item) => ({
+            const priorityWeight = {
+                Alta: 1,
+                Media: 2,
+                Baja: 3
+            };
+
+            const selectedPriority = urgencyFilter?.value || 'all';
+
+            const urgentFiltered = (Array.isArray(urgent) ? urgent : [])
+                .filter((item) => {
+                    if (selectedPriority === 'all') return true;
+                    return String(item.prioridad || '').trim() === selectedPriority;
+                })
+                .sort((a, b) => {
+                    const pa = priorityWeight[String(a.prioridad || 'Baja').trim()] || 99;
+                    const pb = priorityWeight[String(b.prioridad || 'Baja').trim()] || 99;
+                    if (pa !== pb) return pa - pb;
+                    return Number(a.horas_restantes || 0) - Number(b.horas_restantes || 0);
+                });
+
+            const urgentCards = urgentFiltered.map((item) => ({
                 machineId: item.id_maquina,
                 name: item.modelo_equipo || `Máquina #${item.id_maquina || '—'}`,
                 state: item.prioridad || item.estado || 'Urgente',
                 title: 'Mantenimiento urgente',
                 subtitle: `Horas restantes: ${Number(item.horas_restantes || 0)}`,
-                mainLabel: 'Uso del plan',
-                mainValue: `${Number(item.porcentaje_uso || 0).toFixed(1)}%`,
-                sideLabel: 'Intervalo',
-                sideValue: `${Number(item.intervalo_horas || 0)} h`
+                mainLabel: 'Horas acumuladas',
+                mainValue: `${Number(item.horometro_actual || 0).toFixed(1)} h`,
+                sideLabel: 'Horas restantes',
+                sideValue: `${Number(item.horas_restantes || 0).toFixed(1)} h`
             }));
 
             const withoutPlanCards = machinesWithoutPlanItems.map((item) => ({
@@ -4383,7 +4428,9 @@ async function loadMaintenanceDashboard() {
                 sideValue: `#${item.id_maquina || '—'}`
             }));
 
-            const sourceItems = [...openOrderCards, ...urgentCards, ...withoutPlanCards].slice(0, 3);
+            const sourceItems = selectedPriority === 'all'
+                ? [...urgentCards, ...openOrderCards, ...withoutPlanCards]
+                : urgentCards;
             const cards = sourceItems.map((item) => {
                 const machineId = item.machineId ?? '';
                 const name = item.name || `Máquina #${machineId || '—'}`;
@@ -4409,7 +4456,7 @@ async function loadMaintenanceDashboard() {
                 `;
             }).join('');
 
-            highlights.innerHTML = cards || '<div class="muted">No hay datos reales de mantenimiento para mostrar.</div>';
+            highlights.innerHTML = cards || '<div class="muted">No hay máquinas urgentes para el filtro seleccionado.</div>';
             highlights.querySelectorAll('.machine-card[data-maquina-id]').forEach((card) => {
                 card.addEventListener('click', () => {
                     const maquinaId = card.dataset.maquinaId;
