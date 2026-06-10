@@ -2501,8 +2501,16 @@ function showSocketNotification(title, message, type = 'info') {
     socketNotificationTimer = setTimeout(removeToast, 6000);
 }
 
+function canUseMaintenanceSocket() {
+    const hostname = String(window.location?.hostname || '').toLowerCase();
+    if (!hostname) return false;
+    if (hostname.endsWith('vercel.app')) return false;
+    if (hostname.endsWith('.vercel.app')) return false;
+    return true;
+}
+
 function initMaintenanceSocket() {
-    if (maintenanceSocket || typeof window.io !== 'function' || !token || !currentUser) {
+    if (maintenanceSocket || typeof window.io !== 'function' || !token || !currentUser || !canUseMaintenanceSocket()) {
         return;
     }
 
