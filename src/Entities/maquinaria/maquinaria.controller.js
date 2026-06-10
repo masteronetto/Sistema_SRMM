@@ -2,6 +2,8 @@ const pool = require('../../db/pool');
 const maquinariaRepo = require('./maquinaria.repository');
 const usuariosRepo = require('../usuarios/usuarios.repository');
 const mantenimientosRepo = require('../mantenimientos/mantenimientos.repository');
+const planesRepo = require('../planes_mantencion/planes_mantencion.repository');
+const alertasCriticasRepo = require('../alertas_criticas/alertas_criticas.repository');
 
 const estadosPermitidos = new Set(['Disponible', 'Arrendada', 'Mantencion', 'Bloqueada', 'No Operativa']);
 
@@ -309,6 +311,30 @@ async function create(req, res, next) {
     }
 
     const data = await maquinariaRepo.createMaquinaria(parsed);
+
+    // Bloqueo automático inmediato cuando la maquinaria ya supera el umbral del plan al momento del alta.
+    if (data?.planes_mantencion_id_plan) {
+      const plan = await planesRepo.obtenerPlanPorId(data.planes_mantencion_id_plan);
+      const intervaloHoras = Number(plan?.intervalo_horas || 0);
+      const horometroActual = Number(data.horometro_actual || 0);
+      const horasRestantes = intervaloHoras - horometroActual;
+
+      if (intervaloHoras > 0 && horasRestantes <= 0) {
+        const motivoBloqueo = `Bloqueo automático por umbral de mantenimiento excedido al crear maquinaria (${horometroActual}h >= ${intervaloHoras}h del plan).`;
+
+        await maquinariaRepo.blockMaquinariaWithReason(data.id_maquina, motivoBloqueo, 0);
+        await alertasCriticasRepo.verificarYGenerarAlertaCritica(
+          data.id_maquina,
+          horometroActual,
+          intervaloHoras,
+          0
+        );
+
+        const bloqueada = await maquinariaRepo.getMaquinariaById(data.id_maquina);
+        return res.status(201).json(bloqueada || data);
+      }
+    }
+
     return res.status(201).json(data);
   } catch (error) {
     return next(error);

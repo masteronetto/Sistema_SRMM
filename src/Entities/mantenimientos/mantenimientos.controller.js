@@ -368,6 +368,12 @@ async function programar(req, res, next) {
       return res.status(404).json({ message: 'Maquinaria no encontrada' });
     }
 
+    if (String(maquina.estado || '').trim() === 'Bloqueada') {
+      return res.status(400).json({
+        message: 'La máquina está bloqueada por umbral crítico de mantenimiento. Debe regularizarse antes de programar nuevas órdenes.'
+      });
+    }
+
     const mecanico = await usuariosRepo.getUsuarioById(mec_id);
     if (!mecanico) {
       return res.status(404).json({ message: 'Mecánico no encontrado' });
