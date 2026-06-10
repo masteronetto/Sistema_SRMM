@@ -4187,14 +4187,16 @@ async function loadInicioKpis() {
         const headers = getAuthHeaders();
         const topRes = await fetch('/api/reportes/top-maquinas', { headers });
 
-            const [alertsRes, urgentRes] = await Promise.all([
+            const role = typeof userRole !== 'undefined' ? userRole : (currentUser?.rol_acceso || '');
+            const isAdmin = String(role).toLowerCase() === 'administrador';
+            const [alertsRes, urgentRes, delayNotificationsRes] = await Promise.all([
                 fetch('/api/alertas-criticas?limit=5', { headers }),
-                fetch('/api/maquinaria/urgent-maintenance?umbral=0&limit=5', { headers })
+                fetch('/api/maquinaria/urgent-maintenance?umbral=0&limit=5', { headers }),
+                isAdmin ? fetch('/api/notificaciones-tiempo-real?limite=5', { headers }) : Promise.resolve(null)
             ]);
 
             if (!topRes.ok) throw new Error('No se pudieron cargar top máquinas');
 
-            const role = typeof userRole !== 'undefined' ? userRole : (currentUser?.rol_acceso || '');
             const isOperator = String(role).toLowerCase() === 'operador';
 
             let machines = [];
@@ -4212,6 +4214,8 @@ async function loadInicioKpis() {
 
             const allAlerts = alertsRes.ok ? await alertsRes.json() : [];
             const allUrgent = urgentRes.ok ? await urgentRes.json() : [];
+            const delayNotificationsBody = delayNotificationsRes && delayNotificationsRes.ok ? await delayNotificationsRes.json() : null;
+            const delayNotifications = isAdmin ? (Array.isArray(delayNotificationsBody?.data) ? delayNotificationsBody.data : []) : [];
 
             const alerts = isOperator
                 ? (Array.isArray(allAlerts) ? allAlerts : []).filter((item) => {
@@ -4301,6 +4305,21 @@ async function loadInicioKpis() {
 
         const alertList = document.getElementById('inicioAlertList');
         if (alertList) {
+            const delayCards = delayNotifications.map((item) => {
+                const details = item?.detalles || {};
+                const daysLate = Number(details.dias_atraso ?? item.horas_restantes ?? 0);
+                const machineName = item.nombre_maquina || details.maquina_nombre || `Máquina #${item.maquina_id || 'N/D'}`;
+                const mechanicName = details.mecanico_nombre || details.mecanico_asignado || 'Sin asignar';
+                const serviceDate = details.fecha_programada || item.created_at;
+                return `
+                <div class="alert-item alert-critical">
+                    <div>⌛</div>
+                    <div>
+                        <strong>${escapeHtml(machineName)} — Mantenimiento retrasado</strong>
+                        <span>${escapeHtml(`${Math.abs(daysLate)} día(s) de retraso · Mecánico: ${mechanicName} · Programada: ${serviceDate ? formatCLDate(serviceDate) : 'N/D'}`)}</span>
+                    </div>
+                </div>`;
+            });
             const urgentCards = urgent.map((item) => `
                 <div class="alert-item alert-critical">
                     <div>⚠</div>
@@ -4321,7 +4340,11 @@ async function loadInicioKpis() {
                     </div>
                 </div>
             `);
-            alertList.innerHTML = urgentCards.concat(alertCards).slice(0, 5).join('') || `
+            const combinedCards = isAdmin
+                ? delayCards.concat(urgentCards, alertCards)
+                : urgentCards.concat(alertCards);
+
+            alertList.innerHTML = combinedCards.slice(0, 5).join('') || `
                 <div class="alert-item alert-info">
                     <div>✓</div>
                     <div>
