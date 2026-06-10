@@ -1,7 +1,6 @@
 const historialUsoRepo = require('./historial_uso.repository');
 const maquinariaRepo = require('../maquinaria/maquinaria.repository');
 const alertasRepo = require('../alertas_criticas/alertas_criticas.repository');
-const notificacionesRepo = require('../notificaciones_tiempo_real/notificaciones_tiempo_real.repository');
 const { enviarNotificacionAAdministradores } = require('../../config/socketio');
 const pool = require('../../db/pool');
 
@@ -133,6 +132,7 @@ async function create(req, res, next) {
     }
 
     const client = await pool.connect();
+    let pendingAdminSocketNotification = null;
     try {
       await client.query('BEGIN');
 
@@ -196,15 +196,63 @@ async function create(req, res, next) {
 
           // Si se alcanzó el 100% (horas_restantes <= 0)
           if (horas_restantes <= 0) {
-            // Crear alerta crítica
-            await client.query(
+            // Crear alerta crítica si no existe una pendiente para la misma máquina.
+            const alertaPendiente = await client.query(
               `
-              INSERT INTO alertas_criticas (maquinaria_id_maquina, tipo_alerta, estado_alerta, porcentaje_umbral, horometro_critico, requiere_mantenimiento)
-              VALUES ($1, 'Critica', 'Pendiente', 100, $2, TRUE)
-              ON CONFLICT DO NOTHING
+              SELECT id_alerta
+              FROM alertas_criticas
+              WHERE maquinaria_id_maquina = $1
+                AND tipo_alerta = 'Critica'
+                AND estado_alerta = 'Pendiente'
+              ORDER BY created_at DESC
+              LIMIT 1
               `,
-              [parsed.maquinaria_id_maquina, parsed.valor_horas]
+              [parsed.maquinaria_id_maquina]
             );
+
+            if (alertaPendiente.rowCount === 0) {
+              await client.query(
+                `
+                INSERT INTO alertas_criticas (maquinaria_id_maquina, tipo_alerta, estado_alerta, porcentaje_umbral, horometro_critico, requiere_mantenimiento)
+                VALUES ($1, 'Critica', 'Pendiente', 100, $2, TRUE)
+                `,
+                [parsed.maquinaria_id_maquina, parsed.valor_horas]
+              );
+            }
+
+            // Crear incidencia automática de criticidad Alta (solo una pendiente por evento automático).
+            const descripcionIncidenciaAuto = 'Alerta crítica automática: umbral de mantenimiento superado';
+            const incidenciaPendiente = await client.query(
+              `
+              SELECT id_incidencia
+              FROM incidencias_maquina
+              WHERE maquinaria_id_maquina = $1
+                AND criticidad = 'Alta'
+                AND estado = 'Pendiente'
+                AND descripcion = $2
+              ORDER BY created_at DESC
+              LIMIT 1
+              `,
+              [parsed.maquinaria_id_maquina, descripcionIncidenciaAuto]
+            );
+
+            if (incidenciaPendiente.rowCount === 0) {
+              await client.query(
+                `
+                INSERT INTO incidencias_maquina (
+                  maquinaria_id_maquina,
+                  operador_id,
+                  fecha,
+                  descripcion,
+                  criticidad,
+                  vinculada_mantenimiento,
+                  estado
+                )
+                VALUES ($1, $2, CURRENT_DATE, $3, 'Alta', TRUE, 'Pendiente')
+                `,
+                [parsed.maquinaria_id_maquina, parsed.id_usuario, descripcionIncidenciaAuto]
+              );
+            }
 
             // Bloquear la máquina automáticamente
             await client.query(
@@ -230,61 +278,60 @@ async function create(req, res, next) {
               [parsed.maquinaria_id_maquina]
             );
 
-            // Crear notificación en tiempo real para el administrador (SIS-20)
-            // Obtener datos del administrador (primer admin en BD)
+            // Crear notificaciones dirigidas y persistentes para todos los administradores (transaccional).
             const adminRes = await client.query(
-              `SELECT id_usuario FROM usuarios WHERE rol_acceso = 'Administrador' LIMIT 1`
+              `SELECT id_usuario FROM usuarios WHERE rol_acceso = 'Administrador'`
             );
-            const admin = adminRes.rows[0];
 
-            if (admin) {
-              try {
-                // Calcular prioridad basada en horas restantes
-                const prioridad = Math.abs(horas_restantes) > 50 ? 'Alta' : (Math.abs(horas_restantes) > 10 ? 'Media' : 'Alta');
-
-                // Crear notificación en BD
-                await notificacionesRepo.crearNotificacionTiempoReal(
+            const prioridad = 'Alta';
+            for (const admin of adminRes.rows) {
+              await client.query(
+                `
+                INSERT INTO notificaciones_tiempo_real
+                (admin_id, tipo_notificacion, maquina_id, nombre_maquina, prioridad, horas_restantes, detalles, leida, created_at)
+                VALUES ($1, 'Alerta Critica', $2, $3, $4, $5, $6::jsonb, FALSE, NOW())
+                `,
+                [
                   admin.id_usuario,
-                  'Alerta Critica',
                   parsed.maquinaria_id_maquina,
                   maquinaria.modelo_equipo,
                   prioridad,
                   horas_restantes,
-                  {
+                  JSON.stringify({
                     tipo_evento: 'Alerta Crítica Automática',
-                    descripcion: 'Se alcanzó el 100% del umbral de mantenimiento preventivo',
-                    paso_critico: true,
+                    descripcion: 'Se alcanzó o superó el 100% del umbral de mantenimiento preventivo',
+                    incidencia_automatica: true,
+                    criticidad_incidencia: 'Alta',
                     referencia_alerta: 'SIS-12',
                     timestamp: new Date().toISOString()
-                  }
-                );
-
-                // Emitir notificación por WebSocket
-                const io = req.app.get('io');
-                if (io) {
-                  const notificacion = {
-                    tipo: 'Alerta Critica',
-                    maquina_id: parsed.maquinaria_id_maquina,
-                    nombre_maquina: maquinaria.modelo_equipo,
-                    prioridad: prioridad,
-                    horas_restantes: horas_restantes,
-                    mensaje: `⚠️ ALERTA CRÍTICA: ${maquinaria.modelo_equipo} ha alcanzado el 100% de su umbral de mantenimiento. Máquina bloqueada automáticamente.`,
-                    timestamp: new Date().toISOString(),
-                    referencia_sistema: 'SIS-12'
-                  };
-                  enviarNotificacionAAdministradores(io, notificacion);
-                  console.log('[historial_uso] Notificación WebSocket enviada a administradores');
-                }
-              } catch (notifError) {
-                console.error('[historial_uso] Error creando notificación en tiempo real:', notifError);
-                // No fallamos la transacción por error en notificación
-              }
+                  })
+                ]
+              );
             }
+
+            // Preparar notificación WebSocket para emisión post-commit.
+            pendingAdminSocketNotification = {
+              tipo: 'Alerta Critica',
+              maquina_id: parsed.maquinaria_id_maquina,
+              nombre_maquina: maquinaria.modelo_equipo,
+              prioridad,
+              horas_restantes,
+              mensaje: `⚠️ ALERTA CRÍTICA: ${maquinaria.modelo_equipo} alcanzó el umbral de mantenimiento. Se creó incidencia Alta y la máquina fue bloqueada.`,
+              timestamp: new Date().toISOString(),
+              referencia_sistema: 'SIS-12'
+            };
           }
         }
       }
 
       await client.query('COMMIT');
+
+      const io = req.app.get('io');
+      if (io && pendingAdminSocketNotification) {
+        enviarNotificacionAAdministradores(io, pendingAdminSocketNotification);
+        console.log('[historial_uso] Notificación WebSocket enviada a administradores');
+      }
+
       return res.status(201).json(insertResult.rows[0]);
     } catch (error) {
       await client.query('ROLLBACK');

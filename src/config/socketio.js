@@ -3,6 +3,14 @@ const { Server } = require('socket.io');
 // Almacenar usuarios conectados por rol
 const usuariosConectados = new Map();
 
+function normalizeRole(role) {
+  return String(role || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 function setupSocketIO(httpServer) {
   const io = new Server(httpServer, {
     cors: {
@@ -77,7 +85,7 @@ function setupSocketIO(httpServer) {
 // Función para enviar notificación a todos los administradores conectados
 function enviarNotificacionAAdministradores(io, notificacion) {
   const administradores = Array.from(usuariosConectados.values()).filter(
-    (usuario) => usuario.rol === 'administrador'
+    (usuario) => normalizeRole(usuario.rol) === 'administrador'
   );
 
   administradores.forEach((admin) => {
