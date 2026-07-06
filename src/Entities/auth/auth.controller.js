@@ -282,6 +282,7 @@ if (transporter) {
   const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@sistema-srmm';
 
   try {
+    await transporter.verify();
     await transporter.sendMail({
       from: fromAddress,
       to: normalizedEmail,
@@ -296,8 +297,10 @@ if (transporter) {
       detalle: mailError.message || 'Fallo al enviar correo de recuperacion'
     });
     registerFailedAttempt(recoverRateKey, { windowMs: 15 * 60 * 1000 });
-    console.warn('No se pudo enviar el email de recuperación:', mailError.message || mailError);
-    return res.status(200).json({ message: 'Si el correo existe, se enviará un email con instrucciones.' });
+    console.error('No se pudo enviar el email de recuperación:', mailError.message || mailError);
+    return res.status(502).json({
+      message: 'No fue posible enviar el correo de recuperación. Revisa la configuración SMTP o las credenciales del correo saliente.'
+    });
   }
 } else {
   await registerRecoveryAttempt(req, {
@@ -307,7 +310,7 @@ if (transporter) {
   });
   registerFailedAttempt(recoverRateKey, { windowMs: 15 * 60 * 1000 });
   console.log('PASSWORD RESET LINK:', resetLink);
-  return res.status(200).json({ message: 'Si el correo existe, se enviará un email con instrucciones.' });
+  return res.status(503).json({ message: 'No hay configuración SMTP válida para enviar el correo de recuperación.' });
 }
 
 await registerRecoveryAttempt(req, {
