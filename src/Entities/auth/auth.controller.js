@@ -65,6 +65,41 @@ function clearRateLimit(key) {
 rateLimitStore.delete(key);
 }
 
+function resolveFrontendBaseUrl(req) {
+  const configuredUrl = process.env.FRONTEND_URL
+    || process.env.PUBLIC_FRONTEND_URL
+    || process.env.NEXT_PUBLIC_FRONTEND_URL;
+
+  if (configuredUrl) {
+    return String(configuredUrl).replace(/\/$/, '');
+  }
+
+  const forwardedProto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+  const forwardedHost = req.headers['x-forwarded-host'] || req.headers.host || '';
+
+  if (forwardedHost) {
+    const protocol = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
+    const host = Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost;
+    return `${String(protocol).replace(/\/$/, '')}://${String(host).replace(/\/$/, '')}`;
+  }
+
+  const vercelHost = process.env.VERCEL_PROJECT_PRODUCTION_URL
+    || process.env.VERCEL_BRANCH_URL
+    || process.env.VERCEL_DEPLOYMENT_URL
+    || process.env.VERCEL_URL;
+
+  if (vercelHost) {
+    return `https://${String(vercelHost).replace(/^https?:\/\//, '').replace(/\/$/, '')}`;
+  }
+
+  const origin = req.headers?.origin || req.headers?.referer || '';
+  if (origin) {
+    return String(origin).replace(/\/$/, '');
+  }
+
+  return `http://localhost:${port}`;
+}
+
 async function registrarAuditoriaAltaDesdeRegistro(user) {
 try {
   if (!user || !user.id_usuario) return;
@@ -269,13 +304,8 @@ if (!user) {
 }
 
 const token = jwt.sign({ id_usuario: user.id_usuario, type: 'pw-reset' }, JWT_SECRET, { expiresIn: '1h' });
-const frontendUrl = (
-  process.env.FRONTEND_URL
-  || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
-  || req.headers.origin
-  || `http://localhost:${port}`
-).replace(/\/$/, '');
-const resetLink = `${frontendUrl}/reset.html?token=${token}`;
+const frontendUrl = resolveFrontendBaseUrl(req);
+const resetLink = `${frontendUrl}/reset?token=${token}`;
 
 const transporter = createTransporterIfConfigured();
 if (transporter) {

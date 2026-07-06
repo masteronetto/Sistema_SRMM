@@ -5,6 +5,8 @@ const { PNG } = require('pngjs');
 const { hasDatabaseConfig, hasDatabaseUrl } = require('./config/env');
 
 const app = express();
+app.set('trust proxy', true);
+
 const staticDirCandidates = [
   path.join(__dirname, '..', 'public'),
   path.join(__dirname, '..', 'frontend')

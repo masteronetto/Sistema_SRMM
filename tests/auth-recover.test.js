@@ -1,7 +1,6 @@
 const assert = require('assert');
-const path = require('path');
 
-function loadControllerWithStubs() {
+function loadControllerWithStubs({ verifyImpl, sendMailImpl } = {}) {
   const nodemailerPath = require.resolve('nodemailer');
   const usuariosRepoPath = require.resolve('../src/Entities/usuarios/usuarios.repository');
   const authRepoPath = require.resolve('../src/Entities/auth/auth.repository');
@@ -9,9 +8,17 @@ function loadControllerWithStubs() {
 
   const fakeTransport = {
     verify: async () => {
+      if (verifyImpl) {
+        return verifyImpl();
+      }
       throw new Error('SMTP authentication failed');
     },
-    sendMail: async () => ({})
+    sendMail: async (mailOptions) => {
+      if (sendMailImpl) {
+        return sendMailImpl(mailOptions);
+      }
+      return {};
+    }
   };
 
   const fakeUsuariosRepo = {
@@ -52,12 +59,8 @@ function loadControllerWithStubs() {
   return require('../src/Entities/auth/auth.controller');
 }
 
-(() => {
-  console.log('Running auth recover tests...');
-
-  const controller = loadControllerWithStubs();
-  const requests = [];
-  const res = {
+function createResponse() {
+  return {
     statusCode: 200,
     body: null,
     status(code) {
@@ -69,21 +72,45 @@ function loadControllerWithStubs() {
       return this;
     }
   };
+}
 
-  const req = {
+function createRequest() {
+  return {
     body: { email: 'usuario@test.cl' },
     headers: { 'user-agent': 'test-agent' },
     ip: '127.0.0.1'
   };
+}
 
-  controller.recover(req, res, (err) => {
-    requests.push(err);
-  }).then(() => {
-    assert.strictEqual(res.statusCode, 502, 'recover should return 502 when SMTP fails');
-    assert.match(String(res.body?.message || ''), /No fue posible enviar/i, 'error should be explicit');
+(async () => {
+  console.log('Running auth recover tests...');
+
+  try {
+    const controller = loadControllerWithStubs({
+      verifyImpl: async () => {},
+      sendMailImpl: async (mailOptions) => {
+        assert.match(mailOptions.html, /https:\/\/example\.com\/reset\?token=/, 'reset link should use the public reset route');
+        return {};
+      }
+    });
+
+    const res = createResponse();
+    const req = createRequest();
+
+    process.env.FRONTEND_URL = 'https://example.com';
+    await controller.recover(req, res, () => {});
+    assert.strictEqual(res.statusCode, 200, 'recover should succeed when SMTP works');
+
+    const controllerWithFailure = loadControllerWithStubs();
+    const failedRes = createResponse();
+    await controllerWithFailure.recover(createRequest(), failedRes, () => {});
+
+    assert.strictEqual(failedRes.statusCode, 502, 'recover should return 502 when SMTP fails');
+    assert.match(String(failedRes.body?.message || ''), /No fue posible enviar/i, 'error should be explicit');
+
     console.log('All auth recover tests passed.');
-  }).catch((error) => {
+  } catch (error) {
     console.error(error);
     process.exitCode = 1;
-  });
+  }
 })();
